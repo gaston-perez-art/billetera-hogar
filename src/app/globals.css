@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* Tokens de diseño. Verde = lo que queda, rojo = te pasaste. */
+@theme {
+  --color-fondo: #f3f5f8;
+  --color-tarjeta: #ffffff;
+  --color-texto: #0f172a;
+  --color-tenue: #64748b;
+  --color-linea: #e5e9f0;
+  --color-marca: #1d4ed8;
+  --color-marca-suave: #e8efff;
+  --color-queda: #047857;
+  --color-queda-suave: #e7f6ef;
+  --color-pasaste: #c62828;
+  --color-pasaste-suave: #fdecec;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-feature-settings: "tnum";
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
