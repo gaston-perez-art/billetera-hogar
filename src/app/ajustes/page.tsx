@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Boton, Encabezado, Grupo } from "@/components/ui";
+import { Boton, Encabezado, estiloBoton, Grupo } from "@/components/ui";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 
@@ -51,7 +51,7 @@ export default function Ajustes() {
 
         <Grupo titulo="Pagos fijos">
           {pagos.map((p) => (
-            <div key={p.id} className="px-4 py-3">
+            <div key={p.id} className="px-5 py-3">
               <label className="flex items-center justify-between gap-3">
                 <span className={`min-w-0 text-[15px] font-medium ${p.activo ? "" : "text-tenue line-through"}`}>{p.concepto}</span>
                 <input
@@ -77,7 +77,7 @@ export default function Ajustes() {
                       e.target.value = String(dia);
                       actualizarPagoFijo(p.id, { dia });
                     }}
-                    className="h-9 w-12 rounded-lg bg-relleno text-center text-[15px] font-medium text-texto outline-none"
+                    className="h-9 w-12 rounded-full bg-relleno text-center text-[15px] font-medium text-texto outline-none"
                   />
                 </label>
                 <InputMonto key={p.monto} valor={p.monto} onCambio={(monto) => actualizarPagoFijo(p.id, { monto })} />
@@ -86,9 +86,9 @@ export default function Ajustes() {
           ))}
         </Grupo>
 
-        <section className="space-y-3 px-4">
-          <h2 className="px-1 text-[15px] font-semibold">Datos</h2>
-          <label className="flex h-[52px] cursor-pointer items-center justify-center rounded-xl bg-relleno text-[16px] font-semibold active:opacity-80">
+        <section className="space-y-3 px-5">
+          <h2 className="text-[16px] font-semibold">Datos</h2>
+          <label className={`${estiloBoton("secundario")} cursor-pointer`}>
             Importar archivo .json
             <input type="file" accept=".json,application/json" onChange={alElegirArchivo} className="sr-only" />
           </label>
@@ -107,7 +107,7 @@ export default function Ajustes() {
 
 function CampoMonto({ etiqueta, detalle, valor, onCambio }: { etiqueta: string; detalle?: string; valor: number; onCambio: (v: number) => void }) {
   return (
-    <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+    <div className="flex min-h-14 items-center gap-3 px-5 py-2.5">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{etiqueta}</span>
         {detalle && <span className="block text-[13px] text-tenue">{detalle}</span>}
@@ -121,7 +121,7 @@ function CampoMonto({ etiqueta, detalle, valor, onCambio }: { etiqueta: string; 
 function InputMonto({ valor, onCambio }: { valor: number; onCambio: (v: number) => void }) {
   const [texto, setTexto] = useState(numero.format(valor));
   return (
-    <label className="flex h-9 items-center rounded-lg bg-relleno px-3 text-[15px] font-medium">
+    <label className="flex h-9 items-center rounded-full bg-relleno px-3.5 text-[15px] font-medium">
       <span className="text-tenue">$</span>
       <input
         inputMode="numeric"

@@ -23,7 +23,7 @@ export default function PagosFijos() {
       .filter(Boolean)
       .join(", ");
     return (
-      <div key={p.pagoFijo.id} className="flex min-h-16 items-center gap-3 px-4 py-3">
+      <div key={p.pagoFijo.id} className="flex min-h-16 items-center gap-3 px-5 py-2.5">
         <Fecha dia={p.pagoFijo.dia} mes={mesCorto(mes)} />
         <div className="min-w-0 flex-1">
           <p className={`truncate text-[15px] font-medium ${p.pagado ? "text-tenue" : ""}`}>{p.pagoFijo.concepto}</p>
@@ -38,7 +38,7 @@ export default function PagosFijos() {
             <Icono trazo={ICONOS.check} className="size-5" />
           </button>
         ) : (
-          <button onClick={() => marcarPagado(p.pagoFijo.id, mes)} className="h-9 rounded-lg bg-relleno px-3.5 text-[14px] font-semibold active:opacity-70">
+          <button onClick={() => marcarPagado(p.pagoFijo.id, mes)} className="h-9 rounded-full bg-marca-suave px-4 text-[14px] font-semibold text-marca active:opacity-70">
             Pagar
           </button>
         )}
@@ -55,7 +55,7 @@ export default function PagosFijos() {
         </p>
       </Resumen>
 
-      <main className="space-y-6">
+      <main className="mt-6 space-y-6">
         {pendientes.length > 0 && <Grupo titulo="Por pagar">{pendientes.map(fila)}</Grupo>}
         {pagados.length > 0 && <Grupo titulo="Pagados">{pagados.map(fila)}</Grupo>}
         {pagos.length === 0 && (

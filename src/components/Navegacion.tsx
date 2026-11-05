@@ -12,18 +12,18 @@ const ITEMS = [
   { href: "/reparto", texto: "Reparto", icono: ICONOS.reparto },
 ];
 
-/** Barra de pestañas fija. El botón del medio carga un gasto: es la acción más usada. */
+/** Barra de pestañas clara. La pestaña activa lleva una pastilla verde suave detrás del ícono. */
 export function Navegacion() {
   const ruta = usePathname().replace(/\/$/, "") || "/";
   if (ruta.endsWith("/cargar")) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-linea bg-tarjeta/95 pb-[env(safe-area-inset-bottom)] backdrop-blur" aria-label="Secciones">
-      <ul className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
+      <ul className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center">
         {ITEMS.map((item) =>
           item === null ? (
             <li key="cargar" className="flex justify-center">
-              <Link href="/cargar" aria-label="Cargar gasto" className="grid size-11 place-items-center rounded-full bg-marca text-white active:opacity-80">
-                <Icono trazo={ICONOS.mas} className="size-[22px]" />
+              <Link href="/cargar" aria-label="Cargar gasto" className="grid size-12 place-items-center rounded-full bg-marca text-white active:opacity-80">
+                <Icono trazo={ICONOS.mas} className="size-6" />
               </Link>
             </li>
           ) : (
@@ -31,9 +31,11 @@ export function Navegacion() {
               <Link
                 href={item.href}
                 aria-current={(item.href === "/" ? ruta === "/" : ruta.endsWith(item.href)) ? "page" : undefined}
-                className="flex flex-col items-center gap-1 text-[11px] font-medium text-sutil aria-[current=page]:text-marca"
+                className="group flex flex-col items-center gap-1 text-[11px] font-medium text-tenue aria-[current=page]:font-semibold aria-[current=page]:text-marca"
               >
-                <Icono trazo={item.icono} className="size-6" />
+                <span className="grid h-7 w-14 place-items-center rounded-full group-aria-[current=page]:bg-marca-suave">
+                  <Icono trazo={item.icono} className="size-[22px]" />
+                </span>
                 {item.texto}
               </Link>
             </li>

@@ -18,7 +18,7 @@ export default function Reparto() {
         </p>
       </Resumen>
 
-      <main className="space-y-6">
+      <main className="mt-6 space-y-6">
         {miembros.map((m) => {
           const d = Math.round(m.diferencia);
           return (
@@ -26,27 +26,27 @@ export default function Reparto() {
               <table className="w-full text-[15px] tabular-nums">
                 <thead>
                   <tr className="text-[13px] text-tenue">
-                    <th className="px-4 pb-1 pt-3 text-left font-normal" />
+                    <th className="px-5 pb-1 pt-3 text-left font-normal" />
                     <th className="pb-1 pt-3 text-right font-normal">Plan</th>
-                    <th className="px-4 pb-1 pt-3 text-right font-normal">Real</th>
+                    <th className="px-5 pb-1 pt-3 text-right font-normal">Real</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <th className="px-4 py-2 text-left font-normal text-tenue">Pone</th>
+                    <th className="px-5 py-2 text-left font-normal text-tenue">Pone</th>
                     <td className="py-2 text-right font-medium">{pesos(m.leToca)}</td>
-                    <td className="px-4 py-2 text-right font-medium">{pesos(m.puso)}</td>
+                    <td className="px-5 py-2 text-right font-medium">{pesos(m.puso)}</td>
                   </tr>
                   <tr>
-                    <th className="px-4 pb-3 pt-2 text-left font-normal text-tenue">Le queda</th>
+                    <th className="px-5 pb-3 pt-2 text-left font-normal text-tenue">Le queda</th>
                     <td className="pb-3 pt-2 text-right font-medium">{pesos(m.leQuedaPlan)}</td>
-                    <td className="px-4 pb-3 pt-2 text-right font-medium">{pesos(m.leQuedaReal)}</td>
+                    <td className="px-5 pb-3 pt-2 text-right font-medium">{pesos(m.leQuedaReal)}</td>
                   </tr>
                   <tr className="border-t border-linea">
-                    <th className="px-4 py-3.5 text-left font-semibold" colSpan={2}>
+                    <th className="px-5 py-3.5 text-left font-semibold" colSpan={2}>
                       {d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}
                     </th>
-                    <td className="px-4 py-3.5 text-right font-semibold">
+                    <td className="px-5 py-3.5 text-right font-semibold">
                       <MontoQueda monto={m.diferencia} />
                     </td>
                   </tr>

@@ -24,9 +24,9 @@ Leer antes de tocar lógica:
 
 ## Diseño
 
-- Limpio, minimalista, moderno. Referencias: ARQ, Mercado Pago, Ualá, Naranja X.
-- Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: tres tintas (texto, tenue, sutil), un gris de relleno y un verde de marca (botones, íconos en círculo verde suave, barras, pestaña activa). El bloque verde oscuro va solo en Inicio, con el saldo. Verde/rojo de montos solo como semáforo. Ni arcoíris de colores por categoría ni todo en gris: no agregar colores fuera de los tokens.
-- Un solo número protagonista por pantalla (`Resumen` / `MontoGrande`). Listas en `Grupo` blanco con divisores finos, filas con `FilaLista`. Íconos de categoría monocromo en círculo gris. Sin sombras. Una sola acción principal por pantalla (`Boton`).
+- Limpio, claro y moderno. Referencia principal: la interfaz nueva de MODO (fondo blanco, saldo centrado en tarjeta, botones pastilla verdes, actividad sin cajas). También ARQ, Mercado Pago, Ualá.
+- Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: fondo blanco, tres tintas (texto, tenue, sutil), un gris de relleno, verde de marca y su versión suave. Verde/rojo de montos solo como semáforo. No agregar colores fuera de los tokens.
+- Cada pantalla: encabezado con saludo y ajustes, chip del mes, y el número principal en `Resumen` (tarjeta blanca, centrado, leyenda abajo, cifras chicas debajo). Listas con `Grupo` + `FilaLista`, filas directas sobre blanco. Íconos de categoría en círculo verde suave. Botones pastilla (`Boton` / `estiloBoton`). Montos de movimientos con `MontoMovimiento` (signo en color).
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
 - Verde = lo que queda; rojo = te pasaste. Ceros como "–".
 - Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.

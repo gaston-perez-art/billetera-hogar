@@ -27,10 +27,10 @@ export default function Categorias() {
         </div>
       </Resumen>
 
-      <main className="space-y-6">
-        <Grupo>
+      <main className="mt-6 space-y-6">
+        <Grupo titulo="Por categoría">
           {activas.map(({ categoria, gastado, techo, queda }) => (
-            <div key={categoria.id} className="flex items-center gap-3 px-4 py-3.5">
+            <div key={categoria.id} className="flex items-center gap-3 px-5 py-3">
               <IconoCategoria nombre={categoria.nombre} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">

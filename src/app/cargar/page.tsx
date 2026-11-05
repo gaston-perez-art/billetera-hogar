@@ -145,7 +145,7 @@ export default function Cargar() {
             </label>
             <div className="flex items-center justify-between gap-4 py-3">
               <span className="text-[15px] text-tenue">Pagó</span>
-              <div className="flex rounded-lg bg-relleno p-0.5" role="radiogroup" aria-label="Pagó">
+              <div className="flex rounded-full bg-relleno p-0.5" role="radiogroup" aria-label="Pagó">
                 {datos.miembros.map((m) => (
                   <button
                     key={m.id}
@@ -153,7 +153,7 @@ export default function Cargar() {
                     role="radio"
                     aria-checked={pagoPor === m.id}
                     onClick={() => setPagoPor(m.id)}
-                    className="rounded-md px-3.5 py-1.5 text-[14px] font-medium text-tenue aria-checked:bg-tarjeta aria-checked:text-texto aria-checked:shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    className="rounded-full px-3.5 py-1.5 text-[14px] font-medium text-tenue aria-checked:bg-tarjeta aria-checked:text-texto aria-checked:shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
                   >
                     {m.nombre}
                   </button>
