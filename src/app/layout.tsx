@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#10372a",
+  themeColor: "#f5f6f5",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es-AR">
       <body className={`${manrope.variable} font-sans antialiased`}>
         <ProveedorBilletera>
-          <div className="mx-auto min-h-dvh max-w-md pb-28">{children}</div>
+          <div className="mx-auto min-h-dvh max-w-md pb-24">{children}</div>
           <Navegacion />
         </ProveedorBilletera>
       </body>
