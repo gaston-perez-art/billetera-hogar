@@ -6,47 +6,53 @@ import { Icono, ICONOS } from "@/components/Iconos";
 import { mesDe, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
-/** Encabezado de las pantallas claras: título grande, quién usa la app y mes. */
-export function Encabezado({ titulo, conMes = true }: { titulo: string; conMes?: boolean }) {
+/*
+ * Piezas compartidas. Reglas:
+ * - Un número protagonista por pantalla (MontoGrande). Lo demás, tamaño de lectura.
+ * - Listas en grupos blancos con divisores finos. Sin sombras.
+ * - Una sola acción principal por pantalla (Boton variante "principal").
+ */
+
+/** Barra superior: mes a la izquierda, quién usa la app y ajustes a la derecha. */
+export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?: boolean }) {
   return (
-    <header className="px-5 pt-[max(env(safe-area-inset-top),1.25rem)]">
-      <div className="flex items-center justify-between gap-3">
+    <header className="flex h-14 items-center justify-between gap-2 px-4 pt-[env(safe-area-inset-top)] mt-2">
+      {conMes ? <SelectorMes /> : <h1 className="px-1 text-[17px] font-semibold">{titulo}</h1>}
+      <div className="flex items-center gap-1">
         <SelectorUsuario />
-        {conMes && <SelectorMes />}
-        <BotonAjustes />
+        <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full text-tenue active:bg-relleno">
+          <Icono trazo={ICONOS.ajustes} className="size-[22px]" />
+        </Link>
       </div>
-      <h1 className="mt-6 text-[28px] font-bold leading-tight tracking-tight">{titulo}</h1>
     </header>
   );
 }
 
-/** Pastilla con flechas para cambiar de mes. Tocar el nombre vuelve al mes actual. */
-export function SelectorMes({ oscuro = false }: { oscuro?: boolean }) {
+function SelectorMes() {
   const { mes, setMes } = useBilletera();
   const esMesActual = mes === mesDe(hoy());
-  const base = oscuro ? "bg-white/10 text-white" : "bg-tarjeta text-texto";
-  const flecha = oscuro ? "text-white/70 hover:bg-white/10" : "text-tenue hover:bg-fondo";
   return (
-    <div className={`flex items-center rounded-full p-1 ${base}`}>
-      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className={`grid size-8 place-items-center rounded-full ${flecha}`}>
-        <Icono trazo={ICONOS.atras} className="size-4" />
+    <div className="flex items-center">
+      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className="grid size-9 place-items-center rounded-full text-tenue active:bg-relleno">
+        <Icono trazo={ICONOS.atras} className="size-[18px]" />
       </button>
       <button
         onClick={() => setMes(mesDe(hoy()))}
+        disabled={esMesActual}
         title={esMesActual ? undefined : "Volver al mes actual"}
-        className="min-w-[8.5rem] px-1 text-center text-sm font-semibold capitalize"
+        className="px-1 text-[17px] font-semibold capitalize"
       >
         {nombreMes(mes)}
       </button>
-      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className={`grid size-8 place-items-center rounded-full ${flecha}`}>
-        <Icono trazo={ICONOS.adelante} className="size-4" />
+      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className="grid size-9 place-items-center rounded-full text-tenue active:bg-relleno">
+        <Icono trazo={ICONOS.adelante} className="size-[18px]" />
       </button>
     </div>
   );
 }
 
-/** En el POC no hay login: tocar el avatar cambia quién está usando la app. */
-export function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
+/** En el POC no hay login: tocar la inicial cambia quién está usando la app. */
+function SelectorUsuario() {
   const { datos, usuarioId, setUsuarioId } = useBilletera();
   const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
   const otro = datos.miembros.find((m) => m.id !== actual?.id);
@@ -55,47 +61,113 @@ export function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
     <button
       onClick={() => otro && setUsuarioId(otro.id)}
       aria-label={`Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`}
-      className="flex items-center gap-2"
+      className="grid size-10 place-items-center"
     >
-      <Avatar nombre={actual.nombre} oscuro={oscuro} />
+      <Avatar nombre={actual.nombre} />
     </button>
   );
 }
 
-export function Avatar({ nombre, oscuro = false, grande = false }: { nombre: string; oscuro?: boolean; grande?: boolean }) {
-  const tam = grande ? "size-12 text-lg" : "size-10 text-[15px]";
-  const color = oscuro ? "bg-menta text-bosque-hondo" : "bg-bosque text-menta";
-  return <span className={`grid shrink-0 place-items-center rounded-full font-bold ${tam} ${color}`}>{nombre.charAt(0)}</span>;
+export function Avatar({ nombre }: { nombre: string }) {
+  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-white">{nombre.charAt(0)}</span>;
 }
 
-export function BotonAjustes({ oscuro = false }: { oscuro?: boolean }) {
+/** El número de la pantalla, con su etiqueta arriba y un detalle opcional abajo. */
+export function Resumen({ etiqueta, monto, tono, children }: { etiqueta: string; monto: number; tono?: "queda"; children?: React.ReactNode }) {
+  const color = tono === "queda" ? (Math.round(monto) < 0 ? "text-pasaste" : "text-texto") : "text-texto";
   return (
-    <Link
-      href="/ajustes"
-      aria-label="Ajustes"
-      className={`grid size-10 place-items-center rounded-full ${oscuro ? "bg-white/10 text-white" : "bg-tarjeta text-texto"}`}
-    >
-      <Icono trazo={ICONOS.ajustes} className="size-5" />
-    </Link>
+    <section className="px-5 pb-6 pt-4">
+      <p className="text-[15px] text-tenue">{etiqueta}</p>
+      <MontoGrande monto={monto} className={`mt-1 text-[44px] leading-[1.05] ${color}`} />
+      {children && <div className="mt-3">{children}</div>}
+    </section>
   );
 }
 
-export function Tarjeta({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-[28px] bg-tarjeta p-5 ${className}`}>{children}</section>;
+/** Monto grande con el "$" chico y alto. */
+export function MontoGrande({ monto, className = "" }: { monto: number; className?: string }) {
+  const texto = pesos(monto, { ceroComoGuion: false });
+  const negativo = texto.startsWith("-");
+  const numero = texto.replace(/^-?\$/, "");
+  return (
+    <span className={`inline-flex items-start font-semibold tracking-[-0.03em] tabular-nums ${className}`}>
+      {negativo && <span>−</span>}
+      <span className="mr-0.5 mt-[0.16em] text-[0.5em] font-medium tracking-normal">$</span>
+      {numero}
+    </span>
+  );
 }
 
-/** Título de bloque con acción opcional a la derecha. */
-export function TituloBloque({ children, href, accion }: { children: React.ReactNode; href?: string; accion?: string }) {
+/** Grupo de filas sobre blanco, con divisores finos. */
+export function Grupo({
+  titulo,
+  accion,
+  detalle,
+  children,
+}: {
+  titulo?: string;
+  accion?: { texto: string; href: string };
+  detalle?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mb-3 flex items-center justify-between px-1">
-      <h2 className="text-lg font-bold tracking-tight">{children}</h2>
-      {href && accion && (
-        <Link href={href} className="flex items-center gap-0.5 text-sm font-semibold text-queda">
-          {accion}
-          <Icono trazo={ICONOS.adelante} className="size-4" />
-        </Link>
+    <section className="px-4">
+      {titulo && (
+        <div className="mb-2 flex items-baseline justify-between px-1">
+          <h2 className="text-[15px] font-semibold">{titulo}</h2>
+          {accion && (
+            <Link href={accion.href} className="text-[15px] text-tenue">
+              {accion.texto}
+            </Link>
+          )}
+          {detalle && <span className="text-[13px] text-tenue tabular-nums">{detalle}</span>}
+        </div>
       )}
-    </div>
+      <div className="divide-y divide-linea overflow-hidden rounded-2xl bg-tarjeta">{children}</div>
+    </section>
+  );
+}
+
+/** Fila estándar: ícono opcional, título y bajada, valor a la derecha. */
+export function FilaLista({
+  icono,
+  titulo,
+  bajada,
+  valor,
+  valorBajada,
+  apagada = false,
+  onClick,
+}: {
+  icono?: React.ReactNode;
+  titulo: React.ReactNode;
+  bajada?: React.ReactNode;
+  valor?: React.ReactNode;
+  valorBajada?: React.ReactNode;
+  apagada?: boolean;
+  onClick?: () => void;
+}) {
+  const contenido = (
+    <>
+      {icono}
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-[15px] font-medium ${apagada ? "text-tenue" : ""}`}>{titulo}</span>
+        {bajada && <span className="mt-0.5 block truncate text-[13px] text-tenue">{bajada}</span>}
+      </span>
+      {(valor !== undefined || valorBajada) && (
+        <span className="shrink-0 text-right">
+          {valor !== undefined && <span className={`block text-[15px] font-semibold tabular-nums ${apagada ? "text-tenue" : ""}`}>{valor}</span>}
+          {valorBajada && <span className="mt-0.5 block text-[13px] text-tenue tabular-nums">{valorBajada}</span>}
+        </span>
+      )}
+    </>
+  );
+  const clases = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
+  return onClick ? (
+    <button onClick={onClick} className={`${clases} active:bg-relleno`}>
+      {contenido}
+    </button>
+  ) : (
+    <div className={clases}>{contenido}</div>
   );
 }
 
@@ -106,26 +178,22 @@ export function MontoQueda({ monto, className = "" }: { monto: number; className
   return <span className={`tabular-nums ${color} ${className}`}>{pesos(monto)}</span>;
 }
 
-export function Fila({ etiqueta, valor, fuerte = false }: { etiqueta: string; valor: React.ReactNode; fuerte?: boolean }) {
+/** Botón. "principal" es la única acción fuerte de la pantalla. */
+export function Boton({
+  children,
+  variante = "principal",
+  className = "",
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "principal" | "secundario" | "peligro" }) {
+  const estilos = {
+    principal: "bg-marca text-white disabled:bg-relleno disabled:text-sutil",
+    secundario: "bg-relleno text-texto",
+    peligro: "bg-relleno text-pasaste",
+  }[variante];
   return (
-    <div className={`flex items-baseline justify-between py-1.5 ${fuerte ? "font-semibold" : ""}`}>
-      <span className={fuerte ? "" : "text-tenue"}>{etiqueta}</span>
-      <span className="tabular-nums">{valor}</span>
-    </div>
-  );
-}
-
-/** Monto grande con el signo $ chico y alto, como en las billeteras. */
-export function MontoGrande({ monto, className = "" }: { monto: number; className?: string }) {
-  const texto = pesos(monto, { ceroComoGuion: false });
-  const negativo = texto.startsWith("-");
-  const numero = texto.replace(/^-?\$/, "");
-  return (
-    <span className={`inline-flex items-start font-bold tracking-[-0.035em] tabular-nums ${className}`}>
-      {negativo && <span>−</span>}
-      <span className="mr-1 mt-[0.18em] text-[0.45em] font-semibold tracking-normal opacity-70">$</span>
-      {numero}
-    </span>
+    <button className={`h-[52px] w-full rounded-xl text-[16px] font-semibold transition active:opacity-80 ${estilos} ${className}`} {...props}>
+      {children}
+    </button>
   );
 }
 
@@ -140,11 +208,31 @@ export function Hoja({ abierta, alCerrar, titulo, children }: { abierta: boolean
   if (!abierta) return null;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
-      <button className="velo-entra absolute inset-0 bg-bosque-hondo/45" aria-label="Cerrar" onClick={alCerrar} />
-      <div className="hoja-entra relative w-full max-w-md rounded-t-[32px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-3">
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-linea" />
+      <button className="velo-entra absolute inset-0 bg-black/30" aria-label="Cerrar" onClick={alCerrar} />
+      <div className="hoja-entra relative w-full max-w-md rounded-t-3xl bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5">
+        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-linea" />
         {children}
       </div>
     </div>
+  );
+}
+
+/** Fila etiqueta / valor para detalles. */
+export function Dato({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <dt className="text-[15px] text-tenue">{etiqueta}</dt>
+      <dd className="text-[15px] font-medium tabular-nums">{valor}</dd>
+    </div>
+  );
+}
+
+/** Día del pago en el lugar del ícono. */
+export function Fecha({ dia, mes }: { dia: number; mes: string }) {
+  return (
+    <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-full bg-relleno leading-none">
+      <span className="text-[15px] font-semibold tabular-nums">{dia}</span>
+      <span className="mt-0.5 text-[10px] font-medium text-tenue">{mes}</span>
+    </span>
   );
 }

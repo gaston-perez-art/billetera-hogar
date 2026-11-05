@@ -1,26 +1,24 @@
 @import "tailwindcss";
 
 /*
- * Tokens de diseño.
- * Bosque = superficie oscura del saldo y la barra de navegación.
- * Verde = lo que queda; coral = te pasaste. Fondo piedra frío, tarjetas blancas.
+ * Sistema de color: neutro y con pocas piezas.
+ * - texto / tenue / sutil: tres niveles de tinta. Nada más para jerarquía.
+ * - relleno: el único gris para fondos de íconos, campos y chips.
+ * - marca: la acción principal (botones). Es la misma tinta del texto.
+ * - queda / pasaste: semáforo. Solo para montos que quedan o se pasan.
+ * No agregar colores nuevos: si algo necesita destacarse, usar peso o tamaño.
  */
 @theme {
-  --color-bosque: #10372a;
-  --color-bosque-hondo: #0a2419;
-  --color-menta: #9ee6bf;
-  --color-fondo: #eef0ed;
+  --color-fondo: #f5f6f5;
   --color-tarjeta: #ffffff;
-  --color-texto: #14211b;
-  --color-tenue: #69756f;
-  --color-linea: #e1e5e1;
-  --color-marca: #10372a;
-  --color-marca-suave: #e3eee8;
-  --color-queda: #17804f;
-  --color-queda-suave: #e2f3e9;
-  --color-pasaste: #c0412b;
-  --color-pasaste-suave: #fbe9e5;
-  --color-pendiente: #c98a1b;
+  --color-texto: #171c1a;
+  --color-tenue: #6e7672;
+  --color-sutil: #a4aaa7;
+  --color-linea: #e7e9e8;
+  --color-relleno: #eef0ef;
+  --color-marca: #171c1a;
+  --color-queda: #12784a;
+  --color-pasaste: #c0392b;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -36,7 +34,7 @@ body {
 
 @layer base {
   :focus-visible {
-    outline: 2px solid var(--color-queda);
+    outline: 2px solid var(--color-texto);
     outline-offset: 2px;
   }
 }
@@ -47,7 +45,7 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* Hoja inferior: sube al abrirse (respuesta a una acción, no decoración). */
+/* Hoja inferior: sube al abrirse (respuesta a una acción). */
 @keyframes subir {
   from {
     transform: translateY(100%);
@@ -65,21 +63,14 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 }
 .hoja-entra {
-  animation: subir 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: subir 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .velo-entra {
-  animation: aparecer 200ms ease-out;
+  animation: aparecer 180ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .hoja-entra,
   .velo-entra {
     animation: none;
   }
-}
-
-.sin-barra::-webkit-scrollbar {
-  display: none;
-}
-.sin-barra {
-  scrollbar-width: none;
 }

@@ -12,32 +12,28 @@ const ITEMS = [
   { href: "/reparto", texto: "Reparto", icono: ICONOS.reparto },
 ];
 
-/** Barra flotante oscura. El botón del medio carga un gasto. */
+/** Barra de pestañas fija. El botón del medio carga un gasto: es la acción más usada. */
 export function Navegacion() {
   const ruta = usePathname().replace(/\/$/, "") || "/";
   if (ruta.endsWith("/cargar")) return null;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]" aria-label="Secciones">
-      <ul className="mx-auto grid max-w-md grid-cols-5 items-center rounded-full bg-bosque-hondo/95 p-1.5 shadow-[0_12px_32px_-12px_rgba(10,36,25,0.6)] backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-linea bg-tarjeta/95 pb-[env(safe-area-inset-bottom)] backdrop-blur" aria-label="Secciones">
+      <ul className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
         {ITEMS.map((item) =>
           item === null ? (
             <li key="cargar" className="flex justify-center">
-              <Link
-                href="/cargar"
-                aria-label="Cargar gasto"
-                className="grid size-12 place-items-center rounded-full bg-menta text-bosque-hondo transition active:scale-95"
-              >
-                <Icono trazo={ICONOS.mas} className="size-6" />
+              <Link href="/cargar" aria-label="Cargar gasto" className="grid size-11 place-items-center rounded-full bg-marca text-white active:opacity-80">
+                <Icono trazo={ICONOS.mas} className="size-[22px]" />
               </Link>
             </li>
           ) : (
             <li key={item.href}>
               <Link
                 href={item.href}
-                aria-current={ruta.endsWith(item.href) && (item.href !== "/" || ruta === "/") ? "page" : undefined}
-                className="flex flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-semibold text-white/55 aria-[current=page]:bg-white/10 aria-[current=page]:text-white"
+                aria-current={(item.href === "/" ? ruta === "/" : ruta.endsWith(item.href)) ? "page" : undefined}
+                className="flex flex-col items-center gap-1 text-[11px] font-medium text-sutil aria-[current=page]:text-texto"
               >
-                <Icono trazo={item.icono} className="size-[22px]" />
+                <Icono trazo={item.icono} className="size-6" />
                 {item.texto}
               </Link>
             </li>

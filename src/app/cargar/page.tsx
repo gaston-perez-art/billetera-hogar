@@ -1,15 +1,17 @@
 "use client";
 
 // Cargar gasto en 3 toques: monto → categoría → detalle.
-// Fecha = hoy y "pagó" = quien está usando la app, editables sin salir del paso 3.
+// Fecha = hoy y "pagó" = quien está usando la app, editables en el paso 3.
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
+import { Boton } from "@/components/ui";
 import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
 type Paso = "monto" | "categoria" | "detalle";
+const ORDEN: Paso[] = ["monto", "categoria", "detalle"];
 
 export default function Cargar() {
   const router = useRouter();
@@ -25,16 +27,15 @@ export default function Cargar() {
   const monto = Number(montoTexto.replace(/\./g, "").replace(",", ".")) || 0;
   const categoria = datos.categorias.find((c) => c.id === categoriaId);
   const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
+  const titulos: Record<Paso, string> = {
+    monto: entraPlata ? "¿Cuánta plata entró?" : "¿Cuánto gastaste?",
+    categoria: "¿En qué?",
+    detalle: "Revisá y guardá",
+  };
 
   function guardar() {
     if (!categoriaId || monto <= 0) return;
-    agregarMovimiento({
-      fecha,
-      monto: entraPlata ? -monto : monto,
-      categoriaId,
-      detalle: detalle.trim(),
-      pagoPor,
-    });
+    agregarMovimiento({ fecha, monto: entraPlata ? -monto : monto, categoriaId, detalle: detalle.trim(), pagoPor });
     router.push("/");
   }
 
@@ -44,16 +45,27 @@ export default function Cargar() {
   }
 
   return (
-    <main className="fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto bg-tarjeta px-5 pt-[max(env(safe-area-inset-top),1.25rem)]">
-      <div className="flex items-center justify-between">
-        <button onClick={atras} className="grid size-10 place-items-center rounded-full bg-fondo" aria-label="Atrás">
-          <Icono trazo={ICONOS.atras} className="size-5" />
+    <main className="fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto bg-tarjeta px-5 pt-[env(safe-area-inset-top)]">
+      <div className="mt-2 flex h-14 items-center justify-between">
+        <button onClick={atras} className="grid size-10 place-items-center rounded-full active:bg-relleno" aria-label="Atrás">
+          <Icono trazo={ICONOS.atras} className="size-[22px]" />
         </button>
-        <Pasos actual={paso} />
-        <button onClick={() => router.push("/")} className="grid size-10 place-items-center rounded-full bg-fondo" aria-label="Cancelar">
-          <Icono trazo={ICONOS.cerrar} className="size-5" />
+        <span className="text-[13px] text-tenue" aria-live="polite">
+          Paso {ORDEN.indexOf(paso) + 1} de 3
+        </span>
+        <button onClick={() => router.push("/")} className="grid size-10 place-items-center rounded-full active:bg-relleno" aria-label="Cancelar">
+          <Icono trazo={ICONOS.cerrar} className="size-[22px]" />
         </button>
       </div>
+
+      <h1 className="mt-4 text-[24px] font-semibold tracking-tight">{titulos[paso]}</h1>
+      {paso !== "monto" && (
+        <p className="mt-1 text-[15px] text-tenue tabular-nums">
+          {entraPlata ? "Entran " : ""}
+          {pesos(monto)}
+          {paso === "detalle" && categoria ? ` en ${categoria.nombre}` : ""}
+        </p>
+      )}
 
       {paso === "monto" && (
         <form
@@ -63,9 +75,8 @@ export default function Cargar() {
             if (monto > 0) setPaso("categoria");
           }}
         >
-          <p className="mt-14 text-center text-lg font-semibold">{entraPlata ? "¿Cuánta plata entró?" : "¿Cuánto gastaste?"}</p>
-          <label className="mt-4 flex items-start justify-center gap-1 text-[56px] font-bold leading-none tracking-[-0.035em]">
-            <span className="mt-2 text-[26px] font-semibold tracking-normal text-tenue">$</span>
+          <label className="mt-10 flex items-start text-[56px] font-semibold leading-none tracking-[-0.03em]">
+            <span className="mr-1 mt-[0.16em] text-[28px] font-medium tracking-normal">$</span>
             <input
               autoFocus
               inputMode="decimal"
@@ -73,56 +84,40 @@ export default function Cargar() {
               onChange={(e) => setMontoTexto(e.target.value.replace(/[^\d.,]/g, ""))}
               placeholder="0"
               aria-label="Monto"
-              style={{ width: `${Math.max(montoTexto.length, 1) + 0.6}ch` }}
-              className="max-w-[11ch] bg-transparent text-left tabular-nums caret-queda outline-none placeholder:text-linea"
+              className="w-full bg-transparent tabular-nums caret-texto outline-none placeholder:text-sutil"
             />
           </label>
-          <div className="mx-auto mt-8 flex rounded-full bg-fondo p-1 text-sm font-semibold" role="radiogroup" aria-label="Tipo de movimiento">
-            {[
-              [false, "Gasto"],
-              [true, "Plata que entra"],
-            ].map(([valor, texto]) => (
-              <button
-                key={String(valor)}
-                type="button"
-                role="radio"
-                aria-checked={entraPlata === valor}
-                onClick={() => setEntraPlata(valor as boolean)}
-                className="rounded-full px-4 py-2 text-tenue aria-checked:bg-tarjeta aria-checked:text-texto aria-checked:shadow-sm"
-              >
-                {texto as string}
-              </button>
-            ))}
-          </div>
-          {entraPlata && <p className="mt-3 text-center text-sm text-tenue">Por ejemplo, un préstamo usado para cancelar deudas.</p>}
-          <BotonPrincipal disabled={monto <= 0}>Seguir</BotonPrincipal>
+          <label className="mt-8 flex items-center justify-between gap-4 border-t border-linea py-4">
+            <span>
+              <span className="block text-[15px] font-medium">Es plata que entra</span>
+              <span className="mt-0.5 block text-[13px] text-tenue">Por ejemplo, un préstamo para cancelar deudas.</span>
+            </span>
+            <Interruptor activo={entraPlata} onCambio={setEntraPlata} />
+          </label>
+          <Boton type="submit" disabled={monto <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
+            Seguir
+          </Boton>
         </form>
       )}
 
       {paso === "categoria" && (
-        <div className="flex-1">
-          <p className="mt-8 text-center text-lg font-semibold">
-            {pesos(monto)} <span className="font-normal text-tenue">¿en qué?</span>
-          </p>
-          <div className="mt-7 grid grid-cols-3 gap-x-2 gap-y-5 pb-8">
-            {categorias.map((c) => (
+        <ul className="mt-6 grid grid-cols-4 gap-x-1 gap-y-5 pb-8">
+          {categorias.map((c) => (
+            <li key={c.id}>
               <button
-                key={c.id}
                 onClick={() => {
                   setCategoriaId(c.id);
                   setPaso("detalle");
                 }}
                 aria-pressed={c.id === categoriaId}
-                className="flex flex-col items-center gap-2 rounded-2xl px-1 py-1 text-center transition active:scale-95"
+                className="flex w-full flex-col items-center gap-2 rounded-xl py-1 text-center active:bg-relleno"
               >
-                <span className={`rounded-full ${c.id === categoriaId ? "ring-2 ring-bosque ring-offset-2" : ""}`}>
-                  <IconoCategoria nombre={c.nombre} tamano="lg" />
-                </span>
-                <span className="text-[13px] font-semibold leading-4">{c.nombre}</span>
+                <IconoCategoria nombre={c.nombre} tamano="lg" />
+                <span className="text-[12px] font-medium leading-[15px]">{c.nombre}</span>
               </button>
-            ))}
-          </div>
-        </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       {paso === "detalle" && (
@@ -133,59 +128,54 @@ export default function Cargar() {
             guardar();
           }}
         >
-          <div className="mt-8 flex flex-col items-center text-center">
-            {categoria && <IconoCategoria nombre={categoria.nombre} tamano="lg" />}
-            <p className="mt-3 text-[40px] font-bold leading-none tracking-[-0.035em] tabular-nums">{pesos(monto)}</p>
-            <p className="mt-1.5 text-tenue">en {categoria?.nombre}</p>
-          </div>
-          <input
-            autoFocus
-            value={detalle}
-            onChange={(e) => setDetalle(e.target.value)}
-            placeholder="Detalle (opcional)"
-            aria-label="Detalle"
-            className="mt-7 rounded-2xl bg-fondo px-4 py-4 font-semibold outline-none placeholder:font-normal placeholder:text-tenue focus:ring-2 focus:ring-bosque"
-          />
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <label className="rounded-2xl bg-fondo px-4 py-3">
-              <span className="block text-xs text-tenue">Fecha</span>
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value || hoy())} className="w-full bg-transparent font-semibold outline-none" />
+          <div className="mt-6 divide-y divide-linea border-y border-linea">
+            <label className="flex items-center justify-between gap-4 py-3.5">
+              <span className="text-[15px] text-tenue">Detalle</span>
+              <input
+                autoFocus
+                value={detalle}
+                onChange={(e) => setDetalle(e.target.value)}
+                placeholder="Opcional"
+                className="min-w-0 flex-1 bg-transparent text-right text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-sutil"
+              />
             </label>
-            <label className="rounded-2xl bg-fondo px-4 py-3">
-              <span className="block text-xs text-tenue">Pagó</span>
-              <select value={pagoPor} onChange={(e) => setPagoPor(e.target.value)} className="w-full bg-transparent font-semibold outline-none">
+            <label className="flex items-center justify-between gap-4 py-3.5">
+              <span className="text-[15px] text-tenue">Fecha</span>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value || hoy())} className="bg-transparent text-right text-[15px] font-medium outline-none" />
+            </label>
+            <div className="flex items-center justify-between gap-4 py-3">
+              <span className="text-[15px] text-tenue">Pagó</span>
+              <div className="flex rounded-lg bg-relleno p-0.5" role="radiogroup" aria-label="Pagó">
                 {datos.miembros.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={pagoPor === m.id}
+                    onClick={() => setPagoPor(m.id)}
+                    className="rounded-md px-3.5 py-1.5 text-[14px] font-medium text-tenue aria-checked:bg-tarjeta aria-checked:text-texto aria-checked:shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                  >
+                    {m.nombre}
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
           </div>
-          <BotonPrincipal>Guardar gasto</BotonPrincipal>
+          <Boton type="submit" className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
+            Guardar
+          </Boton>
         </form>
       )}
     </main>
   );
 }
 
-function Pasos({ actual }: { actual: Paso }) {
-  const orden: Paso[] = ["monto", "categoria", "detalle"];
+function Interruptor({ activo, onCambio }: { activo: boolean; onCambio: (v: boolean) => void }) {
   return (
-    <div className="flex gap-1.5" aria-label={`Paso ${orden.indexOf(actual) + 1} de 3`}>
-      {orden.map((p, i) => (
-        <span key={p} className={`h-1.5 rounded-full transition-all ${i === orden.indexOf(actual) ? "w-8 bg-bosque" : i < orden.indexOf(actual) ? "w-4 bg-bosque" : "w-4 bg-linea"}`} />
-      ))}
-    </div>
-  );
-}
-
-function BotonPrincipal({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={disabled}
-      className="mt-auto mb-[max(env(safe-area-inset-bottom),1.5rem)] w-full rounded-full bg-bosque py-4 text-[17px] font-bold text-white transition active:scale-[0.99] disabled:bg-linea disabled:text-tenue"
-    >
-      {children}
-    </button>
+    <span className="relative shrink-0">
+      <input type="checkbox" role="switch" checked={activo} onChange={(e) => onCambio(e.target.checked)} className="peer sr-only" />
+      <span className="block h-[30px] w-[50px] rounded-full bg-linea transition peer-checked:bg-marca peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-texto" />
+      <span className="absolute left-[3px] top-[3px] size-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] transition peer-checked:translate-x-5" />
+    </span>
   );
 }
