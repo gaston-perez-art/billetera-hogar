@@ -24,7 +24,9 @@ Leer antes de tocar lógica:
 
 ## Diseño
 
-- Limpio, minimalista, moderno. Referencias: Mercado Pago, Ualá, Naranja X.
+- Limpio, minimalista, moderno. Referencias: ARQ, Mercado Pago, Ualá, Naranja X.
+- Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`): bloque de saldo verde bosque con monto grande y "$" chico, lámina clara encima, tipografía Manrope con números tabulares, íconos de categoría en círculo con tono propio, barra inferior flotante oscura con botón + menta, detalles en hoja que sube desde abajo.
+- Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
 - Verde = lo que queda; rojo = te pasaste. Ceros como "–".
 - Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.
 - Nada de métricas que no sirvan (se sacó "gasto por día" de la planilla por inútil).

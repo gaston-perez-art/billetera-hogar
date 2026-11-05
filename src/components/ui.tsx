@@ -1,81 +1,102 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { Icono, ICONOS } from "@/components/Iconos";
 import { mesDe, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
-/** Encabezado de cada pantalla: título, quién está usando la app y selector de mes. */
+/** Encabezado de las pantallas claras: título grande, quién usa la app y mes. */
 export function Encabezado({ titulo, conMes = true }: { titulo: string; conMes?: boolean }) {
-  const { mes, setMes } = useBilletera();
-  const esMesActual = mes === mesDe(hoy());
   return (
-    <header className="px-4 pt-[max(env(safe-area-inset-top),1rem)]">
+    <header className="px-5 pt-[max(env(safe-area-inset-top),1.25rem)]">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">{titulo}</h1>
-        <div className="flex items-center gap-2">
-          <SelectorUsuario />
-          <Link href="/ajustes" aria-label="Ajustes" className="grid size-9 place-items-center rounded-full text-tenue hover:bg-linea">
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-            </svg>
-          </Link>
-        </div>
+        <SelectorUsuario />
+        {conMes && <SelectorMes />}
+        <BotonAjustes />
       </div>
-      {conMes && (
-        <div className="mt-3 flex items-center justify-between rounded-full bg-tarjeta px-1 py-1 shadow-sm">
-          <BotonMes direccion={-1} onClick={() => setMes(sumarMeses(mes, -1))} />
-          <button
-            className="text-sm font-medium capitalize"
-            onClick={() => setMes(mesDe(hoy()))}
-            title="Volver al mes actual"
-          >
-            {nombreMes(mes)}
-            {!esMesActual && <span className="ml-2 text-xs font-normal text-marca">volver a hoy</span>}
-          </button>
-          <BotonMes direccion={1} onClick={() => setMes(sumarMeses(mes, 1))} />
-        </div>
-      )}
+      <h1 className="mt-6 text-[28px] font-bold leading-tight tracking-tight">{titulo}</h1>
     </header>
   );
 }
 
-function BotonMes({ direccion, onClick }: { direccion: 1 | -1; onClick: () => void }) {
+/** Pastilla con flechas para cambiar de mes. Tocar el nombre vuelve al mes actual. */
+export function SelectorMes({ oscuro = false }: { oscuro?: boolean }) {
+  const { mes, setMes } = useBilletera();
+  const esMesActual = mes === mesDe(hoy());
+  const base = oscuro ? "bg-white/10 text-white" : "bg-tarjeta text-texto";
+  const flecha = oscuro ? "text-white/70 hover:bg-white/10" : "text-tenue hover:bg-fondo";
   return (
-    <button
-      onClick={onClick}
-      aria-label={direccion < 0 ? "Mes anterior" : "Mes siguiente"}
-      className="grid size-8 place-items-center rounded-full text-tenue hover:bg-fondo"
-    >
-      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
-        <path d={direccion < 0 ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"} />
-      </svg>
-    </button>
-  );
-}
-
-/** En el POC no hay login: se elige quién está usando la app. Con Supabase sale del usuario logueado. */
-function SelectorUsuario() {
-  const { datos, usuarioId, setUsuarioId } = useBilletera();
-  return (
-    <div className="flex rounded-full bg-linea/70 p-0.5 text-xs font-medium">
-      {datos.miembros.map((m) => (
-        <button
-          key={m.id}
-          onClick={() => setUsuarioId(m.id)}
-          className={`rounded-full px-2.5 py-1 transition ${
-            usuarioId === m.id ? "bg-tarjeta text-texto shadow-sm" : "text-tenue"
-          }`}
-        >
-          {m.nombre}
-        </button>
-      ))}
+    <div className={`flex items-center rounded-full p-1 ${base}`}>
+      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className={`grid size-8 place-items-center rounded-full ${flecha}`}>
+        <Icono trazo={ICONOS.atras} className="size-4" />
+      </button>
+      <button
+        onClick={() => setMes(mesDe(hoy()))}
+        title={esMesActual ? undefined : "Volver al mes actual"}
+        className="min-w-[8.5rem] px-1 text-center text-sm font-semibold capitalize"
+      >
+        {nombreMes(mes)}
+      </button>
+      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className={`grid size-8 place-items-center rounded-full ${flecha}`}>
+        <Icono trazo={ICONOS.adelante} className="size-4" />
+      </button>
     </div>
   );
 }
 
+/** En el POC no hay login: tocar el avatar cambia quién está usando la app. */
+export function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
+  const { datos, usuarioId, setUsuarioId } = useBilletera();
+  const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
+  const otro = datos.miembros.find((m) => m.id !== actual?.id);
+  if (!actual) return null;
+  return (
+    <button
+      onClick={() => otro && setUsuarioId(otro.id)}
+      aria-label={`Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`}
+      className="flex items-center gap-2"
+    >
+      <Avatar nombre={actual.nombre} oscuro={oscuro} />
+    </button>
+  );
+}
+
+export function Avatar({ nombre, oscuro = false, grande = false }: { nombre: string; oscuro?: boolean; grande?: boolean }) {
+  const tam = grande ? "size-12 text-lg" : "size-10 text-[15px]";
+  const color = oscuro ? "bg-menta text-bosque-hondo" : "bg-bosque text-menta";
+  return <span className={`grid shrink-0 place-items-center rounded-full font-bold ${tam} ${color}`}>{nombre.charAt(0)}</span>;
+}
+
+export function BotonAjustes({ oscuro = false }: { oscuro?: boolean }) {
+  return (
+    <Link
+      href="/ajustes"
+      aria-label="Ajustes"
+      className={`grid size-10 place-items-center rounded-full ${oscuro ? "bg-white/10 text-white" : "bg-tarjeta text-texto"}`}
+    >
+      <Icono trazo={ICONOS.ajustes} className="size-5" />
+    </Link>
+  );
+}
+
 export function Tarjeta({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-2xl bg-tarjeta p-4 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`rounded-[28px] bg-tarjeta p-5 ${className}`}>{children}</section>;
+}
+
+/** Título de bloque con acción opcional a la derecha. */
+export function TituloBloque({ children, href, accion }: { children: React.ReactNode; href?: string; accion?: string }) {
+  return (
+    <div className="mb-3 flex items-center justify-between px-1">
+      <h2 className="text-lg font-bold tracking-tight">{children}</h2>
+      {href && accion && (
+        <Link href={href} className="flex items-center gap-0.5 text-sm font-semibold text-queda">
+          {accion}
+          <Icono trazo={ICONOS.adelante} className="size-4" />
+        </Link>
+      )}
+    </div>
+  );
 }
 
 /** Monto coloreado: verde si queda, rojo si te pasaste, "–" si es cero. */
@@ -90,6 +111,40 @@ export function Fila({ etiqueta, valor, fuerte = false }: { etiqueta: string; va
     <div className={`flex items-baseline justify-between py-1.5 ${fuerte ? "font-semibold" : ""}`}>
       <span className={fuerte ? "" : "text-tenue"}>{etiqueta}</span>
       <span className="tabular-nums">{valor}</span>
+    </div>
+  );
+}
+
+/** Monto grande con el signo $ chico y alto, como en las billeteras. */
+export function MontoGrande({ monto, className = "" }: { monto: number; className?: string }) {
+  const texto = pesos(monto, { ceroComoGuion: false });
+  const negativo = texto.startsWith("-");
+  const numero = texto.replace(/^-?\$/, "");
+  return (
+    <span className={`inline-flex items-start font-bold tracking-[-0.035em] tabular-nums ${className}`}>
+      {negativo && <span>−</span>}
+      <span className="mr-1 mt-[0.18em] text-[0.45em] font-semibold tracking-normal opacity-70">$</span>
+      {numero}
+    </span>
+  );
+}
+
+/** Hoja que sube desde abajo, para detalles y confirmaciones. */
+export function Hoja({ abierta, alCerrar, titulo, children }: { abierta: boolean; alCerrar: () => void; titulo: string; children: React.ReactNode }) {
+  useEffect(() => {
+    if (!abierta) return;
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && alCerrar();
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [abierta, alCerrar]);
+  if (!abierta) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
+      <button className="velo-entra absolute inset-0 bg-bosque-hondo/45" aria-label="Cerrar" onClick={alCerrar} />
+      <div className="hoja-entra relative w-full max-w-md rounded-t-[32px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-3">
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-linea" />
+        {children}
+      </div>
     </div>
   );
 }

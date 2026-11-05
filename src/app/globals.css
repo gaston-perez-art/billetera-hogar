@@ -1,19 +1,27 @@
 @import "tailwindcss";
 
-/* Tokens de diseño. Verde = lo que queda, rojo = te pasaste. */
+/*
+ * Tokens de diseño.
+ * Bosque = superficie oscura del saldo y la barra de navegación.
+ * Verde = lo que queda; coral = te pasaste. Fondo piedra frío, tarjetas blancas.
+ */
 @theme {
-  --color-fondo: #f3f5f8;
+  --color-bosque: #10372a;
+  --color-bosque-hondo: #0a2419;
+  --color-menta: #9ee6bf;
+  --color-fondo: #eef0ed;
   --color-tarjeta: #ffffff;
-  --color-texto: #0f172a;
-  --color-tenue: #64748b;
-  --color-linea: #e5e9f0;
-  --color-marca: #1d4ed8;
-  --color-marca-suave: #e8efff;
-  --color-queda: #047857;
-  --color-queda-suave: #e7f6ef;
-  --color-pasaste: #c62828;
-  --color-pasaste-suave: #fdecec;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-texto: #14211b;
+  --color-tenue: #69756f;
+  --color-linea: #e1e5e1;
+  --color-marca: #10372a;
+  --color-marca-suave: #e3eee8;
+  --color-queda: #17804f;
+  --color-queda-suave: #e2f3e9;
+  --color-pasaste: #c0412b;
+  --color-pasaste-suave: #fbe9e5;
+  --color-pendiente: #c98a1b;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -23,11 +31,55 @@ html {
 body {
   background: var(--color-fondo);
   color: var(--color-texto);
-  font-feature-settings: "tnum";
+  font-feature-settings: "tnum", "lnum";
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-queda);
+    outline-offset: 2px;
+  }
 }
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Hoja inferior: sube al abrirse (respuesta a una acción, no decoración). */
+@keyframes subir {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.hoja-entra {
+  animation: subir 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.velo-entra {
+  animation: aparecer 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hoja-entra,
+  .velo-entra {
+    animation: none;
+  }
+}
+
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+.sin-barra {
+  scrollbar-width: none;
 }

@@ -54,3 +54,21 @@ export function diasDelMes(mes: Mes): number {
 export function fechaEnMes(mes: Mes, dia: number): Fecha {
   return `${mes.slice(0, 8)}${dosDigitos(Math.min(dia, diasDelMes(mes)))}`;
 }
+
+const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+/** Encabezado de un día de actividad: "Hoy", "Ayer" o "Martes 3 de noviembre". */
+export function etiquetaDia(fecha: Fecha, referencia: Fecha = hoy()): string {
+  const [a, m, d] = fecha.split("-").map(Number);
+  const [ra, rm, rd] = referencia.split("-").map(Number);
+  const dias = Math.round((Date.UTC(ra, rm - 1, rd) - Date.UTC(a, m - 1, d)) / 86_400_000);
+  if (dias === 0) return "Hoy";
+  if (dias === 1) return "Ayer";
+  const nombre = DIAS[new Date(Date.UTC(a, m - 1, d)).getUTCDay()];
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${d} de ${MESES[m - 1]}`;
+}
+
+/** Mes abreviado de una fecha, para chips de día: "nov". */
+export function mesCorto(mes: Mes): string {
+  return MESES[Number(mes.slice(5, 7)) - 1].slice(0, 3);
+}
