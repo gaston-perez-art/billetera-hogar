@@ -10,9 +10,10 @@ Reglas que hoy viven en las fórmulas de la planilla y que la app tiene que resp
 
 ## Categorías
 
-Súper y comida · Delivery · Nafta y transporte · Casa y servicios · Chicos · Salud · Personal · Deuda · Salidas con Jime · Jardín · Otros · Seguro del auto
+Súper y comida · Delivery · Nafta y transporte · Uber · Casa y servicios · Izán · Santino · Entrenamientos · Salud · Personal · Deuda · Salidas con Jime · Jardín · Otros · Seguro del auto
 
 - Cada categoría tiene un **techo mensual**.
+- Desde noviembre 2026, "Chicos" se dividió en **Izán** (jardín, kit, peluquerías), **Santino** y **Entrenamientos** (gimnasio de Jime), y **Uber** se separó de Nafta y transporte. "Chicos" solo queda para gastos de meses anteriores.
 - El techo de **Deuda** de un mes = suma de las cuotas fijas de deuda de ese mes (no un valor fijo).
 
 ## Mes
@@ -54,4 +55,4 @@ Por persona:
 
 ## Seguimiento puntual
 
-- Gastos de Santino: categoría Chicos con detalle que arranca con "Santino". La app debería mostrar el total del mes.
+- Gastos de Santino: categoría Santino (en meses anteriores a la división: Chicos con detalle que arranca con "Santino"). La app muestra el total del mes.

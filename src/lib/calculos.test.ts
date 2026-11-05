@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { categoriasDelMes, gastoPrevisto, pagosDelMes, repartoMes, resumenMes, totalSantino } from "./calculos";
 import { datosDemo } from "./demo";
 import { fechaEnMes, pesos, sumarMeses } from "./formato";
+import { leerDatosImportados } from "./importar";
 import type { Datos } from "./tipos";
 
 const MES = "2026-03-01";
@@ -19,6 +20,7 @@ function base(): Datos {
       { id: "super", nombre: "Súper y comida", orden: 0, techo: 100 },
       { id: "chicos", nombre: "Chicos", orden: 1, techo: 50 },
       { id: "deuda", nombre: "Deuda", orden: 2, techo: 0 },
+      { id: "santino", nombre: "Santino", orden: 3, techo: 0 },
     ],
     ingresos: [
       { id: "i1", miembroId: "g", concepto: "Sueldo", monto: 600, mes: null },
@@ -114,15 +116,29 @@ describe("quién pone qué", () => {
 });
 
 describe("Santino", () => {
-  it("suma Chicos con detalle que arranca con Santino", () => {
+  it("suma la categoría Santino y, de meses viejos, Chicos con detalle que arranca con Santino", () => {
     const d = base();
     d.movimientos.push(
       mov("a", "2026-03-02", 10, "chicos", "g", "Santino útiles"),
       mov("b", "2026-03-03", 5, "chicos", "j", "santino peluquería"),
       mov("c", "2026-03-03", 7, "chicos", "j", "Regalo para Santino"),
       mov("d", "2026-03-03", 9, "super", "j", "Santino merienda"),
+      mov("e", "2026-03-04", 20, "santino", "g", "Comida"),
+      mov("f", "2026-04-04", 30, "santino", "g", "Otro mes"),
     );
-    expect(totalSantino(d, MES)).toBe(15);
+    expect(totalSantino(d, MES)).toBe(35);
+  });
+});
+
+describe("importar", () => {
+  it("acepta datos válidos y rechaza archivos rotos", () => {
+    const d = base();
+    d.movimientos.push(mov("a", "2026-03-02", 10, "super", "g", "Súper"));
+    expect(leerDatosImportados(JSON.stringify(d)).movimientos).toHaveLength(1);
+    expect(() => leerDatosImportados("no es json")).toThrow("JSON válido");
+    expect(() => leerDatosImportados(JSON.stringify({ miembros: [] }))).toThrow('"categorias"');
+    d.movimientos.push(mov("b", "2026-03-02", 10, "inexistente", "g", "Raro"));
+    expect(() => leerDatosImportados(JSON.stringify(d))).toThrow("categoría que no existe");
   });
 });
 

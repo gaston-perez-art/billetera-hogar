@@ -2,12 +2,28 @@
 
 import { useState } from "react";
 import { Encabezado, Tarjeta } from "@/components/ui";
+import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 
 const numero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 
 export default function Ajustes() {
-  const { datos, actualizarIngreso, actualizarTecho, actualizarPagoFijo, reiniciarDemo } = useBilletera();
+  const { datos, actualizarIngreso, actualizarTecho, actualizarPagoFijo, reiniciarDemo, importarDatos } = useBilletera();
+  const [avisoImportar, setAvisoImportar] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  async function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    try {
+      const nuevos = leerDatosImportados(await archivo.text());
+      if (!confirm(`¿Reemplazar todo lo de este celular con "${archivo.name}"?`)) return;
+      importarDatos(nuevos);
+      setAvisoImportar({ ok: true, texto: `Listo: ${nuevos.movimientos.length} gastos importados.` });
+    } catch (error) {
+      setAvisoImportar({ ok: false, texto: error instanceof Error ? error.message : "No se pudo leer el archivo." });
+    }
+  }
   const nombre = (id: string) => datos.miembros.find((m) => m.id === id)?.nombre;
   const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
   const pagos = [...datos.pagosFijos].sort((a, b) => a.dia - b.dia);
@@ -61,6 +77,20 @@ export default function Ajustes() {
             </div>
           ))}
         </Seccion>
+
+        <Tarjeta>
+          <h2 className="font-semibold">Importar datos</h2>
+          <p className="mt-1 text-sm text-tenue">
+            Cargá un archivo .json de la billetera. Los datos quedan solo en este navegador.
+          </p>
+          <label className="mt-3 inline-block cursor-pointer rounded-xl bg-marca-suave px-4 py-2 text-sm font-medium text-marca">
+            Elegir archivo
+            <input type="file" accept=".json,application/json" onChange={alElegirArchivo} className="sr-only" />
+          </label>
+          {avisoImportar && (
+            <p className={`mt-2 text-sm ${avisoImportar.ok ? "text-queda" : "text-pasaste"}`}>{avisoImportar.texto}</p>
+          )}
+        </Tarjeta>
 
         <Tarjeta>
           <h2 className="font-semibold">Datos de demo</h2>

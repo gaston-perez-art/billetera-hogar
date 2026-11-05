@@ -38,7 +38,7 @@ Leer antes de tocar lógica:
 - Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).
 - Reparto: proporción por ingreso. Plan (le toca, le debería quedar) vs. real (puso, le queda) y diferencia. Gasto previsto = Σ max(techo, gastado).
 - Un monto negativo es plata que entra sin ser ingreso del mes (ej.: préstamo usado para cancelar deudas).
-- Gastos de Santino: Chicos con detalle que empieza con "Santino"; mostrar total del mes.
+- Gastos de Santino: categoría Santino (meses viejos: Chicos con detalle que empieza con "Santino"); mostrar total del mes.
 
 ## Seguridad
 
@@ -51,6 +51,7 @@ Leer antes de tocar lógica:
 - `src/lib/store.tsx`: capa de datos en `localStorage`. Es lo único que se reemplaza al conectar Supabase.
 - `src/lib/calculos.ts`: reglas de negocio en TS **solo mientras no haya base**; al conectar Supabase se borran y se usan las vistas SQL. `calculos.test.ts` queda como casos para validar las vistas.
 - `src/lib/demo.ts`: datos ficticios. Nunca poner montos reales.
+- Datos reales en el POC: se importan desde Ajustes → "Importar datos" con un `.json` que vive fuera del repo (`*.json` de datos reales nunca se commitea). Queda solo en el navegador.
 
 ## Próximos pasos
 

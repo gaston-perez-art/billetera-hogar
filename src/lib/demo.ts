@@ -7,8 +7,11 @@ export const CATEGORIAS: [string, number][] = [
   ["Súper y comida", 600000],
   ["Delivery", 80000],
   ["Nafta y transporte", 150000],
+  ["Uber", 40000],
   ["Casa y servicios", 700000],
-  ["Chicos", 200000],
+  ["Izán", 150000],
+  ["Santino", 80000],
+  ["Entrenamientos", 50000],
   ["Salud", 90000],
   ["Personal", 120000],
   ["Deuda", 0],
@@ -45,7 +48,7 @@ export function datosDemo(fechaHoy = hoy()): Datos {
     { id: "pf-prestamo", concepto: "Cuota préstamo", categoriaId: idCat("Deuda"), dia: 5, monto: 180000, esDeuda: true, activo: true },
     { id: "pf-tarjeta", concepto: "Plan tarjeta", categoriaId: idCat("Deuda"), dia: 20, monto: 95000, esDeuda: true, activo: true },
     { id: "pf-seguro", concepto: "Seguro del auto", categoriaId: idCat("Seguro del auto"), dia: 12, monto: 60000, esDeuda: false, activo: true },
-    { id: "pf-escuela", concepto: "Cuota escuela", categoriaId: idCat("Chicos"), dia: 10, monto: 90000, esDeuda: false, activo: true },
+    { id: "pf-escuela", concepto: "Cuota escuela", categoriaId: idCat("Izán"), dia: 10, monto: 90000, esDeuda: false, activo: true },
   ];
 
   let n = 0;
@@ -66,19 +69,22 @@ export function datosDemo(fechaHoy = hoy()): Datos {
   mov(mesAnterior, 3, 210000, "Súper y comida", "Súper del mes", "gaston");
   mov(mesAnterior, 18, 190000, "Súper y comida", "Verdulería y carnicería", "jime");
   mov(mesAnterior, 22, 95000, "Delivery", "Pizzas", "gaston");
-  mov(mesAnterior, 25, 70000, "Chicos", "Santino zapatillas", "jime");
+  mov(mesAnterior, 25, 70000, "Santino", "Zapatillas", "jime");
 
   // Mes actual: solo hasta hoy, con los fijos ya vencidos pagados.
   const gastosMes: [number, number, string, string, string][] = [
     [1, 185000, "Súper y comida", "Súper del mes", "gaston"],
     [2, 40000, "Nafta y transporte", "Nafta", "gaston"],
     [3, 25000, "Delivery", "Sushi", "jime"],
-    [4, 35000, "Chicos", "Santino peluquería", "jime"],
+    [4, 35000, "Santino", "Peluquería", "jime"],
+    [5, 12000, "Uber", "Al jardín", "gaston"],
     [6, 60000, "Salud", "Farmacia", "jime"],
+    [7, 30000, "Entrenamientos", "Gimnasio", "jime"],
     [8, 45000, "Salidas con Jime", "Cine y cena", "gaston"],
     [9, 120000, "Súper y comida", "Mayorista", "jime"],
     [11, 42000, "Delivery", "Hamburguesas", "gaston"],
-    [13, 48000, "Chicos", "Santino útiles", "gaston"],
+    [13, 48000, "Santino", "Útiles", "gaston"],
+    [14, 25000, "Izán", "Peluquería", "jime"],
     [16, 38000, "Nafta y transporte", "Nafta", "jime"],
   ];
   for (const [dia, monto, cat, detalle, quien] of gastosMes) {

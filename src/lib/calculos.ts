@@ -130,13 +130,20 @@ export function repartoMes(d: Datos, mes: Mes): { previsto: number; miembros: Re
   return { previsto, miembros };
 }
 
-/** Gastos de Santino: categoría Chicos con detalle que arranca con "Santino". */
+/**
+ * Gastos de Santino: categoría Santino. Para meses viejos (antes de separar
+ * Chicos en Izán y Santino) también suma Chicos con detalle que arranca con "Santino".
+ */
 export function totalSantino(d: Datos, mes: Mes): number {
+  const santino = d.categorias.find((c) => c.nombre === "Santino");
   const chicos = d.categorias.find((c) => c.nombre === "Chicos");
-  if (!chicos) return 0;
   return suma(
     movimientosDelMes(d, mes)
-      .filter((m) => m.categoriaId === chicos.id && m.detalle.trim().toLowerCase().startsWith("santino"))
+      .filter(
+        (m) =>
+          m.categoriaId === santino?.id ||
+          (m.categoriaId === chicos?.id && m.detalle.trim().toLowerCase().startsWith("santino")),
+      )
       .map((m) => m.monto),
   );
 }
