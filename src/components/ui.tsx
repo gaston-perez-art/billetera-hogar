@@ -8,52 +8,27 @@ import { useBilletera } from "@/lib/store";
 
 /*
  * Piezas compartidas. Reglas:
- * - Un número protagonista por pantalla (MontoGrande). Lo demás, tamaño de lectura.
- * - Listas en grupos blancos con divisores finos. Sin sombras.
- * - Una sola acción principal por pantalla (Boton variante "principal").
+ * - Fondo blanco. El número principal de cada pantalla va en TarjetaSaldo, centrado.
+ * - Listas sin contenedor: filas directas sobre blanco, ícono en círculo verde suave.
+ * - Botones en forma de pastilla. Verde lleno para la acción principal.
  */
 
-/** Barra superior: mes a la izquierda, quién usa la app y ajustes a la derecha. */
-export function Encabezado({ titulo, conMes = true, oscuro = false }: { titulo?: string; conMes?: boolean; oscuro?: boolean }) {
+/** Saludo con avatar (tocar cambia quién usa la app) y ajustes. Debajo, el mes. */
+export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?: boolean }) {
   return (
-    <header className="flex h-14 items-center justify-between gap-2 px-4 pt-[env(safe-area-inset-top)] mt-2">
-      {conMes ? <SelectorMes oscuro={oscuro} /> : <h1 className="px-1 text-[17px] font-semibold">{titulo}</h1>}
-      <div className="flex items-center gap-1">
-        <SelectorUsuario oscuro={oscuro} />
-        <Link href="/ajustes" aria-label="Ajustes" className={`grid size-10 place-items-center rounded-full ${oscuro ? "text-white/80 active:bg-white/10" : "text-tenue active:bg-relleno"}`}>
-          <Icono trazo={ICONOS.ajustes} className="size-[22px]" />
+    <header className="px-5 pt-[max(env(safe-area-inset-top),0.75rem)]">
+      <div className="flex h-12 items-center justify-between gap-3">
+        {titulo ? <h1 className="text-[20px] font-semibold tracking-tight">{titulo}</h1> : <Saludo />}
+        <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full bg-relleno text-texto active:opacity-70">
+          <Icono trazo={ICONOS.ajustes} className="size-5" />
         </Link>
       </div>
+      {conMes && <SelectorMes />}
     </header>
   );
 }
 
-function SelectorMes({ oscuro = false }: { oscuro?: boolean }) {
-  const { mes, setMes } = useBilletera();
-  const esMesActual = mes === mesDe(hoy());
-  const flecha = oscuro ? "text-white/70 active:bg-white/10" : "text-tenue active:bg-relleno";
-  return (
-    <div className="flex items-center">
-      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className={`grid size-9 place-items-center rounded-full ${flecha}`}>
-        <Icono trazo={ICONOS.atras} className="size-[18px]" />
-      </button>
-      <button
-        onClick={() => setMes(mesDe(hoy()))}
-        disabled={esMesActual}
-        title={esMesActual ? undefined : "Volver al mes actual"}
-        className="px-1 text-[17px] font-semibold capitalize"
-      >
-        {nombreMes(mes)}
-      </button>
-      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className={`grid size-9 place-items-center rounded-full ${flecha}`}>
-        <Icono trazo={ICONOS.adelante} className="size-[18px]" />
-      </button>
-    </div>
-  );
-}
-
-/** En el POC no hay login: tocar la inicial cambia quién está usando la app. */
-function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
+function Saludo() {
   const { datos, usuarioId, setUsuarioId } = useBilletera();
   const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
   const otro = datos.miembros.find((m) => m.id !== actual?.id);
@@ -62,48 +37,106 @@ function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
     <button
       onClick={() => otro && setUsuarioId(otro.id)}
       aria-label={`Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`}
-      className="grid size-10 place-items-center"
+      className="flex items-center gap-2 rounded-full bg-relleno py-1 pl-1 pr-3.5 active:opacity-70"
     >
-      <Avatar nombre={actual.nombre} oscuro={oscuro} />
+      <Avatar nombre={actual.nombre} />
+      <span className="text-[15px] font-semibold">¡Hola, {actual.nombre}!</span>
     </button>
   );
 }
 
-export function Avatar({ nombre, oscuro = false }: { nombre: string; oscuro?: boolean }) {
+/** Chip con el mes y flechas. Tocar el nombre vuelve al mes actual. */
+function SelectorMes() {
+  const { mes, setMes } = useBilletera();
+  const esMesActual = mes === mesDe(hoy());
   return (
-    <span className={`grid size-8 place-items-center rounded-full text-[13px] font-semibold ${oscuro ? "bg-acento text-marca-oscura" : "bg-marca text-white"}`}>
-      {nombre.charAt(0)}
-    </span>
+    <div className="mt-3 flex items-center gap-2">
+      <div className="flex items-center rounded-full border-[1.5px] border-marca p-0.5">
+        <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className="grid size-8 place-items-center rounded-full text-marca active:bg-marca-suave">
+          <Icono trazo={ICONOS.atras} className="size-4" />
+        </button>
+        <span className="px-1 text-[14px] font-semibold capitalize text-marca">{nombreMes(mes)}</span>
+        <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className="grid size-8 place-items-center rounded-full text-marca active:bg-marca-suave">
+          <Icono trazo={ICONOS.adelante} className="size-4" />
+        </button>
+      </div>
+      {!esMesActual && (
+        <button onClick={() => setMes(mesDe(hoy()))} className="h-9 rounded-full bg-relleno px-3.5 text-[14px] font-semibold active:opacity-70">
+          Hoy
+        </button>
+      )}
+    </div>
   );
 }
 
-/** El número de la pantalla, con su etiqueta arriba y un detalle opcional abajo. */
+export function Avatar({ nombre }: { nombre: string }) {
+  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-white">{nombre.charAt(0)}</span>;
+}
+
+/** El número principal de la pantalla: tarjeta blanca, centrado, con su leyenda abajo. */
 export function Resumen({ etiqueta, monto, tono, children }: { etiqueta: string; monto: number; tono?: "queda"; children?: React.ReactNode }) {
-  const color = tono === "queda" ? (Math.round(monto) < 0 ? "text-pasaste" : "text-texto") : "text-texto";
+  const color = tono === "queda" && Math.round(monto) < 0 ? "text-pasaste" : "text-texto";
   return (
-    <section className="px-5 pb-6 pt-4">
-      <p className="text-[15px] text-tenue">{etiqueta}</p>
-      <MontoGrande monto={monto} className={`mt-1 text-[44px] leading-[1.05] ${color}`} />
-      {children && <div className="mt-3">{children}</div>}
+    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-[0_4px_20px_rgba(20,30,25,0.07)] ring-1 ring-linea">
+      <MontoGrande monto={monto} className={`text-[40px] leading-none ${color}`} />
+      <p className="mt-2 text-[14px] text-tenue">{etiqueta}</p>
+      {children && <div className="mt-5 border-t border-linea pt-4">{children}</div>}
     </section>
   );
 }
 
-/** Monto grande con el "$" chico y alto. */
+/** Monto grande con el "$" chico. */
 export function MontoGrande({ monto, className = "" }: { monto: number; className?: string }) {
   const texto = pesos(monto, { ceroComoGuion: false });
   const negativo = texto.startsWith("-");
   const numero = texto.replace(/^-?\$/, "");
   return (
-    <span className={`inline-flex items-start font-semibold tracking-[-0.03em] tabular-nums ${className}`}>
+    <span className={`inline-flex items-baseline font-medium tracking-[-0.02em] tabular-nums ${className}`}>
       {negativo && <span>−</span>}
-      <span className="mr-0.5 mt-[0.16em] text-[0.5em] font-medium tracking-normal">$</span>
+      <span className="mr-1 text-[0.55em] font-medium tracking-normal">$</span>
       {numero}
     </span>
   );
 }
 
-/** Grupo de filas sobre blanco, con divisores finos. */
+/** Cifras chicas en columnas, para debajo del número principal. */
+export function Cifras({ items }: { items: { etiqueta: string; valor: React.ReactNode }[] }) {
+  return (
+    <dl className="grid gap-2" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+      {items.map((i) => (
+        <div key={i.etiqueta}>
+          <dt className="text-[12px] text-tenue">{i.etiqueta}</dt>
+          <dd className="mt-0.5 text-[14px] font-semibold tabular-nums">{i.valor}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Botón pastilla. "principal" en verde lleno; "secundario" en verde suave. */
+export function Boton({
+  children,
+  variante = "principal",
+  className = "",
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "principal" | "secundario" | "peligro" }) {
+  return (
+    <button className={`${estiloBoton(variante)} w-full ${className}`} {...props}>
+      {children}
+    </button>
+  );
+}
+
+export function estiloBoton(variante: "principal" | "secundario" | "peligro" = "principal") {
+  const colores = {
+    principal: "bg-marca text-white disabled:bg-relleno disabled:text-sutil",
+    secundario: "bg-marca-suave text-marca",
+    peligro: "bg-relleno text-pasaste",
+  }[variante];
+  return `flex h-[52px] items-center justify-center gap-2 rounded-full text-[16px] font-semibold transition active:opacity-80 ${colores}`;
+}
+
+/** Bloque de lista: título con flecha opcional y filas directas sobre blanco. */
 export function Grupo({
   titulo,
   accion,
@@ -116,24 +149,24 @@ export function Grupo({
   children: React.ReactNode;
 }) {
   return (
-    <section className="px-4">
+    <section>
       {titulo && (
-        <div className="mb-2 flex items-baseline justify-between px-1">
-          <h2 className="text-[15px] font-semibold">{titulo}</h2>
+        <div className="flex h-10 items-center justify-between px-5">
+          <h2 className="text-[16px] font-semibold">{titulo}</h2>
           {accion && (
-            <Link href={accion.href} className="text-[15px] text-tenue">
-              {accion.texto}
+            <Link href={accion.href} aria-label={accion.texto} className="grid size-8 place-items-center rounded-full bg-relleno active:opacity-70">
+              <Icono trazo={ICONOS.adelante} className="size-4" />
             </Link>
           )}
           {detalle && <span className="text-[13px] text-tenue tabular-nums">{detalle}</span>}
         </div>
       )}
-      <div className="divide-y divide-linea overflow-hidden rounded-2xl bg-tarjeta">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
 
-/** Fila estándar: ícono opcional, título y bajada, valor a la derecha. */
+/** Fila estándar: ícono, título y bajada, valor a la derecha. */
 export function FilaLista({
   icono,
   titulo,
@@ -166,7 +199,7 @@ export function FilaLista({
       )}
     </>
   );
-  const clases = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
+  const clases = "flex min-h-16 w-full items-center gap-3 px-5 py-2.5 text-left";
   return onClick ? (
     <button onClick={onClick} className={`${clases} active:bg-relleno`}>
       {contenido}
@@ -176,30 +209,21 @@ export function FilaLista({
   );
 }
 
+/** Monto de un movimiento con el signo en color: − rojo si sale, + verde si entra. */
+export function MontoMovimiento({ monto }: { monto: number }) {
+  return (
+    <span className="tabular-nums">
+      <span className={monto < 0 ? "text-queda" : "text-pasaste"}>{monto < 0 ? "+" : "−"}</span>
+      {pesos(Math.abs(monto))}
+    </span>
+  );
+}
+
 /** Monto coloreado: verde si queda, rojo si te pasaste, "–" si es cero. */
 export function MontoQueda({ monto, className = "" }: { monto: number; className?: string }) {
   const r = Math.round(monto);
   const color = r > 0 ? "text-queda" : r < 0 ? "text-pasaste" : "text-tenue";
   return <span className={`tabular-nums ${color} ${className}`}>{pesos(monto)}</span>;
-}
-
-/** Botón. "principal" es la única acción fuerte de la pantalla. */
-export function Boton({
-  children,
-  variante = "principal",
-  className = "",
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "principal" | "secundario" | "peligro" }) {
-  const estilos = {
-    principal: "bg-marca text-white disabled:bg-relleno disabled:text-sutil",
-    secundario: "bg-relleno text-texto",
-    peligro: "bg-relleno text-pasaste",
-  }[variante];
-  return (
-    <button className={`h-[52px] w-full rounded-xl text-[16px] font-semibold transition active:opacity-80 ${estilos} ${className}`} {...props}>
-      {children}
-    </button>
-  );
 }
 
 /** Hoja que sube desde abajo, para detalles y confirmaciones. */
@@ -214,7 +238,7 @@ export function Hoja({ abierta, alCerrar, titulo, children }: { abierta: boolean
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
       <button className="velo-entra absolute inset-0 bg-black/30" aria-label="Cerrar" onClick={alCerrar} />
-      <div className="hoja-entra relative w-full max-w-md rounded-t-3xl bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5">
+      <div className="hoja-entra relative w-full max-w-md rounded-t-[28px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5">
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-linea" />
         {children}
       </div>
@@ -235,9 +259,9 @@ export function Dato({ etiqueta, valor }: { etiqueta: string; valor: React.React
 /** Día del pago en el lugar del ícono. */
 export function Fecha({ dia, mes }: { dia: number; mes: string }) {
   return (
-    <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-full bg-relleno leading-none">
+    <span className="flex size-11 shrink-0 flex-col items-center justify-center rounded-full bg-marca-suave leading-none text-marca">
       <span className="text-[15px] font-semibold tabular-nums">{dia}</span>
-      <span className="mt-0.5 text-[10px] font-medium text-tenue">{mes}</span>
+      <span className="mt-0.5 text-[10px] font-medium">{mes}</span>
     </span>
   );
 }
