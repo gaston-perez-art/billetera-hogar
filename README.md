@@ -41,3 +41,11 @@ Ver [docs/reglas-de-negocio.md](docs/reglas-de-negocio.md) y [docs/modelo-de-dat
 - [ ] Diseño de pantallas
 - [ ] Scaffold Next.js + Supabase
 - [ ] Importador desde Google Sheets
+
+## Ideas (post-MVP)
+
+- **Saldo real actualizado**: en Argentina no hay open banking obligatorio que exponga saldos de bancos a apps personales. Alternativas gratuitas a evaluar:
+  - Importar el reporte de actividad (CSV) que descarga Mercado Pago.
+  - Leer los mails de aviso de movimientos de Mercado Pago y Galicia (Gmail API) y proponerlos como gastos para confirmar.
+  - Carga manual del saldo por cuenta (MP, Galicia, ICBC) para conciliar contra lo calculado.
+- Agregadores pagos (ej.: Pluggy) solo si confirman cobertura de bancos argentinos.

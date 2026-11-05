@@ -1,0 +1,55 @@
+# CLAUDE.md — Billetera Hogar
+
+## Qué es
+
+Webapp tipo billetera (estilo Mercado Pago) para que Gastón y Jime (pareja) carguen los gastos del hogar desde el celular y vean cada mes cuánto le toca poner a cada uno y cuánto le queda. Reemplaza la planilla de Google Sheets "Reestructuración Económica FIN".
+
+Leer antes de tocar lógica:
+- `docs/reglas-de-negocio.md` — fórmulas de la planilla que la app tiene que respetar (fuente de verdad del negocio).
+- `docs/modelo-de-datos.md` y `supabase/migrations/0001_init.sql` — esquema.
+
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind, PWA instalable en el celular.
+- Supabase: Auth (2 usuarios), Postgres con RLS por hogar, Realtime.
+- Deploy en Vercel.
+
+## Convenciones
+
+- UI en español rioplatense (voseo). Montos en pesos con formato es-AR: `$1.234.567` (sin decimales en pantalla). Fechas `DD/MM/AAAA`.
+- Montos en DB como `numeric(14,2)`, nunca float.
+- Mes = primer día del mes (`date`).
+- Toda tabla de datos tiene `hogar_id` y RLS con `es_miembro(hogar_id)`. No crear tablas sin RLS.
+- Cálculos de mes, categorías y reparto en vistas SQL (`v_categorias_mes`, `v_reparto_mes`), no duplicados en el frontend.
+
+## Diseño
+
+- Limpio, minimalista, moderno. Referencias: Mercado Pago, Ualá, Naranja X.
+- Verde = lo que queda; rojo = te pasaste. Ceros como "–".
+- Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.
+- Nada de métricas que no sirvan (se sacó "gasto por día" de la planilla por inútil).
+
+## Reglas clave (resumen)
+
+- Te queda de verdad = entra − gastado − pagos fijos pendientes.
+- Te queda por categoría = techo − gastado.
+- Techo de Deuda del mes = suma de cuotas fijas marcadas `es_deuda`.
+- Alquiler + AySA + TM se muestran como un solo pago.
+- Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).
+- Reparto: proporción por ingreso. Plan (le toca, le debería quedar) vs. real (puso, le queda) y diferencia. Gasto previsto = Σ max(techo, gastado).
+- Un monto negativo es plata que entra sin ser ingreso del mes (ej.: préstamo usado para cancelar deudas).
+- Gastos de Santino: Chicos con detalle que empieza con "Santino"; mostrar total del mes.
+
+## Seguridad
+
+- El repo es (o fue) público: nunca commitear claves, `.env`, datos reales de gastos, montos personales ni números de cuenta.
+- Variables en `.env.local` (ignorado). Dejar `.env.example` con nombres de variables vacías.
+- La service role key de Supabase nunca en el cliente.
+
+## Próximos pasos
+
+1. Diseño de pantallas: inicio del mes, cargar gasto, en qué se va, pagos fijos, quién pone qué, ajustes.
+2. Scaffold Next.js + Supabase (cliente, auth con magic link, layout mobile-first).
+3. Aplicar migración y seed de categorías.
+4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
+5. Explorar actualización de saldo real (ver "Ideas" en README).
