@@ -126,9 +126,6 @@ export default function Cargar() {
             aria-label="Detalle"
             className="mt-5 rounded-2xl border border-linea bg-tarjeta px-4 py-3.5 outline-none focus:border-marca"
           />
-          {categoria?.nombre === "Chicos" && (
-            <p className="mt-2 px-1 text-xs text-tenue">Empezá con &quot;Santino&quot; para que sume a sus gastos del mes.</p>
-          )}
           <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
             <label className="rounded-2xl bg-tarjeta px-4 py-2.5">
               <span className="block text-xs text-tenue">Fecha</span>

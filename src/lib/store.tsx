@@ -49,6 +49,7 @@ interface Billetera {
   actualizarIngreso: (ingresoId: string, monto: number) => void;
   actualizarPagoFijo: (pagoFijoId: string, cambios: { monto?: number; dia?: number; activo?: boolean }) => void;
   reiniciarDemo: () => void;
+  importarDatos: (d: Datos) => void;
 }
 
 const Contexto = createContext<Billetera | null>(null);
@@ -185,6 +186,11 @@ export function ProveedorBilletera({ children }: { children: React.ReactNode }) 
         })),
 
       reiniciarDemo: () => cambiar(() => datosDemo()),
+
+      importarDatos: (nuevos) => {
+        cambiar(() => nuevos);
+        if (!nuevos.miembros.some((m) => m.id === usuarioId)) setUsuarioIdState(nuevos.miembros[0].id);
+      },
     };
   }, [datos, usuarioId, mes, cambiar]);
 
