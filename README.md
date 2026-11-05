@@ -38,9 +38,29 @@ Ver [docs/reglas-de-negocio.md](docs/reglas-de-negocio.md) y [docs/modelo-de-dat
 
 - [x] Contexto, reglas de negocio y modelo de datos
 - [x] Esquema SQL inicial (`supabase/migrations/0001_init.sql`)
-- [ ] Diseño de pantallas
-- [ ] Scaffold Next.js + Supabase
+- [x] POC navegable (Next.js, datos de demo en el navegador, sin login)
+- [ ] Conectar Supabase (auth con magic link, migración, Realtime)
 - [ ] Importador desde Google Sheets
+
+## Correr el POC
+
+```bash
+npm install
+npm run dev      # http://localhost:3000 (abrilo con el celular en la misma red: http://<ip-de-la-compu>:3000)
+npm test         # reglas de negocio
+```
+
+Qué incluye:
+- Las 6 pantallas del MVP: inicio del mes, cargar gasto (3 pasos), en qué se va, pagos fijos, quién pone qué y ajustes.
+- Marcar un pago fijo como pagado crea el gasto; desmarcarlo lo borra.
+- Selector Gastón / Jime arriba en lugar de login.
+- Datos de demo **ficticios**, guardados en `localStorage`. "Reiniciar demo" en Ajustes vuelve al estado inicial.
+
+Qué falta para pasar de POC a MVP:
+- Supabase: reemplazar `src/lib/store.tsx` por el cliente de Supabase (las pantallas no cambian) y mover los cálculos de `src/lib/calculos.ts` a las vistas SQL, usando `calculos.test.ts` como casos de validación.
+- Techos e ingresos por mes (en el POC son los mismos para todos los meses).
+- Presupuesto parcial de pagos fijos (lo pendiente = presupuesto − gastado).
+- Importador de la planilla.
 
 ## Ideas (post-MVP)
 

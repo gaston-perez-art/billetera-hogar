@@ -46,10 +46,16 @@ Leer antes de tocar lógica:
 - Variables en `.env.local` (ignorado). Dejar `.env.example` con nombres de variables vacías.
 - La service role key de Supabase nunca en el cliente.
 
+## Estado del código (POC)
+
+- `src/lib/store.tsx`: capa de datos en `localStorage`. Es lo único que se reemplaza al conectar Supabase.
+- `src/lib/calculos.ts`: reglas de negocio en TS **solo mientras no haya base**; al conectar Supabase se borran y se usan las vistas SQL. `calculos.test.ts` queda como casos para validar las vistas.
+- `src/lib/demo.ts`: datos ficticios. Nunca poner montos reales.
+
 ## Próximos pasos
 
-1. Diseño de pantallas: inicio del mes, cargar gasto, en qué se va, pagos fijos, quién pone qué, ajustes.
-2. Scaffold Next.js + Supabase (cliente, auth con magic link, layout mobile-first).
+1. ~~Diseño de pantallas y scaffold~~ (POC hecho).
+2. Conectar Supabase (cliente, auth con magic link) reemplazando `store.tsx`.
 3. Aplicar migración y seed de categorías.
 4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
 5. Explorar actualización de saldo real (ver "Ideas" en README).
