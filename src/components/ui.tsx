@@ -14,13 +14,13 @@ import { useBilletera } from "@/lib/store";
  */
 
 /** Barra superior: mes a la izquierda, quién usa la app y ajustes a la derecha. */
-export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?: boolean }) {
+export function Encabezado({ titulo, conMes = true, oscuro = false }: { titulo?: string; conMes?: boolean; oscuro?: boolean }) {
   return (
     <header className="flex h-14 items-center justify-between gap-2 px-4 pt-[env(safe-area-inset-top)] mt-2">
-      {conMes ? <SelectorMes /> : <h1 className="px-1 text-[17px] font-semibold">{titulo}</h1>}
+      {conMes ? <SelectorMes oscuro={oscuro} /> : <h1 className="px-1 text-[17px] font-semibold">{titulo}</h1>}
       <div className="flex items-center gap-1">
-        <SelectorUsuario />
-        <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full text-tenue active:bg-relleno">
+        <SelectorUsuario oscuro={oscuro} />
+        <Link href="/ajustes" aria-label="Ajustes" className={`grid size-10 place-items-center rounded-full ${oscuro ? "text-white/80 active:bg-white/10" : "text-tenue active:bg-relleno"}`}>
           <Icono trazo={ICONOS.ajustes} className="size-[22px]" />
         </Link>
       </div>
@@ -28,12 +28,13 @@ export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?
   );
 }
 
-function SelectorMes() {
+function SelectorMes({ oscuro = false }: { oscuro?: boolean }) {
   const { mes, setMes } = useBilletera();
   const esMesActual = mes === mesDe(hoy());
+  const flecha = oscuro ? "text-white/70 active:bg-white/10" : "text-tenue active:bg-relleno";
   return (
     <div className="flex items-center">
-      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className="grid size-9 place-items-center rounded-full text-tenue active:bg-relleno">
+      <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className={`grid size-9 place-items-center rounded-full ${flecha}`}>
         <Icono trazo={ICONOS.atras} className="size-[18px]" />
       </button>
       <button
@@ -44,7 +45,7 @@ function SelectorMes() {
       >
         {nombreMes(mes)}
       </button>
-      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className="grid size-9 place-items-center rounded-full text-tenue active:bg-relleno">
+      <button onClick={() => setMes(sumarMeses(mes, 1))} aria-label="Mes siguiente" className={`grid size-9 place-items-center rounded-full ${flecha}`}>
         <Icono trazo={ICONOS.adelante} className="size-[18px]" />
       </button>
     </div>
@@ -52,7 +53,7 @@ function SelectorMes() {
 }
 
 /** En el POC no hay login: tocar la inicial cambia quién está usando la app. */
-function SelectorUsuario() {
+function SelectorUsuario({ oscuro = false }: { oscuro?: boolean }) {
   const { datos, usuarioId, setUsuarioId } = useBilletera();
   const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
   const otro = datos.miembros.find((m) => m.id !== actual?.id);
@@ -63,13 +64,17 @@ function SelectorUsuario() {
       aria-label={`Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`}
       className="grid size-10 place-items-center"
     >
-      <Avatar nombre={actual.nombre} />
+      <Avatar nombre={actual.nombre} oscuro={oscuro} />
     </button>
   );
 }
 
-export function Avatar({ nombre }: { nombre: string }) {
-  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-white">{nombre.charAt(0)}</span>;
+export function Avatar({ nombre, oscuro = false }: { nombre: string; oscuro?: boolean }) {
+  return (
+    <span className={`grid size-8 place-items-center rounded-full text-[13px] font-semibold ${oscuro ? "bg-acento text-marca-oscura" : "bg-marca text-white"}`}>
+      {nombre.charAt(0)}
+    </span>
+  );
 }
 
 /** El número de la pantalla, con su etiqueta arriba y un detalle opcional abajo. */

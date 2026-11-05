@@ -4,7 +4,8 @@
  * Sistema de color: neutro y con pocas piezas.
  * - texto / tenue / sutil: tres niveles de tinta. Nada más para jerarquía.
  * - relleno: el único gris para fondos de íconos, campos y chips.
- * - marca: la acción principal (botones). Es la misma tinta del texto.
+ * - marca: verde de la casa. Botones, íconos, barras y pestaña activa.
+ * - marca-oscura: solo el bloque de saldo de Inicio. acento: detalles sobre ese bloque.
  * - queda / pasaste: semáforo. Solo para montos que quedan o se pasan.
  * No agregar colores nuevos: si algo necesita destacarse, usar peso o tamaño.
  */
@@ -16,7 +17,10 @@
   --color-sutil: #a4aaa7;
   --color-linea: #e7e9e8;
   --color-relleno: #eef0ef;
-  --color-marca: #171c1a;
+  --color-marca: #14604a;
+  --color-marca-oscura: #0d3b2e;
+  --color-marca-suave: #e4f1eb;
+  --color-acento: #9fe3c0;
   --color-queda: #12784a;
   --color-pasaste: #c0392b;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
@@ -34,7 +38,7 @@ body {
 
 @layer base {
   :focus-visible {
-    outline: 2px solid var(--color-texto);
+    outline: 2px solid var(--color-marca);
     outline-offset: 2px;
   }
 }

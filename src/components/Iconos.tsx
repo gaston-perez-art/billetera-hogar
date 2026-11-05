@@ -62,7 +62,7 @@ export function IconoCategoria({ nombre, tamano = "md", entra = false }: { nombr
   const clave = entra ? "entra" : CATEGORIAS[normalizar(nombre)];
   const caja = tamano === "lg" ? "size-12" : "size-10";
   return (
-    <span className={`grid shrink-0 place-items-center rounded-full bg-relleno text-texto ${caja}`}>
+    <span className={`grid shrink-0 place-items-center rounded-full bg-marca-suave text-marca ${caja}`}>
       {clave ? <Icono trazo={TRAZOS[clave]} className="size-5" /> : <span className="text-sm font-semibold">{nombre.charAt(0)}</span>}
     </span>
   );

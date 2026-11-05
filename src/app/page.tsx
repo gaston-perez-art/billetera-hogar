@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { IconoCategoria } from "@/components/Iconos";
-import { Boton, Dato, Encabezado, Fecha, FilaLista, Grupo, Hoja, MontoGrande, Resumen } from "@/components/ui";
+import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
+import { Boton, Dato, Encabezado, Fecha, FilaLista, Grupo, Hoja, MontoGrande } from "@/components/ui";
 import { movimientosDelMes, pagosDelMes, resumenMes } from "@/lib/calculos";
 import { etiquetaDia, fechaCorta, mesCorto, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
@@ -25,22 +25,32 @@ export default function Inicio() {
 
   return (
     <>
-      <Encabezado />
-      <Resumen etiqueta="Te queda este mes" monto={r.teQueda} tono="queda">
-        <dl className="grid grid-cols-3 gap-3">
-          <Cifra etiqueta="Entra" valor={r.entra} />
-          <Cifra etiqueta="Gastado" valor={r.gastado} />
-          <Cifra etiqueta="Por pagar" valor={r.faltan} />
-        </dl>
-      </Resumen>
-
-      <main className="space-y-8">
-        <div className="px-4">
-          <Link href="/cargar" className="flex h-[52px] items-center justify-center rounded-xl bg-marca text-[16px] font-semibold text-white active:opacity-80">
+      {/* Bloque de saldo: el único lugar oscuro de la app. */}
+      <div className="bg-marca-oscura pb-6 text-white">
+        <Encabezado oscuro />
+        <section className="px-5 pt-4">
+          <p className="flex items-center gap-2 text-[15px] text-white/65">
+            <span className="size-2 rounded-full bg-acento" />
+            Te queda este mes
+          </p>
+          <MontoGrande monto={r.teQueda} className={`mt-1 text-[48px] leading-[1.05] ${r.teQueda < 0 ? "text-[#ffb3a7]" : ""}`} />
+          <Proporcion gastado={r.gastado} faltan={r.faltan} queda={r.teQueda} />
+          <dl className="mt-3 grid grid-cols-3 gap-3">
+            <Cifra etiqueta="Gastado" valor={r.gastado} punto="bg-white" />
+            <Cifra etiqueta="Por pagar" valor={r.faltan} punto="bg-white/35" />
+            <Cifra etiqueta="Entra" valor={r.entra} />
+          </dl>
+          <Link
+            href="/cargar"
+            className="mt-6 flex h-[52px] items-center justify-center gap-2 rounded-xl bg-white text-[16px] font-semibold text-marca-oscura active:opacity-85"
+          >
+            <Icono trazo={ICONOS.mas} className="size-5" />
             Cargar gasto
           </Link>
-        </div>
+        </section>
+      </div>
 
+      <main className="space-y-8 pt-6">
         {pendientes.length > 0 && (
           <Grupo titulo="Próximos pagos" accion={{ texto: "Ver todos", href: "/pagos" }}>
             {pendientes.slice(0, 3).map((p) => (
@@ -113,11 +123,29 @@ export default function Inicio() {
   );
 }
 
-function Cifra({ etiqueta, valor }: { etiqueta: string; valor: number }) {
+function Cifra({ etiqueta, valor, punto }: { etiqueta: string; valor: number; punto?: string }) {
   return (
     <div>
-      <dt className="text-[13px] text-tenue">{etiqueta}</dt>
+      <dt className="flex items-center gap-1.5 text-[13px] text-white/60">
+        {punto && <span className={`size-1.5 rounded-full ${punto}`} />}
+        {etiqueta}
+      </dt>
       <dd className="mt-0.5 text-[15px] font-semibold tabular-nums">{pesos(valor)}</dd>
+    </div>
+  );
+}
+
+/** Barra fina de cómo se reparte lo que entra: gastado, por pagar y lo que queda. */
+function Proporcion({ gastado, faltan, queda }: { gastado: number; faltan: number; queda: number }) {
+  const total = Math.max(gastado + faltan + Math.max(queda, 0), 1);
+  const tramos = [
+    { monto: gastado, clase: "bg-white" },
+    { monto: faltan, clase: "bg-white/35" },
+    { monto: Math.max(queda, 0), clase: "bg-acento" },
+  ];
+  return (
+    <div className="mt-5 flex h-1.5 gap-1" aria-hidden>
+      {tramos.map((t, i) => (t.monto > 0 ? <span key={i} className={`rounded-full ${t.clase}`} style={{ width: `${(t.monto / total) * 100}%` }} /> : null))}
     </div>
   );
 }

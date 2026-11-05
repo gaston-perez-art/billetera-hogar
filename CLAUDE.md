@@ -25,7 +25,7 @@ Leer antes de tocar lógica:
 ## Diseño
 
 - Limpio, minimalista, moderno. Referencias: ARQ, Mercado Pago, Ualá, Naranja X.
-- Sistema visual sobrio (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: tres tintas (texto, tenue, sutil), un gris de relleno, la acción principal en la tinta del texto, y verde/rojo solo como semáforo de montos. No agregar colores: si algo tiene que destacar, usar peso o tamaño.
+- Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: tres tintas (texto, tenue, sutil), un gris de relleno y un verde de marca (botones, íconos en círculo verde suave, barras, pestaña activa). El bloque verde oscuro va solo en Inicio, con el saldo. Verde/rojo de montos solo como semáforo. Ni arcoíris de colores por categoría ni todo en gris: no agregar colores fuera de los tokens.
 - Un solo número protagonista por pantalla (`Resumen` / `MontoGrande`). Listas en `Grupo` blanco con divisores finos, filas con `FilaLista`. Íconos de categoría monocromo en círculo gris. Sin sombras. Una sola acción principal por pantalla (`Boton`).
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
 - Verde = lo que queda; rojo = te pasaste. Ceros como "–".

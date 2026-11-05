@@ -31,7 +31,7 @@ export function Navegacion() {
               <Link
                 href={item.href}
                 aria-current={(item.href === "/" ? ruta === "/" : ruta.endsWith(item.href)) ? "page" : undefined}
-                className="flex flex-col items-center gap-1 text-[11px] font-medium text-sutil aria-[current=page]:text-texto"
+                className="flex flex-col items-center gap-1 text-[11px] font-medium text-sutil aria-[current=page]:text-marca"
               >
                 <Icono trazo={item.icono} className="size-6" />
                 {item.texto}
