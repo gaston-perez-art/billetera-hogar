@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
+import { Avatar, Cifras, Encabezado, MontoGrande } from "@/components/ui";
 import { ingresosDelMes, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
@@ -113,7 +113,7 @@ function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: num
       <div className="mt-4 border-t border-linea pt-4">
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-semibold">{d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}</span>
-          <MontoQueda monto={m.diferencia} className="text-[17px] font-bold" />
+          <span className="text-[17px] font-bold tabular-nums">{pesos(Math.abs(m.diferencia), { ceroComoGuion: false })}</span>
         </div>
         {d < 0 && (
           <p className="mt-1 text-[13px] leading-5 text-tenue">
