@@ -2,7 +2,7 @@
 // las vistas v_categorias_mes / v_reparto_mes con los mismos números.
 
 import { describe, expect, it } from "vitest";
-import { categoriasDelMes, gastoPrevisto, pagosDelMes, previstoPorTipo, repartoMes, resumenMes, totalSantino } from "./calculos";
+import { categoriasDelMes, estadisticasPersona, gastoPrevisto, pagosDelMes, previstoPorTipo, repartoMes, resumenMes, totalSantino } from "./calculos";
 import { datosDemo } from "./demo";
 import { fechaEnMes, pesos, sumarMeses } from "./formato";
 import { leerDatosImportados } from "./importar";
@@ -112,6 +112,35 @@ describe("quién pone qué", () => {
     const d = base();
     d.ingresos = [];
     expect(repartoMes(d, MES).miembros.every((m) => m.proporcion === 0 && m.leToca === 0)).toBe(true);
+  });
+});
+
+describe("en qué gasta cada uno", () => {
+  it("ordena las categorías por monto, sin pagos fijos ni plata que entra", () => {
+    const d = base();
+    d.movimientos.push(
+      mov("a", "2026-03-05", 60, "super", "g", "Coto"),
+      mov("b", "2026-03-06", 30, "chicos", "g"),
+      mov("c", "2026-03-07", 10, "super", "g"),
+      mov("d", "2026-03-07", 500, "super", "j"), // de Jime, no cuenta
+      mov("e", "2026-03-08", -40, "deuda", "g"), // plata que entra, no cuenta
+      mov("f", "2026-03-01", 20, "super", "g", "Alquiler"),
+      mov("v", "2026-02-10", 50, "super", "g"), // mes anterior
+    );
+    d.pagosMes.push({ id: "p", pagoFijoId: "alq", mes: MES, monto: 20, pagado: true, movimientoId: "f" });
+    const e = estadisticasPersona(d, MES, "g", "2026-02-01");
+    expect(e.total).toBe(100);
+    expect(e.cantidad).toBe(3);
+    expect(e.categorias.map((c) => [c.categoria.id, c.monto])).toEqual([["super", 70], ["chicos", 30]]);
+    expect(e.categorias[0].parte).toBeCloseTo(0.7);
+    expect(e.mayor?.id).toBe("a");
+    expect(e.fijos).toBe(20);
+    expect(e.totalAnterior).toBe(50);
+  });
+
+  it("sin gastos no divide por cero", () => {
+    const e = estadisticasPersona(base(), MES, "g", "2026-02-01");
+    expect(e).toMatchObject({ total: 0, cantidad: 0, categorias: [], mayor: undefined });
   });
 });
 

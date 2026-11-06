@@ -23,6 +23,7 @@ import {
   paraGastarPorPersona,
   planMes,
   saldoPorDia,
+  type PagoDelMes,
   type ParaGastarPersona,
   type PlanMes,
 } from "@/lib/calculos";
@@ -80,48 +81,7 @@ export default function Inicio() {
 
       <main className="mt-7 space-y-7">
         {pendientes.length > 0 && (
-          <section className="mx-5 rounded-3xl bg-relleno pb-2 pt-1">
-            <div className="flex h-12 items-center justify-between pl-4 pr-2">
-              <h2 className="text-[16px] font-semibold">Próximos pagos</h2>
-              <Link
-                href="/pagos"
-                className="flex h-9 items-center gap-0.5 rounded-full px-3 text-[14px] font-semibold text-marca"
-              >
-                Ver todos
-                <Icono trazo={ICONOS.adelante} className="size-4" />
-              </Link>
-            </div>
-            {pendientes.slice(0, 3).map((p) => {
-              const vence = fechaEnMes(mes, p.pagoFijo.dia);
-              const dias = diasEntre(fechaHoy, vence);
-              return (
-                <Link
-                  key={p.pagoFijo.id}
-                  href="/pagos"
-                  className="fila flex min-h-16 items-center gap-3 px-4 py-2"
-                >
-                  <Fecha
-                    dia={p.pagoFijo.dia}
-                    mes={mesCorto(mes)}
-                    vencida={dias < 0}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-medium">
-                      {p.pagoFijo.concepto}
-                    </span>
-                    <span
-                      className={`mt-0.5 block text-[13px] ${dias < 0 ? "text-pasaste" : "text-tenue"}`}
-                    >
-                      {cuandoVence(dias)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">
-                    {pesos(p.monto)}
-                  </span>
-                </Link>
-              );
-            })}
-          </section>
+          <ProximosPagos pendientes={pendientes} mes={mes} fechaHoy={fechaHoy} />
         )}
 
         {movimientos.length === 0 ? (
@@ -225,6 +185,112 @@ export default function Inicio() {
         )}
       </Hoja>
     </>
+  );
+}
+
+const CLAVE_PAGOS_ABIERTOS = "billetera-hogar:proximos-pagos-abiertos";
+
+/**
+ * Próximos pagos, plegado por defecto para que la actividad quede a la vista.
+ * Plegado dice cuántos faltan, cuánto suman y cuándo vence el primero. Se acuerda si lo abriste.
+ */
+function ProximosPagos({
+  pendientes,
+  mes,
+  fechaHoy,
+}: {
+  pendientes: PagoDelMes[];
+  mes: string;
+  fechaHoy: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  useEffect(() => {
+    try {
+      setAbierto(localStorage.getItem(CLAVE_PAGOS_ABIERTOS) === "1");
+    } catch {
+      // Sin storage: arranca plegado.
+    }
+  }, []);
+  const alternar = () =>
+    setAbierto((a) => {
+      try {
+        localStorage.setItem(CLAVE_PAGOS_ABIERTOS, a ? "0" : "1");
+      } catch {
+        // Sin storage: no se recuerda.
+      }
+      return !a;
+    });
+
+  const dias = (p: PagoDelMes) => diasEntre(fechaHoy, fechaEnMes(mes, p.pagoFijo.dia));
+  const vencidos = pendientes.filter((p) => dias(p) < 0).length;
+  const total = pendientes.reduce((a, p) => a + p.monto, 0);
+  const primero = pendientes.find((p) => dias(p) >= 0);
+  const resumen =
+    vencidos > 0
+      ? `${vencidos === 1 ? "1 vencido" : `${vencidos} vencidos`}, faltan ${pesos(total)}`
+      : `${pendientes.length === 1 ? "1 pago" : `${pendientes.length} pagos`}, ${pesos(total)}${
+          primero ? `, el primero ${cuandoVence(dias(primero)).toLowerCase()}` : ""
+        }`;
+
+  return (
+    <section className="mx-5 rounded-3xl bg-relleno">
+      <button
+        onClick={alternar}
+        aria-expanded={abierto}
+        className="fila flex w-full items-center gap-3 rounded-3xl py-3 pl-4 pr-3 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold">Próximos pagos</span>
+          <span
+            className={`mt-0.5 block truncate text-[13px] tabular-nums ${vencidos > 0 ? "text-pasaste" : "text-tenue"}`}
+          >
+            {resumen}
+          </span>
+        </span>
+        <Icono
+          trazo={ICONOS.adelante}
+          className={`size-5 shrink-0 text-tenue transition-transform duration-200 ${abierto ? "-rotate-90" : "rotate-90"}`}
+        />
+      </button>
+      <div
+        className={`grid transition-[grid-template-rows] duration-250 ease-out motion-reduce:transition-none ${abierto ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="min-h-0 overflow-hidden" inert={!abierto}>
+          {pendientes.slice(0, 3).map((p) => {
+            const d = dias(p);
+            return (
+              <Link
+                key={p.pagoFijo.id}
+                href="/pagos"
+                className="fila flex min-h-16 items-center gap-3 px-4 py-2"
+              >
+                <Fecha dia={p.pagoFijo.dia} mes={mesCorto(mes)} vencida={d < 0} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-medium">
+                    {p.pagoFijo.concepto}
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-[13px] ${d < 0 ? "text-pasaste" : "text-tenue"}`}
+                  >
+                    {cuandoVence(d)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[15px] font-semibold tabular-nums">
+                  {pesos(p.monto)}
+                </span>
+              </Link>
+            );
+          })}
+          <Link
+            href="/pagos"
+            className="mx-2 mb-2 flex h-11 items-center justify-center gap-0.5 rounded-full text-[14px] font-semibold text-marca"
+          >
+            {pendientes.length > 3 ? `Ver los ${pendientes.length} pagos` : "Ver todos los pagos"}
+            <Icono trazo={ICONOS.adelante} className="size-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 

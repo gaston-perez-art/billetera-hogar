@@ -13,8 +13,12 @@ export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etique
   useEffect(() => {
     const el = ancla.current;
     if (!el) return;
-    // Se muestra cuando el número grande ya pasó por debajo del borde superior.
-    const obs = new IntersectionObserver(([e]) => setVisible(!e.isIntersecting && e.boundingClientRect.top < 0), { threshold: 0 });
+    // Se muestra cuando la tarjeta ya quedó detrás de donde aparece la barra (los ~72px de arriba),
+    // así no queda un pedazo de tarjeta a la vista sin el número.
+    const obs = new IntersectionObserver(([e]) => setVisible(!e.isIntersecting && e.boundingClientRect.top < 0), {
+      threshold: 0,
+      rootMargin: "-72px 0px 0px 0px",
+    });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);

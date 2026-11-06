@@ -1,6 +1,7 @@
 "use client";
 
 import { IconoCategoria } from "@/components/Iconos";
+import { SaldoFijo } from "@/components/SaldoFijo";
 import { Encabezado, Grupo, MontoQueda, Resumen } from "@/components/ui";
 import { categoriasDelMes, planMes } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
@@ -17,15 +18,17 @@ export default function Categorias() {
   return (
     <>
       <Encabezado titulo="Categorías" />
-      <Resumen etiqueta="Gastado en el mes" monto={total.gastado}>
-        <Barra parte={total.gastado} total={total.techo} />
-        <div className="mt-2 flex justify-between text-[15px]">
-          <span className="text-tenue tabular-nums">Techo {pesos(total.techo)}</span>
-          <span className="text-tenue">
-            Para gastar <MontoQueda monto={plan.paraGastar} className="font-semibold" />
-          </span>
-        </div>
-      </Resumen>
+      <SaldoFijo monto={total.gastado} etiqueta="Gastado en el mes">
+        <Resumen etiqueta="Gastado en el mes" monto={total.gastado}>
+          <Barra parte={total.gastado} total={total.techo} />
+          <div className="mt-2 flex justify-between text-[15px]">
+            <span className="text-tenue tabular-nums">Techo {pesos(total.techo)}</span>
+            <span className="text-tenue">
+              Para gastar <MontoQueda monto={plan.paraGastar} className="font-semibold" />
+            </span>
+          </div>
+        </Resumen>
+      </SaldoFijo>
       <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">
         Lo libre de cada categoría ya descuenta los pagos fijos que faltan. Sumado da lo mismo que Inicio.
       </p>
