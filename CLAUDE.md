@@ -12,7 +12,7 @@ Leer antes de tocar lógica:
 
 - Next.js (App Router) + TypeScript + Tailwind, PWA instalable en el celular.
 - Supabase: Auth (2 usuarios), Postgres con RLS por hogar, Realtime.
-- Deploy en GitHub Pages como sitio estático (`output: "export"`): no hay servidor, todo va del navegador a Supabase con la clave pública y RLS.
+- Deploy en GitHub Pages como sitio estático (`output: "export"`): no hay servidor, todo va del navegador a Supabase con la clave pública y RLS. El workflow compila y sube `out/` a la rama `gh-pages`, que es la fuente de Pages (el deploy por Actions se colgaba).
 
 ## Convenciones
 
