@@ -45,8 +45,9 @@ Leer antes de tocar lógica:
 
 - Te queda de verdad = entra − gastado − pagos fijos pendientes.
 - Te queda por categoría = techo − gastado.
-- Ideal para ahorrar = entra − gasto previsto. Pueden gastar = te queda − ideal para ahorrar (lo que falta usar de los techos menos los fijos pendientes). Pasarse en una categoría sale del ahorro.
-- "Te quedaba" de cada día en Inicio = te queda de hoy + lo gastado después de ese día (sin los gastos de pagos fijos, que ese día ya contaban como pendientes). Hoy dice "Te queda".
+- Número de Inicio, "te queda para gastar" = entra − gastado − pagos que faltan − para ahorrar (`planMes`). Para ahorrar = max(entra − gasto previsto, 0). La tarjeta muestra esa resta renglón por renglón: un solo número arriba, nunca varios "te queda" que compitan. Pasarse en una categoría sale del ahorro.
+- "Te quedaba" de cada día en Inicio = te queda para gastar de hoy + lo gastado después de ese día (sin los gastos de pagos fijos, que ese día ya contaban como pendientes). Hoy dice "Te queda" y coincide con la tarjeta.
+- La barra de abajo navega al levantar el dedo (`useToqueDirecto`): en iPhone, durante el impulso del scroll, el primer toque no dispara click.
 - Techo de Deuda del mes = suma de cuotas fijas marcadas `es_deuda`.
 - Alquiler + AySA + TM se muestran como un solo pago.
 - Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).
