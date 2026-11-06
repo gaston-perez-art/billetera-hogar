@@ -269,3 +269,46 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
     };
   });
 }
+
+export interface EstadisticasPersona {
+  /** Lo que pagó en el mes sin contar pagos fijos ni plata que entra. */
+  total: number;
+  cantidad: number;
+  /** Categorías donde más gastó (sin pagos fijos), de mayor a menor. `parte` = monto / total. */
+  categorias: { categoria: Categoria; monto: number; parte: number }[];
+  /** El gasto más grande del mes (sin pagos fijos). */
+  mayor?: Movimiento;
+  /** Lo que pagó en pagos fijos marcados como pagados. */
+  fijos: number;
+  /** El mismo `total` del mes anterior, para comparar. */
+  totalAnterior: number;
+}
+
+/**
+ * En qué gasta cada uno. Separa los pagos fijos (alquiler, cuotas) porque siempre ganan
+ * y no dicen nada: lo interesante es el gasto del día a día.
+ */
+export function estadisticasPersona(d: Datos, mes: Mes, miembroId: string, mesAnterior: Mes): EstadisticasPersona {
+  const deFijos = new Set(d.pagosMes.map((p) => p.movimientoId).filter(Boolean));
+  const suyos = (m: Mes) => movimientosDelMes(d, m).filter((mv) => mv.pagoPor === miembroId && mv.monto > 0);
+  const delMes = suyos(mes);
+  const variables = delMes.filter((mv) => !deFijos.has(mv.id));
+  const total = suma(variables.map((mv) => mv.monto));
+  const porCategoria = new Map<string, number>();
+  for (const mv of variables) porCategoria.set(mv.categoriaId, (porCategoria.get(mv.categoriaId) ?? 0) + mv.monto);
+  const categorias = [...porCategoria]
+    .flatMap(([id, monto]) => {
+      const categoria = d.categorias.find((c) => c.id === id);
+      return categoria ? [{ categoria, monto, parte: total > 0 ? monto / total : 0 }] : [];
+    })
+    .sort((a, b) => b.monto - a.monto);
+  const mayor = variables.reduce<Movimiento | undefined>((a, mv) => (!a || mv.monto > a.monto ? mv : a), undefined);
+  return {
+    total,
+    cantidad: variables.length,
+    categorias,
+    mayor,
+    fijos: suma(delMes.filter((mv) => deFijos.has(mv.id)).map((mv) => mv.monto)),
+    totalAnterior: suma(suyos(mesAnterior).filter((mv) => !deFijos.has(mv.id)).map((mv) => mv.monto)),
+  };
+}

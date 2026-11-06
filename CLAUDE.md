@@ -33,7 +33,9 @@ Leer antes de tocar lógica:
 - Transiciones cortas (≤ 250 ms) que no bloquean: pantalla que entra (`app/template.tsx`), pasos de Cargar que deslizan, hojas que suben y bajan, tarjeta de Reparto que gira. Todas se apagan con "reducir movimiento". Sombras solo en lo que flota (tarjeta principal, hojas).
 - Pensar en Jime: tiene que poder usarla todos los días sin saber Excel. Frases en criollo antes que gráficos; Inicio responde "¿cuánto podemos gastar?" y "¿vamos bien?" (`planMes`).
 - Modo oscuro: los mismos tokens con otros valores en `globals.css` (sigue al celular; Ajustes → Apariencia lo fija en claro u oscuro con `data-tema` en `<html>`). Nunca usar colores fijos como `text-white` o `#fff` en componentes: sobre el verde de marca va `text-sobre-marca`.
-- Cada pantalla tiene identidad: Inicio saluda y el saldo queda fijo arriba al bajar (`SaldoFijo`); el resto lleva título grande y su propio gráfico (Pagos: línea del mes; Reparto: las dos fotos con la división).
+- Cada pantalla tiene identidad: Inicio saluda; el resto lleva título grande y su propio gráfico (Pagos: línea del mes; Reparto: las dos fotos con la división). En Inicio, Categorías y Pagos el número principal queda fijo arriba al bajar (`SaldoFijo`).
+- Inicio prioriza la actividad: Próximos pagos va plegado (cuántos, cuánto y cuándo vence el primero) y se acuerda si lo abriste.
+- Reparto: tocar la tarjeta de cada uno muestra en qué gasta (`estadisticasPersona`: top 3 categorías, gasto más grande, comparación con el mes anterior, sin pagos fijos) en el mismo lugar y sin cambiar el alto de la tarjeta.
 - Tacto: todo botón se hunde apenas al presionarlo y las filas se oscurecen (`globals.css`); `Tactil` vibra corto al tocar (Android con `navigator.vibrate`, iPhone con iOS 18+ vía interruptor nativo). No agregar animaciones decorativas.
 - Fotos de perfil: se cargan en Reparto, se guardan achicadas solo en el navegador (`src/lib/fotos.ts`). Nunca al repo.
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.

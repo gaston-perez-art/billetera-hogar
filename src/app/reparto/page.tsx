@@ -1,10 +1,10 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Icono, ICONOS } from "@/components/Iconos";
+import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
-import { ingresosDelMes, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
-import { pesos } from "@/lib/formato";
+import { estadisticasPersona, ingresosDelMes, previstoPorTipo, repartoMes, type EstadisticasPersona, type RepartoMiembro } from "@/lib/calculos";
+import { fechaCorta, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
 import { prepararFoto, useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
@@ -59,28 +59,73 @@ export default function Reparto() {
 
       <main className="mt-5 space-y-4 px-5">
         {miembros.map((m) => (
-          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} />
+          <TarjetaPersona
+            key={m.miembroId}
+            m={m}
+            fijos={fijos * m.proporcion}
+            variables={variables * m.proporcion}
+            estadisticas={estadisticasPersona(datos, mes, m.miembroId, sumarMeses(mes, -1))}
+            mesAnterior={nombreMes(sumarMeses(mes, -1)).split(" ")[0].toLowerCase()}
+          />
         ))}
       </main>
     </>
   );
 }
 
-function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: number; variables: number }) {
+/**
+ * Tarjeta de cada uno. Al tocarla muestra en qué gasta, en el mismo lugar y sin cambiar
+ * de alto: las estadísticas tapan la cara del reparto, que sigue marcando el tamaño.
+ */
+function TarjetaPersona({
+  m,
+  fijos,
+  variables,
+  estadisticas,
+  mesAnterior,
+}: {
+  m: RepartoMiembro;
+  fijos: number;
+  variables: number;
+  estadisticas: EstadisticasPersona;
+  mesAnterior: string;
+}) {
+  const [stats, setStats] = useState(false);
+  const alternar = () => setStats((v) => !v);
   const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
   const d = Math.round(m.diferencia);
   const sobrante = Math.round(m.leQuedaPlan);
 
   return (
-    <section className="rounded-3xl bg-tarjeta p-5 shadow-tarjeta ring-1 ring-linea">
+    <section
+      role="button"
+      tabIndex={0}
+      aria-pressed={stats}
+      aria-label={stats ? `En qué gasta ${m.nombre}. Tocá para volver al reparto` : `Reparto de ${m.nombre}. Tocá para ver en qué gasta`}
+      onClick={alternar}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          alternar();
+        }
+      }}
+      className="relative cursor-pointer select-none overflow-hidden rounded-3xl bg-tarjeta shadow-tarjeta ring-1 ring-linea"
+    >
+      <div
+        className={`p-5 transition-opacity duration-200 motion-reduce:transition-none ${stats ? "invisible opacity-0" : "opacity-100"}`}
+        aria-hidden={stats}
+      >
       <div className="flex items-center gap-3">
         <FotoEditable id={m.miembroId} nombre={m.nombre} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="text-[18px] font-bold leading-tight">{m.nombre}</h2>
           <p className="mt-0.5 text-[13px] text-tenue tabular-nums">
             Gana {pesos(m.ingresa)}, pone el {Math.round(m.proporcion * 100)}%
           </p>
         </div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-relleno text-texto" aria-hidden>
+          <Icono trazo={ICONOS.categorias} className="size-[18px]" />
+        </span>
       </div>
 
       <dl className="mt-5 space-y-2.5 text-[15px] tabular-nums">
@@ -121,7 +166,100 @@ function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: num
           </p>
         )}
       </div>
+      </div>
+
+      <EnQueGasta
+        visible={stats}
+        nombre={m.nombre}
+        id={m.miembroId}
+        e={estadisticas}
+        mesAnterior={mesAnterior}
+      />
     </section>
+  );
+}
+
+/** La otra cara de la tarjeta de cada uno: en qué gasta este mes, con palabras y sin barras. */
+function EnQueGasta({
+  visible,
+  nombre,
+  id,
+  e,
+  mesAnterior,
+}: {
+  visible: boolean;
+  nombre: string;
+  id: string;
+  e: EstadisticasPersona;
+  mesAnterior: string;
+}) {
+  const cambio = e.totalAnterior > 0 ? Math.round(((e.total - e.totalAnterior) / e.totalAnterior) * 100) : null;
+  const comparacion =
+    cambio === null
+      ? null
+      : cambio === 0
+        ? `Igual que en ${mesAnterior}`
+        : `${Math.abs(cambio)}% ${cambio > 0 ? "más" : "menos"} que en ${mesAnterior}`;
+  return (
+    <div
+      aria-hidden={!visible}
+      className={`absolute inset-0 flex flex-col p-5 transition-opacity duration-200 motion-reduce:transition-none ${visible ? "opacity-100" : "invisible opacity-0"}`}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar id={id} nombre={nombre} tamano={40} />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[17px] font-bold leading-tight">En qué gasta {nombre}</h2>
+          <p className="mt-0.5 text-[13px] text-tenue">Este mes, sin contar pagos fijos</p>
+        </div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-relleno text-texto" aria-hidden>
+          <Icono trazo={ICONOS.cerrar} className="size-[18px]" />
+        </span>
+      </div>
+
+      {e.cantidad === 0 ? (
+        <p className="m-auto px-4 text-center text-[15px] text-tenue">Todavía no cargó gastos este mes{e.fijos > 0 ? `, solo pagos fijos por ${pesos(e.fijos)}` : ""}.</p>
+      ) : (
+        <>
+          <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-linea pt-4">
+            <span>
+              <span className="block text-[15px] text-tenue">
+                Gastó en {e.cantidad === 1 ? "1 compra" : `${e.cantidad} compras`}
+              </span>
+              {comparacion && <span className="mt-0.5 block text-[13px] text-tenue">{comparacion}</span>}
+            </span>
+            <span className="text-[20px] font-bold tabular-nums">{pesos(e.total, { ceroComoGuion: false })}</span>
+          </div>
+
+          <ul className="mt-3 space-y-1">
+            {e.categorias.slice(0, 3).map((c) => (
+              <li key={c.categoria.id} className="flex items-center gap-3 py-1">
+                <IconoCategoria nombre={c.categoria.nombre} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-medium">{c.categoria.nombre}</span>
+                  <span className="block text-[13px] text-tenue">{Math.round(c.parte * 100)}% de lo suyo</span>
+                </span>
+                <span className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-auto border-t border-linea pt-3">
+            {e.mayor && (
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-tenue">Su gasto más grande</span>
+                  <span className="mt-0.5 block truncate text-[15px] font-medium">
+                    {e.mayor.detalle || "Sin detalle"}, el {fechaCorta(e.mayor.fecha).slice(0, 5)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(e.mayor.monto)}</span>
+              </div>
+            )}
+            {e.fijos > 0 && <p className="mt-2 text-[13px] text-tenue">Además pagó {pesos(e.fijos)} de pagos fijos.</p>}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -139,7 +277,7 @@ function FotoEditable({ id, nombre }: { id: string; nombre: string }) {
   const { fotos, setFoto } = useFotos();
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="relative">
+    <div className="relative" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <label className="relative block cursor-pointer rounded-full" aria-label={fotos[id] ? `Cambiar foto de ${nombre}` : `Agregar foto de ${nombre}`}>
         <Avatar id={id} nombre={nombre} tamano={52} />
         <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-tarjeta text-texto ring-2 ring-tarjeta">

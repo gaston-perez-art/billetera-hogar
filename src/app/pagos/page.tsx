@@ -4,6 +4,7 @@
 // El tiempo se lee de arriba hacia abajo, sin descifrar un gráfico.
 
 import { Icono, ICONOS } from "@/components/Iconos";
+import { SaldoFijo } from "@/components/SaldoFijo";
 import { Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
 import { pagosDelMes, type PagoDelMes } from "@/lib/calculos";
 import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, pesos } from "@/lib/formato";
@@ -76,17 +77,19 @@ export default function PagosFijos() {
   return (
     <>
       <Encabezado titulo="Pagos fijos" />
-      <Resumen etiqueta="Falta pagar este mes" monto={faltan}>
-        <div className="h-2 overflow-hidden rounded-full bg-relleno" role="img" aria-label={`Pagado ${pesos(total - faltan)} de ${pesos(total)}`}>
-          <div className="h-full rounded-full bg-marca transition-[width] duration-500" style={{ width: `${total > 0 ? ((total - faltan) / total) * 100 : 0}%` }} />
-        </div>
-        <div className="mt-2 flex justify-between text-[14px] text-tenue tabular-nums">
-          <span>
-            Pagaron {pagados.length} de {pagos.length}
-          </span>
-          <span>{pesos(total - faltan, { ceroComoGuion: false })} de {pesos(total, { ceroComoGuion: false })}</span>
-        </div>
-      </Resumen>
+      <SaldoFijo monto={faltan} etiqueta="Falta pagar este mes">
+        <Resumen etiqueta="Falta pagar este mes" monto={faltan}>
+          <div className="h-2 overflow-hidden rounded-full bg-relleno" role="img" aria-label={`Pagado ${pesos(total - faltan)} de ${pesos(total)}`}>
+            <div className="h-full rounded-full bg-marca transition-[width] duration-500" style={{ width: `${total > 0 ? ((total - faltan) / total) * 100 : 0}%` }} />
+          </div>
+          <div className="mt-2 flex justify-between text-[14px] text-tenue tabular-nums">
+            <span>
+              Pagaron {pagados.length} de {pagos.length}
+            </span>
+            <span>{pesos(total - faltan, { ceroComoGuion: false })} de {pesos(total, { ceroComoGuion: false })}</span>
+          </div>
+        </Resumen>
+      </SaldoFijo>
       <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">Al tocar Pagar se carga el gasto a nombre de {quien}. Lo ven los dos al instante.</p>
 
       <main className="mt-5 space-y-5">
