@@ -56,7 +56,7 @@ Leer antes de tocar lógica:
 ## Estado del código
 
 - Las pantallas solo usan `useBilletera()` (`src/lib/contexto.tsx`). `src/lib/store.tsx` elige el modo:
-  - **Nube** (`store-nube.tsx`) si hay `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`: login con código por mail (`components/Acceso.tsx`), datos del hogar, Realtime y recarga al volver a la app. Cada cambio se muestra al instante con la operación pura y se guarda en la base; la recarga posterior corrige si la base lo rechazó.
+  - **Nube** (`store-nube.tsx`) si hay `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`: login con mail y contraseña (`components/Acceso.tsx`; cuentas creadas desde el panel, sin registro abierto ni mails), datos del hogar, Realtime y recarga al volver a la app. Cada cambio se muestra al instante con la operación pura y se guarda en la base; la recarga posterior corrige si la base lo rechazó.
   - **Demo** (`store-local.tsx`) sin variables: datos ficticios en `localStorage`.
 - `src/lib/operaciones.ts`: cambios como funciones puras, compartidos por los dos modos.
 - `src/lib/nube.ts`: filas de Supabase ↔ tipos de la app, techo vigente por mes e importación de `.json`.

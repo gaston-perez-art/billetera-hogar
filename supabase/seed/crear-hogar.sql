@@ -1,6 +1,6 @@
 -- Crea el hogar, suma a los dos miembros y carga las categorías.
--- Correr UNA vez en el SQL Editor de Supabase, después de que los dos hayan
--- entrado al menos una vez a la app (así existen sus usuarios en auth.users).
+-- Correr UNA vez en el SQL Editor de Supabase, después de crear las dos cuentas
+-- en Authentication → Users.
 --
 -- Reemplazá los dos mails antes de correrlo. No commitees este archivo con mails reales.
 
@@ -18,7 +18,7 @@ begin
   select h, id, 'Jime' from auth.users where email = mail_jime;
 
   if (select count(*) from miembros where hogar_id = h) <> 2 then
-    raise exception 'No encontré a los dos usuarios: ¿entraron los dos a la app al menos una vez?';
+    raise exception 'No encontré a los dos usuarios: ¿están creados en Authentication → Users con esos mails?';
   end if;
 
   -- Techos en 0: se completan en la app (Ajustes) o importando el .json.

@@ -39,7 +39,7 @@ Ver [docs/reglas-de-negocio.md](docs/reglas-de-negocio.md) y [docs/modelo-de-dat
 - [x] Contexto, reglas de negocio y modelo de datos
 - [x] Esquema SQL inicial (`supabase/migrations/0001_init.sql`)
 - [x] POC navegable (Next.js, datos de demo en el navegador, sin login)
-- [x] Conectar Supabase en el código (login con código por mail, Realtime). Configuración: [docs/supabase.md](docs/supabase.md)
+- [x] Conectar Supabase en el código (login con mail y contraseña, Realtime). Configuración: [docs/supabase.md](docs/supabase.md)
 - [ ] Importador desde Google Sheets
 
 ## Correr el POC

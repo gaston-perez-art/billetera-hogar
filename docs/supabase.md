@@ -14,27 +14,17 @@ En **SQL Editor**, correr en orden:
 1. `supabase/migrations/0001_init.sql`
 2. `supabase/migrations/0002_app.sql`
 
-## 3. Login
+## 3. Cuentas
 
-**Authentication → URL Configuration**:
-- Site URL: `https://gaston-perez-art.github.io/billetera-hogar/`
-- Redirect URLs: agregar esa misma y `http://localhost:3000/`.
+Login con mail y contraseña. No usa mails: el SMTP que trae Supabase en el plan gratis solo manda a los miembros del equipo, con pocos envíos por hora, y no deja editar las plantillas.
 
-**Authentication → Emails → Magic Link**: agregar el código al cuerpo del mail, por ejemplo:
-
-```html
-<p>Tu código para entrar: <strong>{{ .Token }}</strong></p>
-<p>O tocá este link: <a href="{{ .ConfirmationURL }}">Entrar</a></p>
-```
-
-El código hace falta en iPhone: el link abre Safari, no la app instalada en la pantalla de inicio, que tiene su propia sesión.
+1. **Authentication → Users → Add user → Create new user**: mail y contraseña de cada uno, con **Auto Confirm User** tildado.
+2. **Authentication → Sign In / Providers**: desactivar **Allow new users to sign up**, para que nadie más pueda crear cuenta.
 
 ## 4. Hogar
 
-1. Cada uno entra una vez a la app con su mail. Va a ver "esa cuenta todavía no está en un hogar": es lo esperado.
-2. En **SQL Editor**, pegar `supabase/seed/crear-hogar.sql` con los dos mails reemplazados y correrlo (sin guardar los mails en el repo).
-3. Recargar la app: ya entra.
-4. **Authentication → Sign In / Providers**: desactivar **Allow new users to sign up**, para que nadie más pueda crear cuenta.
+1. En **SQL Editor**, pegar `supabase/seed/crear-hogar.sql` con los dos mails reemplazados y correrlo (sin guardar los mails en el repo).
+2. Entrar a la app con cualquiera de las dos cuentas.
 
 ## 5. Datos
 
