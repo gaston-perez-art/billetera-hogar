@@ -20,9 +20,54 @@
   --color-relleno: #f2f4f3;
   --color-marca: #0f7a50;
   --color-marca-suave: #e4f3eb;
+  --color-sobre-marca: #ffffff;
   --color-queda: #0f7a50;
   --color-pasaste: #d0402f;
+  --shadow-tarjeta: 0 4px 20px rgba(20, 30, 25, 0.07);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Modo oscuro: los mismos tokens con otros valores, así ninguna pantalla cambia su código.
+ * Sigue al celular salvo que se elija Claro u Oscuro en Ajustes (atributo data-tema en <html>).
+ * El verde de marca se aclara y el texto sobre él pasa a oscuro para mantener el contraste.
+ */
+:root {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --color-fondo: #0e1110;
+    --color-tarjeta: #171b19;
+    --color-texto: #eef1ef;
+    --color-tenue: #9ba49f;
+    --color-sutil: #636b67;
+    --color-linea: #252a28;
+    --color-relleno: #1f2422;
+    --color-marca: #46d197;
+    --color-marca-suave: #173328;
+    --color-sobre-marca: #052014;
+    --color-queda: #4fd69d;
+    --color-pasaste: #ff7f6e;
+    --shadow-tarjeta: none;
+    color-scheme: dark;
+  }
+}
+:root[data-tema="oscuro"] {
+  --color-fondo: #0e1110;
+  --color-tarjeta: #171b19;
+  --color-texto: #eef1ef;
+  --color-tenue: #9ba49f;
+  --color-sutil: #636b67;
+  --color-linea: #252a28;
+  --color-relleno: #1f2422;
+  --color-marca: #46d197;
+  --color-marca-suave: #173328;
+  --color-sobre-marca: #052014;
+  --color-queda: #4fd69d;
+  --color-pasaste: #ff7f6e;
+  --shadow-tarjeta: none;
+  color-scheme: dark;
 }
 
 html {

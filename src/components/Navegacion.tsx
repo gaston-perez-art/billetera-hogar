@@ -22,7 +22,7 @@ export function Navegacion() {
         {ITEMS.map((item) =>
           item === null ? (
             <li key="cargar" className="flex justify-center">
-              <Link href="/cargar" aria-label="Cargar gasto" className="grid size-12 place-items-center rounded-full bg-marca text-white active:opacity-80">
+              <Link href="/cargar" aria-label="Cargar gasto" className="grid size-12 place-items-center rounded-full bg-marca text-sobre-marca active:opacity-80">
                 <Icono trazo={ICONOS.mas} className="size-6" />
               </Link>
             </li>
