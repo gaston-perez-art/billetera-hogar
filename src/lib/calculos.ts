@@ -131,6 +131,16 @@ export function repartoMes(d: Datos, mes: Mes): { previsto: number; miembros: Re
 }
 
 /**
+ * Lo previsto del mes separado en fijos (los pagos fijos del mes) y variables (el resto:
+ * súper, nafta, salidas…). Sirve para explicar a cada uno de dónde sale lo que le toca.
+ */
+export function previstoPorTipo(d: Datos, mes: Mes): { fijos: number; variables: number } {
+  const previsto = gastoPrevisto(d, mes);
+  const fijos = Math.min(suma(pagosDelMes(d, mes).map((p) => p.monto)), previsto);
+  return { fijos, variables: previsto - fijos };
+}
+
+/**
  * Gastos de Santino: categoría Santino. Para meses viejos (antes de separar
  * Chicos en Izán y Santino) también suma Chicos con detalle que arranca con "Santino".
  */

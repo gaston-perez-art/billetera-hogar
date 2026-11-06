@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Navegacion } from "@/components/Navegacion";
+import { Tactil } from "@/components/Tactil";
 import { ProveedorBilletera } from "@/lib/store";
 import { SCRIPT_TEMA } from "@/lib/tema";
 import "./globals.css";
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ProveedorBilletera>
           <div className="mx-auto min-h-dvh max-w-md pb-24">{children}</div>
           <Navegacion />
+          <Tactil />
         </ProveedorBilletera>
       </body>
     </html>

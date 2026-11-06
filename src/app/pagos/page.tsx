@@ -3,7 +3,7 @@
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
 import { pagosDelMes, type PagoDelMes } from "@/lib/calculos";
-import { mesCorto, pesos } from "@/lib/formato";
+import { hoy, mesCorto, mesDe, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
 export default function PagosFijos() {
@@ -48,9 +48,10 @@ export default function PagosFijos() {
 
   return (
     <>
-      <Encabezado />
+      <Encabezado titulo="Pagos fijos" />
       <Resumen etiqueta="Por pagar este mes" monto={faltan}>
-        <p className="text-[15px] text-tenue">
+        <LineaDelMes mes={mes} pagos={pagos} />
+        <p className="mt-4 text-[14px] text-tenue">
           {pagados.length} de {pagos.length} pagos hechos. Al tocar Pagar se carga el gasto a nombre de {quien}.
         </p>
       </Resumen>
@@ -68,3 +69,59 @@ export default function PagosFijos() {
     </>
   );
 }
+
+/** El mes como una línea: cada pago en su día, lleno si está pagado, y una marca en hoy. */
+function LineaDelMes({ mes, pagos }: { mes: string; pagos: PagoDelMes[] }) {
+  const [anio, m] = mes.split("-").map(Number);
+  const dias = new Date(anio, m, 0).getDate();
+  const hoyDia = mesDe(hoy()) === mes ? Number(hoy().slice(8, 10)) : null;
+  const x = (dia: number) => `${((dia - 1) / (dias - 1)) * 100}%`;
+  const porDia = new Map<number, PagoDelMes[]>();
+  for (const p of pagos) porDia.set(p.pagoFijo.dia, [...(porDia.get(p.pagoFijo.dia) ?? []), p]);
+
+  return (
+    <div className="px-1.5 pt-1" role="img" aria-label={`Pagos del mes por día: ${pagos.filter((p) => p.pagado).length} hechos, ${pagos.filter((p) => !p.pagado).length} por hacer.`}>
+      <div className="relative h-11">
+        <div className="absolute inset-x-0 top-[30px] h-0.5 -translate-y-1/2 rounded-full bg-linea" />
+        {hoyDia && <div className="absolute top-[30px] h-0.5 -translate-y-1/2 rounded-full bg-marca/40" style={{ left: 0, width: x(hoyDia) }} />}
+        {[...porDia].map(([dia, lista]) => {
+          const todosPagados = lista.every((p) => p.pagado);
+          return (
+            <span
+              key={dia}
+              className={`absolute top-[30px] grid size-3.5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full ring-[3px] ring-tarjeta ${
+                todosPagados ? "bg-marca" : "border-2 border-marca bg-tarjeta"
+              }`}
+              style={{ left: x(dia) }}
+            />
+          );
+        })}
+        {hoyDia && (
+          <>
+            <span className="absolute top-[22px] h-4 w-px -translate-x-1/2 bg-texto" style={{ left: x(hoyDia) }} />
+            <span className="absolute top-0 -translate-x-1/2 rounded-full bg-texto px-1.5 py-px text-[10px] font-semibold text-fondo" style={{ left: x(hoyDia) }}>
+              Hoy
+            </span>
+          </>
+        )}
+      </div>
+      <div className="mt-0.5 flex justify-between text-[11px] text-tenue">
+        <span>1 {mesCorto(mes)}</span>
+        <span>
+          {dias} {mesCorto(mes)}
+        </span>
+      </div>
+      <div className="mt-3 flex justify-center gap-4 text-[12px] text-tenue">
+        <span className="contents">
+          <span className="flex items-center gap-1">
+            <span className="size-2 rounded-full bg-marca" /> Pagado
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="size-2 rounded-full border-[1.5px] border-marca" /> Falta
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+

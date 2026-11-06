@@ -17,6 +17,7 @@ import {
   MontoMovimiento,
   Resumen,
 } from "@/components/ui";
+import { SaldoFijo } from "@/components/SaldoFijo";
 import { movimientosDelMes, pagosDelMes, resumenMes } from "@/lib/calculos";
 import { etiquetaDia, fechaCorta, mesCorto, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
@@ -43,15 +44,17 @@ export default function Inicio() {
   return (
     <>
       <Encabezado />
-      <Resumen etiqueta="Te queda este mes" monto={r.teQueda} tono="queda">
-        <Cifras
-          items={[
-            { etiqueta: "Entra", valor: pesos(r.entra) },
-            { etiqueta: "Gastado", valor: pesos(r.gastado) },
-            { etiqueta: "Por pagar", valor: pesos(r.faltan) },
-          ]}
-        />
-      </Resumen>
+      <SaldoFijo monto={r.teQueda} etiqueta="Te queda este mes">
+        <Resumen etiqueta="Te queda este mes" monto={r.teQueda} tono="queda">
+          <Cifras
+            items={[
+              { etiqueta: "Entra", valor: pesos(r.entra) },
+              { etiqueta: "Gastado", valor: pesos(r.gastado) },
+              { etiqueta: "Por pagar", valor: pesos(r.faltan) },
+            ]}
+          />
+        </Resumen>
+      </SaldoFijo>
 
       <div className="mt-5 grid grid-cols-2 gap-3 px-5">
         <Link href="/cargar" className={estiloBoton("principal")}>

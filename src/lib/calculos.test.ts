@@ -2,7 +2,7 @@
 // las vistas v_categorias_mes / v_reparto_mes con los mismos números.
 
 import { describe, expect, it } from "vitest";
-import { categoriasDelMes, gastoPrevisto, pagosDelMes, repartoMes, resumenMes, totalSantino } from "./calculos";
+import { categoriasDelMes, gastoPrevisto, pagosDelMes, previstoPorTipo, repartoMes, resumenMes, totalSantino } from "./calculos";
 import { datosDemo } from "./demo";
 import { fechaEnMes, pesos, sumarMeses } from "./formato";
 import { leerDatosImportados } from "./importar";
@@ -112,6 +112,13 @@ describe("quién pone qué", () => {
     const d = base();
     d.ingresos = [];
     expect(repartoMes(d, MES).miembros.every((m) => m.proporcion === 0 && m.leToca === 0)).toBe(true);
+  });
+});
+
+describe("fijos y variables", () => {
+  it("separa lo previsto en pagos fijos activos y el resto", () => {
+    // previsto = súper 100 + chicos 50 + deuda (0 + cuota 80) = 230; fijos activos = 80 + 30 + 20
+    expect(previstoPorTipo(base(), MES)).toEqual({ fijos: 130, variables: 100 });
   });
 });
 

@@ -1,65 +1,151 @@
 "use client";
 
-import { Encabezado, Grupo, MontoQueda, Resumen } from "@/components/ui";
-import { repartoMes } from "@/lib/calculos";
+import { useState } from "react";
+import { Icono } from "@/components/Iconos";
+import { Avatar, Cifras, Encabezado, MontoQueda, Resumen } from "@/components/ui";
+import { previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
+import { prepararFoto, useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
+
+const CAMARA = ["M4 8h3l2-3h6l2 3h3v11H4z", "M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"];
 
 export default function Reparto() {
   const { datos, mes } = useBilletera();
   const { previsto, miembros } = repartoMes(datos, mes);
+  const { fijos, variables } = previstoPorTipo(datos, mes);
+  const [a, b] = miembros;
 
   return (
     <>
-      <Encabezado />
-      <Resumen etiqueta="Gasto previsto del mes" monto={previsto}>
-        <p className="text-[15px] text-tenue">
-          Cada uno pone según lo que gana: {miembros.map((m) => `${m.nombre} ${Math.round(m.proporcion * 100)}%`).join(", ")}.
-        </p>
+      <Encabezado titulo="Reparto" />
+      <Resumen etiqueta="Gastos del mes, entre los dos" monto={previsto}>
+        {a && b && (
+          <div className="mb-5 flex items-center gap-3">
+            <Avatar id={a.miembroId} nombre={a.nombre} tamano={36} />
+            <div className="flex-1">
+              <div className="flex h-2 gap-1">
+                <span className="rounded-full bg-marca" style={{ width: `${a.proporcion * 100}%` }} />
+                <span className="rounded-full bg-marca/35" style={{ width: `${b.proporcion * 100}%` }} />
+              </div>
+              <div className="mt-1.5 flex justify-between text-[13px] font-semibold">
+                <span>{Math.round(a.proporcion * 100)}%</span>
+                <span className="text-tenue">{Math.round(b.proporcion * 100)}%</span>
+              </div>
+            </div>
+            <Avatar id={b.miembroId} nombre={b.nombre} tamano={36} />
+          </div>
+        )}
+        <Cifras
+          items={[
+            { etiqueta: "Fijos", valor: pesos(fijos) },
+            { etiqueta: "Variables", valor: pesos(variables) },
+          ]}
+        />
       </Resumen>
 
-      <main className="mt-6 space-y-6">
-        {miembros.map((m) => {
-          const d = Math.round(m.diferencia);
-          return (
-            <Grupo key={m.miembroId} titulo={m.nombre} detalle={`Ingresa ${pesos(m.ingresa)}`}>
-              <table className="w-full text-[15px] tabular-nums">
-                <thead>
-                  <tr className="text-[13px] text-tenue">
-                    <th className="px-5 pb-1 pt-3 text-left font-normal" />
-                    <th className="pb-1 pt-3 text-right font-normal">Plan</th>
-                    <th className="px-5 pb-1 pt-3 text-right font-normal">Real</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <th className="px-5 py-2 text-left font-normal text-tenue">Pone</th>
-                    <td className="py-2 text-right font-medium">{pesos(m.leToca)}</td>
-                    <td className="px-5 py-2 text-right font-medium">{pesos(m.puso)}</td>
-                  </tr>
-                  <tr>
-                    <th className="px-5 pb-3 pt-2 text-left font-normal text-tenue">Le queda</th>
-                    <td className="pb-3 pt-2 text-right font-medium">{pesos(m.leQuedaPlan)}</td>
-                    <td className="px-5 pb-3 pt-2 text-right font-medium">{pesos(m.leQuedaReal)}</td>
-                  </tr>
-                  <tr className="border-t border-linea">
-                    <th className="px-5 py-3.5 text-left font-semibold" colSpan={2}>
-                      {d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}
-                    </th>
-                    <td className="px-5 py-3.5 text-right font-semibold">
-                      <MontoQueda monto={m.diferencia} />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </Grupo>
-          );
-        })}
+      <p className="mx-5 mt-4 text-[13px] leading-5 text-tenue">Cada uno pone en proporción a lo que gana. Así a los dos les queda lo mismo en proporción para ahorrar.</p>
 
-        <p className="px-5 text-[13px] leading-5 text-tenue">
-          Durante el mes los dos suelen tener algo por poner. El número que vale es el de fin de mes: si alguien puso de más, el otro le devuelve la diferencia.
-        </p>
+      <main className="mt-5 space-y-4 px-5">
+        {miembros.map((m) => (
+          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} />
+        ))}
       </main>
     </>
+  );
+}
+
+function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: number; variables: number }) {
+  const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
+  const d = Math.round(m.diferencia);
+  const ahorroIdeal = Math.round(m.leQuedaPlan);
+
+  return (
+    <section className="rounded-3xl bg-tarjeta p-5 shadow-tarjeta ring-1 ring-linea">
+      <div className="flex items-center gap-3">
+        <FotoEditable id={m.miembroId} nombre={m.nombre} />
+        <div className="min-w-0">
+          <h2 className="text-[18px] font-bold leading-tight">{m.nombre}</h2>
+          <p className="mt-0.5 text-[13px] text-tenue tabular-nums">
+            Gana {pesos(m.ingresa)}, pone el {Math.round(m.proporcion * 100)}%
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-5 space-y-2.5 text-[15px] tabular-nums">
+        <Renglon etiqueta="Le toca poner" valor={pesos(m.leToca)} fuerte />
+        <Renglon etiqueta="Fijos" valor={pesos(fijos)} sangria />
+        <Renglon etiqueta="Variables" valor={pesos(variables)} sangria />
+      </dl>
+
+      <div className="mt-4">
+        <div className="flex items-baseline justify-between text-[15px]">
+          <span className="text-tenue">Lleva puesto</span>
+          <span className="font-semibold tabular-nums">{pesos(m.puso)}</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-relleno">
+          <div className="h-full rounded-full bg-marca transition-[width] duration-500" style={{ width: `${avance * 100}%` }} />
+        </div>
+        <p className="mt-1.5 text-[13px] text-tenue">{Math.round(avance * 100)}% de lo que le toca</p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-marca-suave p-3.5">
+          <p className="text-[13px] text-tenue">{ahorroIdeal >= 0 ? "Ideal para ahorrar" : "No le alcanza"}</p>
+          <p className={`mt-1 text-[18px] font-bold tabular-nums ${ahorroIdeal >= 0 ? "text-marca" : "text-pasaste"}`}>{pesos(Math.abs(m.leQuedaPlan))}</p>
+        </div>
+        <div className="rounded-2xl bg-relleno p-3.5">
+          <p className="text-[13px] text-tenue">Le queda hoy</p>
+          <p className="mt-1 text-[18px] font-bold tabular-nums">{pesos(m.leQuedaReal)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-t border-linea pt-4">
+        <span className="text-[15px] font-semibold">{d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}</span>
+        <MontoQueda monto={m.diferencia} className="text-[17px] font-bold" />
+      </div>
+    </section>
+  );
+}
+
+function Renglon({ etiqueta, valor, fuerte = false, sangria = false }: { etiqueta: string; valor: string; fuerte?: boolean; sangria?: boolean }) {
+  return (
+    <div className={`flex items-baseline justify-between ${sangria ? "pl-3 text-[14px]" : ""}`}>
+      <dt className={fuerte ? "font-semibold" : "text-tenue"}>{etiqueta}</dt>
+      <dd className={fuerte ? "font-bold" : "text-tenue"}>{valor}</dd>
+    </div>
+  );
+}
+
+/** Avatar que se toca para cargar una foto. Queda guardada solo en este celular. */
+function FotoEditable({ id, nombre }: { id: string; nombre: string }) {
+  const { fotos, setFoto } = useFotos();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="relative">
+      <label className="relative block cursor-pointer rounded-full" aria-label={fotos[id] ? `Cambiar foto de ${nombre}` : `Agregar foto de ${nombre}`}>
+        <Avatar id={id} nombre={nombre} tamano={52} />
+        <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-tarjeta text-texto ring-2 ring-tarjeta">
+          <Icono trazo={CAMARA} className="size-4" />
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={async (e) => {
+            const archivo = e.target.files?.[0];
+            e.target.value = "";
+            if (!archivo) return;
+            try {
+              setFoto(id, await prepararFoto(archivo));
+              setError(null);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "No se pudo cargar la foto.");
+            }
+          }}
+        />
+      </label>
+      {error && <p className="absolute left-0 top-full mt-1 w-48 text-[12px] text-pasaste">{error}</p>}
+    </div>
   );
 }
