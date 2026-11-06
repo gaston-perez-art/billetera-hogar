@@ -1,24 +1,23 @@
 name: Publicar en GitHub Pages
 
+# Compila el sitio estático y lo sube a la rama gh-pages, de donde publica GitHub Pages.
+# (El deploy por Actions, actions/deploy-pages, se colgaba en "updating_pages" en este repo.)
+
 on:
   push:
-    branches: [main, poc-local]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# No cortar una publicación a la mitad: si se cancela mientras Pages actualiza, la
-# publicación queda colgada y las siguientes del mismo commit se rechazan. Como en la
-# plantilla oficial de GitHub, la nueva espera a que termine la anterior.
+# Una publicación nueva espera a que termine la anterior; nunca se corta a la mitad.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  publicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,16 +34,13 @@ jobs:
           # Si no están, el sitio publica el modo demo.
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-      - run: touch out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Subir a gh-pages
+        run: |
+          touch out/.nojekyll
+          cd out
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Publicar ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
