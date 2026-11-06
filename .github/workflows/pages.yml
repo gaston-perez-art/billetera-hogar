@@ -10,9 +10,12 @@ permissions:
   pages: write
   id-token: write
 
+# No cortar una publicación a la mitad: si se cancela mientras Pages actualiza, la
+# publicación queda colgada y las siguientes del mismo commit se rechazan. Como en la
+# plantilla oficial de GitHub, la nueva espera a que termine la anterior.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
