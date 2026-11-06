@@ -16,7 +16,7 @@ export default function Reparto() {
   const { previsto, miembros } = repartoMes(datos, mes);
   const { fijos, variables } = previstoPorTipo(datos, mes);
   const entra = ingresosDelMes(datos, mes);
-  const paraGastar = new Map(paraGastarPorPersona(datos, mes).map((p) => [p.miembroId, p.paraGastar]));
+  const porPersona = new Map(paraGastarPorPersona(datos, mes).map((p) => [p.miembroId, p]));
   const [a, b] = miembros;
 
   return (
@@ -60,7 +60,7 @@ export default function Reparto() {
 
       <main className="mt-5 space-y-4 px-5">
         {miembros.map((m) => (
-          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} paraGastar={paraGastar.get(m.miembroId) ?? 0} />
+          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} paraGastar={porPersona.get(m.miembroId)?.paraGastar ?? 0} />
         ))}
       </main>
     </>
@@ -104,8 +104,9 @@ function TarjetaPersona({ m, fijos, variables, paraGastar }: { m: RepartoMiembro
           <p className={`mt-1 text-[18px] font-bold tabular-nums ${ahorroIdeal >= 0 ? "text-marca" : "text-pasaste"}`}>{pesos(Math.abs(m.leQuedaPlan), { ceroComoGuion: false })}</p>
         </div>
         <div className="rounded-2xl bg-relleno p-3.5">
-          <p className="text-[13px] text-tenue">Le queda para gastar</p>
-          <p className={`mt-1 text-[18px] font-bold tabular-nums ${Math.round(paraGastar) < 0 ? "text-pasaste" : ""}`}>{pesos(paraGastar, { ceroComoGuion: false })}</p>
+          <p className="text-[13px] text-tenue">Le queda</p>
+          <p className={`mt-1 text-[18px] font-bold tabular-nums ${Math.round(m.leQuedaReal) < 0 ? "text-pasaste" : ""}`}>{pesos(m.leQuedaReal, { ceroComoGuion: false })}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-tenue">Para gastar {pesos(paraGastar, { ceroComoGuion: false })}</p>
         </div>
       </div>
 

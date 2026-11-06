@@ -11,6 +11,7 @@ import { ContextoBilletera, PantallaCentrada, type Billetera } from "./contexto"
 import { hoy, mesDe } from "./formato";
 import { cargarHogar, filasADatos, prepararImportacion, type Filas } from "./nube";
 import * as op from "./operaciones";
+import { useMontosOcultos } from "./privacidad";
 import type { Datos, Mes } from "./tipos";
 
 const TABLAS = ["categorias", "techos", "ingresos", "movimientos", "pagos_fijos", "pagos_mes"];
@@ -66,6 +67,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
   const [optimista, setOptimista] = useState<Datos | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mes, setMes] = useState<Mes>(() => mesDe(hoy()));
+  const privacidad = useMontosOcultos();
   const pendientes = useRef(0);
   const ultimaCarga = useRef(0);
 
@@ -135,6 +137,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
     const usuarioId = miembro.id;
     return {
       modo: "nube",
+      montosOcultos: privacidad.ocultos,
+      alternarMontosOcultos: privacidad.alternar,
       email,
       datos,
       usuarioId,
@@ -252,7 +256,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
 
       cerrarSesion: () => sb.auth.signOut(),
     };
-  }, [datos, miembro.id, email, mes, sb, hogarId, ejecutar, recargar]);
+  }, [datos, miembro.id, email, mes, sb, hogarId, ejecutar, recargar, privacidad.ocultos, privacidad.alternar]);
 
   if (!valor) {
     return <PantallaCentrada>{error ?? "Cargando…"}</PantallaCentrada>;

@@ -27,6 +27,9 @@ export interface Billetera {
   importarDatos: (d: Datos) => Promise<void>;
   reiniciarDemo?: () => void;
   cerrarSesion?: () => void;
+  /** El ojito: montos ocultos en este celular. */
+  montosOcultos: boolean;
+  alternarMontosOcultos: () => void;
   /** Email de la cuenta (modo nube). */
   email?: string;
 }

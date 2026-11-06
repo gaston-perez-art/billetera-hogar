@@ -7,7 +7,7 @@ import {
   pagosDelMes,
   paraGastarPorPersona,
   planMes,
-  quedabaPorDia,
+  saldoPorDia,
   repartoMes,
   resumenMes,
 } from "./calculos";
@@ -56,11 +56,23 @@ describe("los números coinciden entre pantallas", () => {
     cerca(suma(r.miembros.map((m) => m.leQuedaPlan)), planMes(d, MES).ahorroIdeal);
   });
 
-  it("Inicio: el 'te queda' del último día con gastos es el número de la tarjeta", () => {
+  it("Inicio: el saldo de los dos es lo que entró menos lo gastado, y lo de cada uno suma eso", () => {
     const d = demo();
-    const q = quedabaPorDia(d, MES);
+    const p = planMes(d, MES);
+    cerca(p.saldo, p.entra - p.gastado);
+    cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.saldo)), p.saldo);
+  });
+
+  it("Inicio: el saldo del último día con gastos es el de la tarjeta", () => {
+    const d = demo();
+    const q = saldoPorDia(d, MES);
     const ultimo = [...q.keys()].sort().at(-1)!;
-    cerca(q.get(ultimo)! - planMes(d, MES).paraAhorrar, planMes(d, MES).paraGastar);
+    cerca(q.get(ultimo)!, planMes(d, MES).saldo);
+  });
+
+  it("Inicio: del saldo, restando pagos que faltan y ahorro, queda lo de 'para gastar'", () => {
+    const p = planMes(demo(), MES);
+    cerca(p.saldo - p.faltan - p.paraAhorrar, p.paraGastar);
   });
 
   it("cargar un gasto baja lo mismo en Inicio, en la categoría y en quien lo pagó", () => {

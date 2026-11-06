@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planMes, quedabaPorDia, resumenMes } from "./calculos";
+import { planMes, resumenMes, saldoPorDia } from "./calculos";
 import * as op from "./operaciones";
 import type { Datos } from "./tipos";
 
@@ -54,17 +54,18 @@ describe("plan del mes", () => {
   });
 });
 
-describe("te quedaba por día", () => {
-  it("el último día coincide con el te queda de hoy y los anteriores suman lo gastado después", () => {
-    const q = quedabaPorDia(base(), MES);
-    expect(q.get("2026-03-05")).toBe(820);
-    expect(q.get("2026-03-02")).toBe(830);
+describe("saldo por día", () => {
+  it("lo que entró menos lo gastado hasta ese día; el último coincide con el saldo del mes", () => {
+    const q = saldoPorDia(base(), MES);
+    expect(q.get("2026-03-02")).toBe(960);
+    expect(q.get("2026-03-05")).toBe(950);
+    expect(planMes(base(), MES).saldo).toBe(950);
   });
 
-  it("pagar un fijo después no cambia lo que quedaba ese día", () => {
+  it("pagar un fijo baja el saldo de ese día y no el de los anteriores", () => {
     const d = op.marcarPagado(base(), "luz", MES, "g", "pago-luz", "2026-03-06");
-    const q = quedabaPorDia(d, MES);
-    expect(q.get("2026-03-06")).toBe(820);
-    expect(q.get("2026-03-05")).toBe(820);
+    const q = saldoPorDia(d, MES);
+    expect(q.get("2026-03-05")).toBe(950);
+    expect(q.get("2026-03-06")).toBe(920);
   });
 });

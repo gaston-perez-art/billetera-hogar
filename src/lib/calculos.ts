@@ -181,6 +181,8 @@ export function totalSantino(d: Datos, mes: Mes): number {
 export interface PlanMes {
   entra: number;
   gastado: number;
+  /** Saldo: la plata que tienen, entre los dos. entra − gastado. */
+  saldo: number;
   /** Pagos fijos que faltan este mes. */
   faltan: number;
   /** Lo ideal para ahorrar: entra − gasto previsto. Negativo = el presupuesto supera lo que entra. */
@@ -199,23 +201,20 @@ export function planMes(d: Datos, mes: Mes): PlanMes {
   const { entra, gastado, faltan, teQueda } = resumenMes(d, mes);
   const ahorroIdeal = entra - gastoPrevisto(d, mes);
   const paraAhorrar = Math.max(ahorroIdeal, 0);
-  return { entra, gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
+  return { entra, gastado, saldo: entra - gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
 }
 
 /**
- * "Te quedaba" al cierre de cada día con gastos del mes, para la actividad de Inicio.
- * Parte del "te queda" de hoy y le devuelve lo que se gastó después de ese día.
- * Los gastos que salen de un pago fijo no se devuelven: ese día ya contaban como "por pagar".
+ * Saldo al cierre de cada día con gastos del mes: lo que entró en el mes menos lo gastado
+ * hasta ese día inclusive. El del último día es el saldo de la tarjeta de Inicio.
  */
-export function quedabaPorDia(d: Datos, mes: Mes): Map<Fecha, number> {
-  const { teQueda } = resumenMes(d, mes);
-  const deFijos = new Set(d.pagosMes.filter((p) => p.pagado && p.movimientoId).map((p) => p.movimientoId));
+export function saldoPorDia(d: Datos, mes: Mes): Map<Fecha, number> {
+  const entra = ingresosDelMes(d, mes);
   const movs = movimientosDelMes(d, mes);
   const fechas = [...new Set(movs.map((m) => m.fecha))].sort();
   const resultado = new Map<Fecha, number>();
   for (const fecha of fechas) {
-    const despues = suma(movs.filter((m) => m.fecha > fecha && !deFijos.has(m.id)).map((m) => m.monto));
-    resultado.set(fecha, teQueda + despues);
+    resultado.set(fecha, entra - suma(movs.filter((m) => m.fecha <= fecha).map((m) => m.monto)));
   }
   return resultado;
 }
@@ -228,6 +227,8 @@ export interface ParaGastarPersona {
   proporcion: number;
   /** Lo que ya puso (gastos cargados a su nombre). */
   puso: number;
+  /** Su saldo: lo que le entró menos lo que ya puso. Los dos suman el saldo de Inicio. */
+  saldo: number;
   /** Su parte de los pagos fijos que faltan y del ahorro, según lo que gana. */
   parteFaltan: number;
   parteAhorro: number;
@@ -248,6 +249,16 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
     const puso = suma(movs.filter((mv) => mv.pagoPor === m.id).map((mv) => mv.monto));
     const parteFaltan = plan.faltan * proporcion;
     const parteAhorro = plan.paraAhorrar * proporcion;
-    return { miembroId: m.id, nombre: m.nombre, ingresa, proporcion, puso, parteFaltan, parteAhorro, paraGastar: ingresa - puso - parteFaltan - parteAhorro };
+    return {
+      miembroId: m.id,
+      nombre: m.nombre,
+      ingresa,
+      proporcion,
+      puso,
+      saldo: ingresa - puso,
+      parteFaltan,
+      parteAhorro,
+      paraGastar: ingresa - puso - parteFaltan - parteAhorro,
+    };
   });
 }
