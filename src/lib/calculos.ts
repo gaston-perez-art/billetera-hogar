@@ -185,12 +185,18 @@ export interface PlanMes {
   saldo: number;
   /** Pagos fijos que faltan este mes. */
   faltan: number;
-  /** Lo ideal para ahorrar: entra − gasto previsto. Negativo = el presupuesto supera lo que entra. */
-  ahorroIdeal: number;
-  /** Lo que se aparta para ahorrar: el ahorro ideal, o 0 si el presupuesto supera lo que entra. */
-  paraAhorrar: number;
   /**
-   * El número de Inicio: entra − gastado − pagos que faltan − para ahorrar.
+   * Lo que sobra después de la casa: entra − gasto previsto (la suma de los techos, o lo gastado
+   * si se pasaron). Negativo = los gastos de la casa superan lo que entra.
+   */
+  sobrante: number;
+  /**
+   * Lo que queda para cada uno después de poner su parte de la casa (sumado entre los dos).
+   * Es el sobrante, o 0 si no hay. Responde "¿cuánto me queda para mí?".
+   */
+  paraCadaUno: number;
+  /**
+   * Lo que queda para gastos de la casa: entra − gastado − pagos que faltan − para cada uno.
    * Es lo que se puede gastar sin tocar el ahorro. Negativo = ya se comieron parte del ahorro.
    */
   paraGastar: number;
@@ -199,9 +205,9 @@ export interface PlanMes {
 /** La cuenta de Inicio, de arriba hacia abajo: entra, menos gastado, menos pagos que faltan, menos ahorro. */
 export function planMes(d: Datos, mes: Mes): PlanMes {
   const { entra, gastado, faltan, teQueda } = resumenMes(d, mes);
-  const ahorroIdeal = entra - gastoPrevisto(d, mes);
-  const paraAhorrar = Math.max(ahorroIdeal, 0);
-  return { entra, gastado, saldo: entra - gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
+  const sobrante = entra - gastoPrevisto(d, mes);
+  const paraCadaUno = Math.max(sobrante, 0);
+  return { entra, gastado, saldo: entra - gastado, faltan, sobrante, paraCadaUno, paraGastar: teQueda - paraCadaUno };
 }
 
 /**
@@ -229,10 +235,11 @@ export interface ParaGastarPersona {
   puso: number;
   /** Su saldo: lo que le entró menos lo que ya puso. Los dos suman el saldo de Inicio. */
   saldo: number;
-  /** Su parte de los pagos fijos que faltan y del ahorro, según lo que gana. */
+  /** Su parte de los pagos fijos que faltan, según lo que gana. */
   parteFaltan: number;
-  parteAhorro: number;
-  /** ingresa − puso − su parte de los pagos que faltan − su parte del ahorro. Suman el número de Inicio. */
+  /** Lo que le queda para sí después de poner su parte de la casa (= lo que gana − lo que le toca). */
+  propio: number;
+  /** ingresa − puso − su parte de los pagos que faltan − lo propio. Suman "para gastar" de Inicio. */
   paraGastar: number;
 }
 
@@ -248,7 +255,7 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
     const proporcion = plan.entra > 0 ? ingresa / plan.entra : 1 / d.miembros.length;
     const puso = suma(movs.filter((mv) => mv.pagoPor === m.id).map((mv) => mv.monto));
     const parteFaltan = plan.faltan * proporcion;
-    const parteAhorro = plan.paraAhorrar * proporcion;
+    const propio = plan.paraCadaUno * proporcion;
     return {
       miembroId: m.id,
       nombre: m.nombre,
@@ -257,8 +264,8 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
       puso,
       saldo: ingresa - puso,
       parteFaltan,
-      parteAhorro,
-      paraGastar: ingresa - puso - parteFaltan - parteAhorro,
+      propio,
+      paraGastar: ingresa - puso - parteFaltan - propio,
     };
   });
 }

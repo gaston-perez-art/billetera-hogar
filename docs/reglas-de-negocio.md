@@ -44,7 +44,7 @@ Por persona:
 | Ingresa | ingresos de la persona en el mes |
 | Proporción | ingreso persona / ingreso total |
 | Le toca (plan) | proporción × gasto previsto del mes |
-| Le queda (plan) | ingresa − le toca |
+| Le queda (plan), en la app "Queda para {nombre}" | ingresa − le toca: lo que le queda para sí después de aportar su parte |
 | Puso (real) | suma de gastos del mes con `pagó = persona` |
 | Le queda (real) | ingresa − puso |
 | Diferencia | le queda (real) − le queda (plan) |

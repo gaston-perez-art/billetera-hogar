@@ -248,8 +248,8 @@ function CuentaDelMes({
     gastado,
     saldo,
     faltan,
-    paraAhorrar,
-    ahorroIdeal,
+    paraCadaUno,
+    sobrante,
     paraGastar,
   } = plan;
   const [abierta, setAbierta] = useState(false);
@@ -274,7 +274,7 @@ function CuentaDelMes({
   const partes = [
     { etiqueta: "Ya gastaron", monto: gastado, color: "bg-tenue" },
     { etiqueta: "Pagos que faltan", monto: faltan, color: "bg-sutil" },
-    { etiqueta: "Para ahorrar", monto: paraAhorrar, color: "bg-marca/40" },
+    { etiqueta: "Para cada uno", monto: paraCadaUno, color: "bg-marca/40" },
     {
       etiqueta: "Para gastar",
       monto: Math.max(paraGastar, 0),
@@ -348,7 +348,7 @@ function CuentaDelMes({
         <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
           {abierta
             ? "Ocultar la cuenta"
-            : `Ver la cuenta, para gastar ${pesos(paraGastar, { ceroComoGuion: false })}`}
+            : `Ver la cuenta, quedan ${pesos(paraGastar, { ceroComoGuion: false })} para la casa`}
           <Icono
             trazo={ICONOS.adelante}
             className={`size-4 transition-transform duration-200 ${abierta ? "-rotate-90" : "rotate-90"}`}
@@ -402,13 +402,13 @@ function CuentaDelMes({
                     resta
                   />
                   <Renglon
-                    etiqueta="Para ahorrar"
-                    monto={paraAhorrar}
+                    etiqueta="Para cada uno"
+                    monto={paraCadaUno}
                     color="bg-marca/40"
                     resta
                   />
                   <Renglon
-                    etiqueta="Les queda para gastar"
+                    etiqueta="Queda para la casa"
                     monto={paraGastar}
                     color={
                       Math.round(paraGastar) < 0 ? "bg-pasaste" : "bg-marca"
@@ -418,15 +418,16 @@ function CuentaDelMes({
                 </dl>
                 {personas.length > 1 && (
                   <p className="mt-3 text-[13px] leading-5 text-tenue">
-                    Lo que le queda a cada uno es lo que le entró menos lo que
-                    ya puso. Los pagos que faltan y el ahorro se reparten según
-                    lo que gana cada uno (detalle en Reparto).
+                    Le queda a cada uno: lo que le entró menos lo que ya puso.
+                    Para cada uno: lo que le sobra a cada uno después de poner
+                    su parte de la casa, según lo que gana (en Reparto, «Queda
+                    para» cada uno).
                   </p>
                 )}
-                {ahorroIdeal < 0 && (
+                {sobrante < 0 && (
                   <p className="mt-3 text-[13px] leading-5 text-pasaste">
-                    Este mes los techos suman {pesos(-ahorroIdeal)} más de lo
-                    que entra: no queda nada para ahorrar.
+                    Este mes los techos suman {pesos(-sobrante)} más de lo
+                    que entra: no sobra nada para cada uno.
                   </p>
                 )}
               </>

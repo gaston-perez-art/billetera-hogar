@@ -161,15 +161,15 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 /* Tarjeta que gira (Reparto). */
 .giro {
-  perspective: 1200px;
+  perspective: 1800px;
 }
 .giro-interior {
-  display: grid;
   transform-style: preserve-3d;
-  transition: transform 450ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  transition:
+    transform 450ms cubic-bezier(0.3, 0.7, 0.2, 1),
+    height 450ms cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 .giro-interior > * {
-  grid-area: 1 / 1;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
