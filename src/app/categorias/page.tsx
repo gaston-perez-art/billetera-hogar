@@ -15,7 +15,7 @@ export default function Categorias() {
 
   return (
     <>
-      <Encabezado />
+      <Encabezado titulo="Categorías" />
       <Resumen etiqueta="Gastado en el mes" monto={total.gastado}>
         <Barra parte={total.gastado} total={total.techo} />
         <div className="mt-2 flex justify-between text-[15px]">

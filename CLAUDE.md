@@ -28,6 +28,9 @@ Leer antes de tocar lógica:
 - Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: fondo blanco, tres tintas (texto, tenue, sutil), un gris de relleno, verde de marca y su versión suave. Verde/rojo de montos solo como semáforo. No agregar colores fuera de los tokens.
 - Cada pantalla: encabezado con saludo y ajustes, chip del mes, y el número principal en `Resumen` (tarjeta blanca, centrado, leyenda abajo, cifras chicas debajo). Listas con `Grupo` + `FilaLista`, filas directas sobre blanco. Íconos de categoría en círculo verde suave. Botones pastilla (`Boton` / `estiloBoton`). Montos de movimientos con `MontoMovimiento` (signo en color).
 - Modo oscuro: los mismos tokens con otros valores en `globals.css` (sigue al celular; Ajustes → Apariencia lo fija en claro u oscuro con `data-tema` en `<html>`). Nunca usar colores fijos como `text-white` o `#fff` en componentes: sobre el verde de marca va `text-sobre-marca`.
+- Cada pantalla tiene identidad: Inicio saluda y el saldo queda fijo arriba al bajar (`SaldoFijo`); el resto lleva título grande y su propio gráfico (Pagos: línea del mes; Reparto: las dos fotos con la división).
+- Tacto: todo botón se hunde apenas al presionarlo y las filas se oscurecen (`globals.css`); `Tactil` vibra corto al tocar (Android con `navigator.vibrate`, iPhone con iOS 18+ vía interruptor nativo). No agregar animaciones decorativas.
+- Fotos de perfil: se cargan en Reparto, se guardan achicadas solo en el navegador (`src/lib/fotos.ts`). Nunca al repo.
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
 - Verde = lo que queda; rojo = te pasaste. Ceros como "–".
 - Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.

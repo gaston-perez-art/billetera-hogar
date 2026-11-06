@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { mesDe, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
 
 /*
@@ -13,34 +14,53 @@ import { useBilletera } from "@/lib/store";
  * - Botones en forma de pastilla. Verde lleno para la acción principal.
  */
 
-/** Saludo con avatar (tocar cambia quién usa la app) y ajustes. Debajo, el mes. */
+/**
+ * Encabezado. En Inicio: saludo con avatar. En el resto: el título grande de la pantalla,
+ * para que se sepa dónde estás. Tocar el avatar cambia quién usa la app.
+ */
 export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?: boolean }) {
   return (
     <header className="px-5 pt-[max(env(safe-area-inset-top),0.75rem)]">
-      <div className="flex h-12 items-center justify-between gap-3">
-        {titulo ? <h1 className="text-[20px] font-semibold tracking-tight">{titulo}</h1> : <Saludo />}
-        <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full bg-relleno text-texto active:opacity-70">
-          <Icono trazo={ICONOS.ajustes} className="size-5" />
-        </Link>
+      <div className="flex min-h-12 items-center justify-between gap-3">
+        {titulo ? <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">{titulo}</h1> : <Saludo />}
+        <div className="flex items-center gap-2">
+          {titulo && <CambiarUsuario />}
+          <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full bg-relleno text-texto">
+            <Icono trazo={ICONOS.ajustes} className="size-5" />
+          </Link>
+        </div>
       </div>
       {conMes && <SelectorMes />}
     </header>
   );
 }
 
-function Saludo() {
+function useUsuarios() {
   const { datos, usuarioId, setUsuarioId } = useBilletera();
   const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
   const otro = datos.miembros.find((m) => m.id !== actual?.id);
+  const cambiar = () => otro && setUsuarioId(otro.id);
+  const etiqueta = actual ? `Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.` : "";
+  return { actual, cambiar, etiqueta };
+}
+
+function Saludo() {
+  const { actual, cambiar, etiqueta } = useUsuarios();
   if (!actual) return null;
   return (
-    <button
-      onClick={() => otro && setUsuarioId(otro.id)}
-      aria-label={`Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`}
-      className="flex items-center gap-2 rounded-full bg-relleno py-1 pl-1 pr-3.5 active:opacity-70"
-    >
-      <Avatar nombre={actual.nombre} />
+    <button onClick={cambiar} aria-label={etiqueta} className="flex items-center gap-2 rounded-full bg-relleno py-1 pl-1 pr-3.5">
+      <Avatar id={actual.id} nombre={actual.nombre} />
       <span className="text-[15px] font-semibold">¡Hola, {actual.nombre}!</span>
+    </button>
+  );
+}
+
+function CambiarUsuario() {
+  const { actual, cambiar, etiqueta } = useUsuarios();
+  if (!actual) return null;
+  return (
+    <button onClick={cambiar} aria-label={etiqueta} className="rounded-full">
+      <Avatar id={actual.id} nombre={actual.nombre} tamano={40} />
     </button>
   );
 }
@@ -69,8 +89,19 @@ function SelectorMes() {
   );
 }
 
-export function Avatar({ nombre }: { nombre: string }) {
-  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-sobre-marca">{nombre.charAt(0)}</span>;
+/** Foto de perfil si hay una cargada; si no, la inicial sobre el verde de marca. */
+export function Avatar({ id, nombre, tamano = 32 }: { id?: string; nombre: string; tamano?: number }) {
+  const { fotos } = useFotos();
+  const foto = id ? fotos[id] : undefined;
+  const estilo = { width: tamano, height: tamano, fontSize: Math.round(tamano * 0.4) };
+  return foto ? (
+    // eslint-disable-next-line @next/next/no-img-element -- data URL local, sin optimizar
+    <img src={foto} alt="" style={estilo} className="shrink-0 rounded-full object-cover" />
+  ) : (
+    <span style={estilo} className="grid shrink-0 place-items-center rounded-full bg-marca font-semibold text-sobre-marca">
+      {nombre.charAt(0)}
+    </span>
+  );
 }
 
 /** El número principal de la pantalla: tarjeta blanca, centrado, con su leyenda abajo. */
@@ -201,7 +232,7 @@ export function FilaLista({
   );
   const clases = "flex min-h-16 w-full items-center gap-3 px-5 py-2.5 text-left";
   return onClick ? (
-    <button onClick={onClick} className={`${clases} active:bg-relleno`}>
+    <button onClick={onClick} className={`${clases} fila`}>
       {contenido}
     </button>
   ) : (
