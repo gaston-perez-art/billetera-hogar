@@ -7,6 +7,7 @@ import { ContextoBilletera, PantallaCentrada, type Billetera } from "./contexto"
 import { datosDemo } from "./demo";
 import { hoy, mesDe } from "./formato";
 import * as op from "./operaciones";
+import { useMontosOcultos } from "./privacidad";
 import type { Datos, Mes } from "./tipos";
 
 const CLAVE_DATOS = "billetera-hogar:datos:v1";
@@ -33,6 +34,7 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [usuarioId, setUsuarioIdState] = useState("gaston");
   const [mes, setMes] = useState<Mes>(() => mesDe(hoy()));
+  const privacidad = useMontosOcultos();
 
   useEffect(() => {
     const guardados = leer<Datos>(CLAVE_DATOS);
@@ -65,6 +67,8 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
     if (!datos) return null;
     return {
       modo: "demo",
+      montosOcultos: privacidad.ocultos,
+      alternarMontosOcultos: privacidad.alternar,
       datos,
       usuarioId,
       setUsuarioId: (id) => {
@@ -85,7 +89,8 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
         return id;
       },
       actualizarTecho: (categoriaId, techo) => cambiar((d) => op.actualizarTecho(d, categoriaId, techo)),
-      actualizarIngreso: (ingresoId, monto) => cambiar((d) => op.actualizarIngreso(d, ingresoId, monto)),
+      actualizarIngreso: (ingresoId, monto) =>
+        cambiar((d) => op.aplicarCambioIngreso(d, op.planCambioIngreso(d, ingresoId, monto, mes, op.nuevoId()))),
       actualizarPagoFijo: (pagoFijoId, cambios) => cambiar((d) => op.actualizarPagoFijo(d, pagoFijoId, cambios)),
       reiniciarDemo: () => cambiar(() => datosDemo()),
       importarDatos: async (nuevos) => {
@@ -93,7 +98,7 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
         if (!nuevos.miembros.some((m) => m.id === usuarioId)) setUsuarioIdState(nuevos.miembros[0].id);
       },
     };
-  }, [datos, usuarioId, mes, cambiar]);
+  }, [datos, usuarioId, mes, cambiar, privacidad.ocultos, privacidad.alternar]);
 
   if (!valor) return <PantallaCentrada>Cargando…</PantallaCentrada>;
   return <ContextoBilletera.Provider value={valor}>{children}</ContextoBilletera.Provider>;

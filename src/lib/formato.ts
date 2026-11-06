@@ -2,8 +2,19 @@ import type { Fecha, Mes } from "./tipos";
 
 const numero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 
+/**
+ * Montos ocultos (el ojito del encabezado, para usar la app delante de otras personas).
+ * La fija el proveedor de datos antes de dibujar las pantallas; todas las cifras pasan por `pesos`.
+ */
+let montosOcultos = false;
+export function fijarMontosOcultos(ocultos: boolean) {
+  montosOcultos = ocultos;
+}
+export const MONTO_OCULTO = "$***";
+
 /** `$1.234.567`, sin decimales. Cero se muestra como "–" salvo que se pida lo contrario. */
 export function pesos(monto: number, { ceroComoGuion = true } = {}): string {
+  if (montosOcultos) return MONTO_OCULTO;
   const redondeado = Math.round(monto);
   if (redondeado === 0 && ceroComoGuion) return "–";
   const signo = redondeado < 0 ? "-" : "";

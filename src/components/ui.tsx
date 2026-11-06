@@ -27,6 +27,7 @@ export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?
         {titulo ? <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">{titulo}</h1> : <Saludo />}
         <div className="flex items-center gap-2">
           {titulo && <CambiarUsuario />}
+          <BotonOjito />
           <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full bg-relleno text-texto">
             <Icono trazo={ICONOS.ajustes} className="size-5" />
           </Link>
@@ -34,6 +35,21 @@ export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?
       </div>
       {conMes && <SelectorMes />}
     </header>
+  );
+}
+
+/** El ojito: oculta o muestra todos los montos (para usar la app delante de otras personas). */
+function BotonOjito() {
+  const { montosOcultos, alternarMontosOcultos } = useBilletera();
+  return (
+    <button
+      onClick={alternarMontosOcultos}
+      aria-pressed={montosOcultos}
+      aria-label={montosOcultos ? "Mostrar los montos" : "Ocultar los montos"}
+      className="grid size-10 place-items-center rounded-full bg-relleno text-texto"
+    >
+      <Icono trazo={montosOcultos ? ICONOS.ojoTachado : ICONOS.ojo} className="size-5" />
+    </button>
   );
 }
 

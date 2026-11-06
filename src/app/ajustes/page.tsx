@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, Encabezado, estiloBoton, Hoja, Seccion } from "@/components/ui";
+import { ingresoVigente } from "@/lib/calculos";
 import { nombreMes, pesos } from "@/lib/formato";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
@@ -30,7 +31,8 @@ export default function Ajustes() {
   const alternar = (s: Exclude<Abierta, null>) => setAbierta((a) => (a === s ? null : s));
   const nombre = (id: string) => datos.miembros.find((m) => m.id === id)?.nombre ?? "";
   const nombreCategoria = (id: string) => datos.categorias.find((c) => c.id === id)?.nombre ?? "";
-  const ingresos = datos.ingresos.filter((i) => i.mes === null);
+  // Los sueldos que valen en el mes elegido (al cambiar uno, el anterior queda para los meses previos).
+  const ingresos = datos.ingresos.filter((i) => i.mes === null && ingresoVigente(i, mes));
   const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
   const pagos = [...datos.pagosFijos].sort((a, b) => Number(b.activo) - Number(a.activo) || a.dia - b.dia);
   const activos = pagos.filter((p) => p.activo);
@@ -56,11 +58,11 @@ export default function Ajustes() {
 
   return (
     <>
-      <Encabezado titulo="Ajustes" conMes={modo === "nube"} />
+      <Encabezado titulo="Ajustes" />
       <main className="space-y-3 pb-6 pt-4">
         <Seccion
           titulo="Ingresos"
-          resumen={`Entran ${pesos(suma(ingresos.map((i) => i.monto)), { ceroComoGuion: false })} por mes`}
+          resumen={`Entran ${pesos(suma(ingresos.map((i) => i.monto)), { ceroComoGuion: false })} por mes, en ${nombreMes(mes)}`}
           abierta={abierta === "ingresos"}
           alTocar={() => alternar("ingresos")}
         >
@@ -213,14 +215,14 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
           diaInicial={pago?.dia}
           ayuda={
             ingreso
-              ? `Lo que entra todos los meses${ingreso.miembroId ? ` (${datos.miembros.find((m) => m.id === ingreso.miembroId)?.nombre})` : ""}.`
+              ? `Lo que le entra por mes a ${datos.miembros.find((m) => m.id === ingreso.miembroId)?.nombre ?? "esta persona"}. Vale desde ${nombreMes(mes)} en adelante: los meses anteriores no cambian.`
               : categoria
                 ? categoria.nombre === "Deuda"
                   ? "Las cuotas de los pagos fijos marcados como deuda ya se suman solas. Acá va solo lo extra."
                   : modo === "nube"
                     ? `Vale desde ${nombreMes(mes)} en adelante. Poné 0 para dejarla sin techo.`
                     : "Poné 0 para dejarla sin techo."
-                : "Lo que se paga todos los meses. El día es cuándo vence."
+                : "Lo que se paga todos los meses. El día es cuándo vence. Los meses ya pagados no cambian."
           }
           activo={pago?.activo}
           alGuardar={(monto, dia) => {
@@ -232,7 +234,8 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
           alCambiarActivo={
             pago
               ? (activo) => {
-                  actualizarPagoFijo(pago.id, { activo });
+                  // La baja vale desde el mes elegido: en los anteriores el pago sigue apareciendo.
+                  actualizarPagoFijo(pago.id, { activo, bajaDesde: activo ? null : mes });
                   alCerrar();
                 }
               : undefined
@@ -258,6 +261,7 @@ function Formulario({
   alGuardar: (monto: number, dia?: number) => void;
   alCambiarActivo?: (activo: boolean) => void;
 }) {
+  const { mes } = useBilletera();
   const [monto, setMonto] = useState(montoInicial);
   const [dia, setDia] = useState(diaInicial);
   const guardar = () => alGuardar(monto, dia);
@@ -303,7 +307,7 @@ function Formulario({
               <Boton
                 type="button"
                 variante="peligro"
-                onClick={() => confirm("¿Dar de baja este pago? Deja de aparecer en Pagos fijos y de contar en lo que falta pagar. Lo ya pagado no se toca.") && alCambiarActivo(false)}
+                onClick={() => confirm(`¿Dar de baja este pago desde ${nombreMes(mes)}? Deja de aparecer en Pagos fijos y de contar en lo que falta pagar. Los meses anteriores no cambian.`) && alCambiarActivo(false)}
               >
                 Dar de baja este pago
               </Boton>

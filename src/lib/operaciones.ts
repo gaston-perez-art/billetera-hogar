@@ -2,11 +2,11 @@
 // El modo demo los usa para guardar en el navegador; el modo nube, para mostrar el
 // cambio al instante mientras se guarda en Supabase (y la base confirma después).
 
-import { fechaEnMes, hoy, mesDe } from "./formato";
-import type { Datos, Mes, Movimiento, PagoFijo } from "./tipos";
+import { fechaEnMes, hoy, mesDe, sumarMeses } from "./formato";
+import type { Datos, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
-export type CambiosPagoFijo = Partial<Pick<PagoFijo, "monto" | "dia" | "activo">>;
+export type CambiosPagoFijo = Partial<Pick<PagoFijo, "monto" | "dia" | "activo" | "bajaDesde">>;
 
 export function nuevoId() {
   return crypto.randomUUID();
@@ -78,8 +78,33 @@ export function actualizarTecho(d: Datos, categoriaId: string, techo: number): D
   return { ...d, categorias: d.categorias.map((c) => (c.id === categoriaId ? { ...c, techo } : c)) };
 }
 
-export function actualizarIngreso(d: Datos, ingresoId: string, monto: number): Datos {
-  return { ...d, ingresos: d.ingresos.map((i) => (i.id === ingresoId ? { ...i, monto } : i)) };
+export type CambioIngreso =
+  | { tipo: "monto"; id: string; monto: number }
+  | { tipo: "nuevaVersion"; cerrar: { id: string; hasta: Mes }; nuevo: Ingreso };
+
+/**
+ * Cómo se cambia un ingreso desde un mes sin tocar los anteriores:
+ * - Puntual, o que ya empieza en ese mes: se cambia el monto.
+ * - Que se repite desde antes: se cierra el mes anterior y se abre uno nuevo desde ese mes.
+ */
+export function planCambioIngreso(d: Datos, ingresoId: string, monto: number, mes: Mes, nuevoIdIngreso: string): CambioIngreso | null {
+  const i = d.ingresos.find((x) => x.id === ingresoId);
+  if (!i) return null;
+  if (i.mes !== null || (i.desde && i.desde >= mes)) return { tipo: "monto", id: i.id, monto };
+  return {
+    tipo: "nuevaVersion",
+    cerrar: { id: i.id, hasta: sumarMeses(mes, -1) },
+    nuevo: { ...i, id: nuevoIdIngreso, monto, desde: mes, hasta: i.hasta ?? null },
+  };
+}
+
+export function aplicarCambioIngreso(d: Datos, c: CambioIngreso | null): Datos {
+  if (!c) return d;
+  if (c.tipo === "monto") return { ...d, ingresos: d.ingresos.map((i) => (i.id === c.id ? { ...i, monto: c.monto } : i)) };
+  return {
+    ...d,
+    ingresos: [...d.ingresos.map((i) => (i.id === c.cerrar.id ? { ...i, hasta: c.cerrar.hasta } : i)), c.nuevo],
+  };
 }
 
 export function actualizarPagoFijo(d: Datos, pagoFijoId: string, cambios: CambiosPagoFijo): Datos {

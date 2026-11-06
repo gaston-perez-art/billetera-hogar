@@ -21,11 +21,15 @@ export interface Billetera {
   agregarCategoria: (nombre: string) => string;
   /** En modo nube vale desde el mes elegido en adelante. */
   actualizarTecho: (categoriaId: string, techo: number) => void;
+  /** Vale desde el mes elegido: los meses anteriores no cambian. */
   actualizarIngreso: (ingresoId: string, monto: number) => void;
   actualizarPagoFijo: (pagoFijoId: string, cambios: CambiosPagoFijo) => void;
   importarDatos: (d: Datos) => Promise<void>;
   reiniciarDemo?: () => void;
   cerrarSesion?: () => void;
+  /** El ojito: montos ocultos en este celular. */
+  montosOcultos: boolean;
+  alternarMontosOcultos: () => void;
   /** Email de la cuenta (modo nube). */
   email?: string;
 }

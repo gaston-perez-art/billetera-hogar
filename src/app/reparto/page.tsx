@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
-import { ingresosDelMes, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
+import { ingresosDelMes, paraGastarPorPersona, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
 import { prepararFoto, useFotos } from "@/lib/fotos";
@@ -16,6 +16,7 @@ export default function Reparto() {
   const { previsto, miembros } = repartoMes(datos, mes);
   const { fijos, variables } = previstoPorTipo(datos, mes);
   const entra = ingresosDelMes(datos, mes);
+  const porPersona = new Map(paraGastarPorPersona(datos, mes).map((p) => [p.miembroId, p]));
   const [a, b] = miembros;
 
   return (
@@ -59,14 +60,14 @@ export default function Reparto() {
 
       <main className="mt-5 space-y-4 px-5">
         {miembros.map((m) => (
-          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} />
+          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} paraGastar={porPersona.get(m.miembroId)?.paraGastar ?? 0} />
         ))}
       </main>
     </>
   );
 }
 
-function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: number; variables: number }) {
+function TarjetaPersona({ m, fijos, variables, paraGastar }: { m: RepartoMiembro; fijos: number; variables: number; paraGastar: number }) {
   const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
   const d = Math.round(m.diferencia);
   const ahorroIdeal = Math.round(m.leQuedaPlan);
@@ -103,8 +104,9 @@ function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: num
           <p className={`mt-1 text-[18px] font-bold tabular-nums ${ahorroIdeal >= 0 ? "text-marca" : "text-pasaste"}`}>{pesos(Math.abs(m.leQuedaPlan), { ceroComoGuion: false })}</p>
         </div>
         <div className="rounded-2xl bg-relleno p-3.5">
-          <p className="text-[13px] text-tenue">Le queda hoy</p>
-          <p className="mt-1 text-[18px] font-bold tabular-nums">{pesos(m.leQuedaReal, { ceroComoGuion: false })}</p>
+          <p className="text-[13px] text-tenue">Le queda</p>
+          <p className={`mt-1 text-[18px] font-bold tabular-nums ${Math.round(m.leQuedaReal) < 0 ? "text-pasaste" : ""}`}>{pesos(m.leQuedaReal, { ceroComoGuion: false })}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-tenue">Para gastar {pesos(paraGastar, { ceroComoGuion: false })}</p>
         </div>
       </div>
 

@@ -6,7 +6,7 @@
 // Los tests de calculos.test.ts sirven como casos para validar esas vistas.
 
 import { mesDe } from "./formato";
-import type { Categoria, Datos, Fecha, Mes, Movimiento, PagoFijo } from "./tipos";
+import type { Categoria, Datos, Fecha, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -16,13 +16,24 @@ export function movimientosDelMes(d: Datos, mes: Mes): Movimiento[] {
     .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn));
 }
 
+/** Si un ingreso vale en el mes: el puntual, en su mes; el que se repite, dentro de su vigencia. */
+export function ingresoVigente(i: Ingreso, mes: Mes): boolean {
+  if (i.mes !== null) return i.mes === mes;
+  return (!i.desde || i.desde <= mes) && (!i.hasta || i.hasta >= mes);
+}
+
 export function ingresosDelMes(d: Datos, mes: Mes, miembroId?: string): number {
   return suma(
     d.ingresos
-      .filter((i) => i.mes === null || i.mes === mes)
+      .filter((i) => ingresoVigente(i, mes))
       .filter((i) => !miembroId || i.miembroId === miembroId)
       .map((i) => i.monto),
   );
+}
+
+/** Dado de baja en ese mes. Sin fecha de baja (datos viejos): de baja en todos los meses. */
+export function deBajaEn(pf: PagoFijo, mes: Mes): boolean {
+  return !pf.activo && (!pf.bajaDesde || pf.bajaDesde <= mes);
 }
 
 export interface PagoDelMes {
@@ -38,7 +49,7 @@ export function pagosDelMes(d: Datos, mes: Mes): PagoDelMes[] {
   return d.pagosFijos
     .flatMap((pf): PagoDelMes[] => {
       const registro = d.pagosMes.find((p) => p.pagoFijoId === pf.id && p.mes === mes);
-      if (!pf.activo && !registro) return [];
+      if (deBajaEn(pf, mes) && !registro) return [];
       return [{
         pagoFijo: pf,
         mes,
@@ -56,18 +67,27 @@ export interface CategoriaDelMes {
   techo: number;
   /** techo − gastado. Positivo = queda (verde), negativo = te pasaste (rojo). */
   queda: number;
+  /** Pagos fijos de esta categoría que faltan pagar en el mes (ya están comprometidos). */
+  pendiente: number;
+  /**
+   * Lo que se puede gastar todavía en la categoría: lo que queda del techo (sin contar lo que
+   * se pasó) menos los pagos fijos que faltan. La suma de todas = "te queda para gastar" de Inicio.
+   */
+  libre: number;
 }
 
 /** En qué se va. El techo de Deuda = techo base + cuotas fijas marcadas como deuda en el mes. */
 export function categoriasDelMes(d: Datos, mes: Mes): CategoriaDelMes[] {
   const movs = movimientosDelMes(d, mes);
-  const cuotasDeuda = suma(pagosDelMes(d, mes).filter((p) => p.pagoFijo.esDeuda).map((p) => p.monto));
+  const pagos = pagosDelMes(d, mes);
+  const cuotasDeuda = suma(pagos.filter((p) => p.pagoFijo.esDeuda).map((p) => p.monto));
   return [...d.categorias]
     .sort((a, b) => a.orden - b.orden)
     .map((categoria) => {
       const gastado = suma(movs.filter((m) => m.categoriaId === categoria.id).map((m) => m.monto));
       const techo = categoria.techo + (categoria.nombre === "Deuda" ? cuotasDeuda : 0);
-      return { categoria, gastado, techo, queda: techo - gastado };
+      const pendiente = suma(pagos.filter((p) => !p.pagado && p.pagoFijo.categoriaId === categoria.id).map((p) => p.monto));
+      return { categoria, gastado, techo, queda: techo - gastado, pendiente, libre: Math.max(techo - gastado, 0) - pendiente };
     });
 }
 
@@ -161,6 +181,8 @@ export function totalSantino(d: Datos, mes: Mes): number {
 export interface PlanMes {
   entra: number;
   gastado: number;
+  /** Saldo: la plata que tienen, entre los dos. entra − gastado. */
+  saldo: number;
   /** Pagos fijos que faltan este mes. */
   faltan: number;
   /** Lo ideal para ahorrar: entra − gasto previsto. Negativo = el presupuesto supera lo que entra. */
@@ -179,23 +201,64 @@ export function planMes(d: Datos, mes: Mes): PlanMes {
   const { entra, gastado, faltan, teQueda } = resumenMes(d, mes);
   const ahorroIdeal = entra - gastoPrevisto(d, mes);
   const paraAhorrar = Math.max(ahorroIdeal, 0);
-  return { entra, gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
+  return { entra, gastado, saldo: entra - gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
 }
 
 /**
- * "Te quedaba" al cierre de cada día con gastos del mes, para la actividad de Inicio.
- * Parte del "te queda" de hoy y le devuelve lo que se gastó después de ese día.
- * Los gastos que salen de un pago fijo no se devuelven: ese día ya contaban como "por pagar".
+ * Saldo al cierre de cada día con gastos del mes: lo que entró en el mes menos lo gastado
+ * hasta ese día inclusive. El del último día es el saldo de la tarjeta de Inicio.
  */
-export function quedabaPorDia(d: Datos, mes: Mes): Map<Fecha, number> {
-  const { teQueda } = resumenMes(d, mes);
-  const deFijos = new Set(d.pagosMes.filter((p) => p.pagado && p.movimientoId).map((p) => p.movimientoId));
+export function saldoPorDia(d: Datos, mes: Mes): Map<Fecha, number> {
+  const entra = ingresosDelMes(d, mes);
   const movs = movimientosDelMes(d, mes);
   const fechas = [...new Set(movs.map((m) => m.fecha))].sort();
   const resultado = new Map<Fecha, number>();
   for (const fecha of fechas) {
-    const despues = suma(movs.filter((m) => m.fecha > fecha && !deFijos.has(m.id)).map((m) => m.monto));
-    resultado.set(fecha, teQueda + despues);
+    resultado.set(fecha, entra - suma(movs.filter((m) => m.fecha <= fecha).map((m) => m.monto)));
   }
   return resultado;
+}
+
+export interface ParaGastarPersona {
+  miembroId: string;
+  nombre: string;
+  /** Lo que le entra en el mes. */
+  ingresa: number;
+  proporcion: number;
+  /** Lo que ya puso (gastos cargados a su nombre). */
+  puso: number;
+  /** Su saldo: lo que le entró menos lo que ya puso. Los dos suman el saldo de Inicio. */
+  saldo: number;
+  /** Su parte de los pagos fijos que faltan y del ahorro, según lo que gana. */
+  parteFaltan: number;
+  parteAhorro: number;
+  /** ingresa − puso − su parte de los pagos que faltan − su parte del ahorro. Suman el número de Inicio. */
+  paraGastar: number;
+}
+
+/**
+ * "Te queda para gastar" de cada uno. Es la misma cuenta de Inicio, persona por persona:
+ * lo que le entra, menos lo que ya puso, menos su parte (por ingreso) de lo que falta pagar y del ahorro.
+ */
+export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
+  const plan = planMes(d, mes);
+  const movs = movimientosDelMes(d, mes);
+  return d.miembros.map((m) => {
+    const ingresa = ingresosDelMes(d, mes, m.id);
+    const proporcion = plan.entra > 0 ? ingresa / plan.entra : 1 / d.miembros.length;
+    const puso = suma(movs.filter((mv) => mv.pagoPor === m.id).map((mv) => mv.monto));
+    const parteFaltan = plan.faltan * proporcion;
+    const parteAhorro = plan.paraAhorrar * proporcion;
+    return {
+      miembroId: m.id,
+      nombre: m.nombre,
+      ingresa,
+      proporcion,
+      puso,
+      saldo: ingresa - puso,
+      parteFaltan,
+      parteAhorro,
+      paraGastar: ingresa - puso - parteFaltan - parteAhorro,
+    };
+  });
 }

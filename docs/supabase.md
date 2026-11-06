@@ -13,6 +13,7 @@ En **SQL Editor**, correr en orden:
 
 1. `supabase/migrations/0001_init.sql`
 2. `supabase/migrations/0002_app.sql`
+3. `supabase/migrations/0003_vigencias.sql`
 
 ## 3. Cuentas
 
