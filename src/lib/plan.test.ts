@@ -28,18 +28,29 @@ function base(): Datos {
 }
 
 describe("plan del mes", () => {
-  it("ideal para ahorrar = entra − previsto; pueden gastar = lo que falta de los techos menos fijos pendientes", () => {
+  it("para gastar = entra − gastado − pagos que faltan − para ahorrar", () => {
     const d = base();
     expect(resumenMes(d, MES).teQueda).toBe(820);
-    // previsto: súper 100 + chicos 50 + deuda 80 = 230
-    expect(planMes(d, MES)).toEqual({ ahorroIdeal: 770, puedenGastar: 50 });
+    // previsto: súper 100 + chicos 50 + deuda 80 = 230 → ahorro ideal 770
+    const p = planMes(d, MES);
+    expect(p).toMatchObject({ entra: 1000, gastado: 50, faltan: 130, ahorroIdeal: 770, paraAhorrar: 770, paraGastar: 50 });
+    expect(p.entra - p.gastado - p.faltan - p.paraAhorrar).toBe(p.paraGastar);
+  });
+
+  it("si el presupuesto supera lo que entra, no se aparta ahorro y la cuenta sigue cerrando", () => {
+    const d = base();
+    d.ingresos[0].monto = 200;
+    const p = planMes(d, MES);
+    expect(p.ahorroIdeal).toBe(-30);
+    expect(p.paraAhorrar).toBe(0);
+    expect(p.paraGastar).toBe(200 - 50 - 130);
   });
 
   it("pasarse de un techo sale del ahorro, no de lo que queda en las otras categorías", () => {
     const d = base();
     d.movimientos.push({ id: "c", fecha: "2026-03-06", monto: 200, categoriaId: "chicos", detalle: "", pagoPor: "g", creadoEn: "x" });
     // chicos se pasó 150: el ahorro baja de 770 a 620; en súper sigue sin quedar nada libre.
-    expect(planMes(d, MES)).toEqual({ ahorroIdeal: 620, puedenGastar: 0 });
+    expect(planMes(d, MES)).toMatchObject({ ahorroIdeal: 620, paraGastar: 0 });
   });
 });
 

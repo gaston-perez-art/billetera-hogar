@@ -159,19 +159,27 @@ export function totalSantino(d: Datos, mes: Mes): number {
 }
 
 export interface PlanMes {
+  entra: number;
+  gastado: number;
+  /** Pagos fijos que faltan este mes. */
+  faltan: number;
   /** Lo ideal para ahorrar: entra − gasto previsto. Negativo = el presupuesto supera lo que entra. */
   ahorroIdeal: number;
+  /** Lo que se aparta para ahorrar: el ahorro ideal, o 0 si el presupuesto supera lo que entra. */
+  paraAhorrar: number;
   /**
-   * Lo que todavía se puede gastar sin pasarse de los techos: te queda − ahorro ideal
-   * (= lo que falta usar de cada techo, menos los pagos fijos que faltan). Negativo = se pasaron.
+   * El número de Inicio: entra − gastado − pagos que faltan − para ahorrar.
+   * Es lo que se puede gastar sin tocar el ahorro. Negativo = ya se comieron parte del ahorro.
    */
-  puedenGastar: number;
+  paraGastar: number;
 }
 
+/** La cuenta de Inicio, de arriba hacia abajo: entra, menos gastado, menos pagos que faltan, menos ahorro. */
 export function planMes(d: Datos, mes: Mes): PlanMes {
-  const { entra, teQueda } = resumenMes(d, mes);
+  const { entra, gastado, faltan, teQueda } = resumenMes(d, mes);
   const ahorroIdeal = entra - gastoPrevisto(d, mes);
-  return { ahorroIdeal, puedenGastar: teQueda - ahorroIdeal };
+  const paraAhorrar = Math.max(ahorroIdeal, 0);
+  return { entra, gastado, faltan, ahorroIdeal, paraAhorrar, paraGastar: teQueda - paraAhorrar };
 }
 
 /**

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import {
   Boton,
-  Cifras,
   Dato,
   Encabezado,
   estiloBoton,
@@ -15,10 +14,9 @@ import {
   Hoja,
   MontoGrande,
   MontoMovimiento,
-  Resumen,
 } from "@/components/ui";
 import { SaldoFijo } from "@/components/SaldoFijo";
-import { movimientosDelMes, pagosDelMes, planMes, quedabaPorDia, resumenMes } from "@/lib/calculos";
+import { movimientosDelMes, pagosDelMes, planMes, quedabaPorDia, type PlanMes } from "@/lib/calculos";
 import { cuandoVence, diasEntre, etiquetaDia, fechaCorta, fechaEnMes, hoy, mesCorto, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import type { Movimiento } from "@/lib/tipos";
@@ -26,7 +24,6 @@ import type { Movimiento } from "@/lib/tipos";
 export default function Inicio() {
   const { datos, mes, usuarioId, borrarMovimiento } = useBilletera();
   const [abierto, setAbierto] = useState<Movimiento | null>(null);
-  const r = resumenMes(datos, mes);
   const plan = planMes(datos, mes);
   const quedaba = quedabaPorDia(datos, mes);
   const fechaHoy = hoy();
@@ -47,17 +44,8 @@ export default function Inicio() {
   return (
     <>
       <Encabezado />
-      <SaldoFijo monto={r.teQueda} etiqueta="Te queda este mes">
-        <Resumen etiqueta="Te queda este mes" monto={r.teQueda} tono="queda">
-          <ComoVienen entra={r.entra} ahorroIdeal={plan.ahorroIdeal} puedenGastar={plan.puedenGastar} />
-          <Cifras
-            items={[
-              { etiqueta: "Entra", valor: pesos(r.entra) },
-              { etiqueta: "Gastado", valor: pesos(r.gastado) },
-              { etiqueta: "Por pagar", valor: pesos(r.faltan) },
-            ]}
-          />
-        </Resumen>
+      <SaldoFijo monto={plan.paraGastar} etiqueta="Te queda para gastar">
+        <CuentaDelMes plan={plan} />
       </SaldoFijo>
 
       <div className="mt-5 grid grid-cols-2 gap-3 px-5">
@@ -108,7 +96,9 @@ export default function Inicio() {
         ) : (
           <Grupo titulo="Tu actividad">
             {[...porDia].map(([fecha, lista]) => {
-              const saldo = quedaba.get(fecha);
+              // Mismo número que la tarjeta: lo que quedaba ese día, sin lo apartado para ahorrar.
+              const quedabaEseDia = quedaba.get(fecha);
+              const saldo = quedabaEseDia === undefined ? undefined : quedabaEseDia - plan.paraAhorrar;
               return (
                 <div key={fecha}>
                   <h3 className="flex items-baseline justify-between gap-3 px-5 pb-1 pt-4 text-[14px]">
@@ -201,24 +191,68 @@ export default function Inicio() {
 }
 
 /**
- * La respuesta a "¿vamos bien?", en una frase y sin gráficos: cuánto pueden gastar todavía
- * sin pasarse de los techos y cuánto les queda para ahorrar.
+ * La tarjeta de Inicio: un solo número, "te queda para gastar", y debajo la cuenta que lo
+ * explica de arriba hacia abajo. La barra muestra en qué se reparte lo que entró.
  */
-function ComoVienen({ entra, ahorroIdeal, puedenGastar }: { entra: number; ahorroIdeal: number; puedenGastar: number }) {
-  const fuerte = (n: number) => <strong className="font-semibold text-texto">{pesos(Math.abs(n), { ceroComoGuion: false })}</strong>;
-  let frase: React.ReactNode;
-  if (entra <= 0) {
-    frase = <>Cargá los ingresos en Ajustes para ver cómo vienen.</>;
-  } else if (ahorroIdeal < 0) {
-    frase = <>Este mes el presupuesto supera lo que entra por {fuerte(ahorroIdeal)}. Conviene bajar algún techo.</>;
-  } else if (puedenGastar < 0) {
-    frase = <>Los pagos que faltan superan lo que queda de los techos por {fuerte(puedenGastar)}. Eso sale del ahorro.</>;
-  } else {
-    frase = (
-      <>
-        Pueden gastar {fuerte(puedenGastar)} más sin pasarse, y ahorrar {fuerte(ahorroIdeal)}.
-      </>
-    );
-  }
-  return <p className="mb-4 rounded-2xl bg-relleno px-4 py-3 text-[14px] leading-5 text-tenue">{frase}</p>;
+function CuentaDelMes({ plan }: { plan: PlanMes }) {
+  const { entra, gastado, faltan, paraAhorrar, ahorroIdeal, paraGastar } = plan;
+  const pasados = Math.round(paraGastar) < 0;
+  const partes = [
+    { etiqueta: "Ya gastaron", monto: gastado, color: "bg-tenue" },
+    { etiqueta: "Pagos que faltan", monto: faltan, color: "bg-sutil" },
+    { etiqueta: "Para ahorrar", monto: paraAhorrar, color: "bg-marca/40" },
+    { etiqueta: "Te queda para gastar", monto: Math.max(paraGastar, 0), color: "bg-marca" },
+  ];
+  const total = partes.reduce((a, p) => a + Math.max(p.monto, 0), 0) || 1;
+
+  return (
+    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta px-5 pb-5 pt-6 shadow-tarjeta ring-1 ring-linea">
+      <div className="text-center">
+        <MontoGrande monto={paraGastar} className={`text-[40px] ${pasados ? "text-pasaste" : ""}`} />
+        <p className="mt-2 text-[14px] text-tenue">{pasados ? "Se pasaron: esto sale de lo que era para ahorrar" : "Te queda para gastar este mes"}</p>
+      </div>
+
+      {entra <= 0 ? (
+        <p className="mt-5 rounded-2xl bg-relleno px-4 py-3 text-center text-[14px] text-tenue">Cargá los ingresos en Ajustes para ver la cuenta del mes.</p>
+      ) : (
+        <>
+          <div className="mt-5 flex h-2.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label="En qué se reparte lo que entró este mes">
+            {partes
+              .filter((p) => p.monto > 0)
+              .map((p) => (
+                <span key={p.etiqueta} className={`${p.color} transition-[flex-grow] duration-500`} style={{ flexGrow: p.monto / total }} />
+              ))}
+          </div>
+
+          <dl className="mt-4 space-y-2.5 text-[15px] tabular-nums">
+            <div className="flex items-baseline justify-between">
+              <dt className="text-tenue">Entró este mes</dt>
+              <dd className="font-semibold">{pesos(entra, { ceroComoGuion: false })}</dd>
+            </div>
+            {partes.slice(0, 3).map((p) => (
+              <div key={p.etiqueta} className="flex items-baseline justify-between">
+                <dt className="flex items-center gap-2 text-tenue">
+                  <span className={`size-2.5 rounded-full ${p.color}`} />
+                  {p.etiqueta}
+                </dt>
+                <dd>
+                  - {pesos(p.monto, { ceroComoGuion: false })}
+                </dd>
+              </div>
+            ))}
+            <div className="flex items-baseline justify-between border-t border-linea pt-2.5">
+              <dt className="flex items-center gap-2 font-semibold">
+                <span className={`size-2.5 rounded-full ${pasados ? "bg-pasaste" : "bg-marca"}`} />
+                Te queda para gastar
+              </dt>
+              <dd className={`font-bold ${pasados ? "text-pasaste" : ""}`}>{pesos(paraGastar, { ceroComoGuion: false })}</dd>
+            </div>
+          </dl>
+          {ahorroIdeal < 0 && (
+            <p className="mt-3 text-[13px] leading-5 text-pasaste">Este mes los techos suman {pesos(-ahorroIdeal)} más de lo que entra: no queda nada para ahorrar.</p>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
