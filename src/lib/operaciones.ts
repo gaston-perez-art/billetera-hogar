@@ -68,6 +68,12 @@ export function desmarcarPagado(d: Datos, pagoFijoId: string, mes: Mes): Datos {
   return borrarMovimiento(d, registro.movimientoId);
 }
 
+/** Categoría nueva al final de la lista, sin techo. */
+export function agregarCategoria(d: Datos, id: string, nombre: string): Datos {
+  const orden = Math.max(-1, ...d.categorias.map((c) => c.orden)) + 1;
+  return { ...d, categorias: [...d.categorias, { id, nombre, orden, techo: 0 }] };
+}
+
 export function actualizarTecho(d: Datos, categoriaId: string, techo: number): Datos {
   return { ...d, categorias: d.categorias.map((c) => (c.id === categoriaId ? { ...c, techo } : c)) };
 }

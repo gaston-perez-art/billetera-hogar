@@ -185,6 +185,16 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
           () => sb.rpc("desmarcar_pagado", { p_pago_fijo: pagoFijoId, p_mes: mesPago }),
         ),
 
+      agregarCategoria: (nombre) => {
+        const id = op.nuevoId();
+        const orden = Math.max(-1, ...datos.categorias.map((c) => c.orden)) + 1;
+        ejecutar(
+          (d) => op.agregarCategoria(d, id, nombre),
+          () => sb.from("categorias").insert({ id, hogar_id: hogarId, nombre, orden }),
+        );
+        return id;
+      },
+
       // El techo se guarda en el mes elegido y sigue valiendo en los meses siguientes.
       actualizarTecho: (categoriaId, techo) =>
         ejecutar(

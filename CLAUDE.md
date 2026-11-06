@@ -26,13 +26,18 @@ Leer antes de tocar lógica:
 
 - Limpio, claro y moderno. Referencia principal: la interfaz nueva de MODO (fondo blanco, saldo centrado en tarjeta, botones pastilla verdes, actividad sin cajas). También ARQ, Mercado Pago, Ualá.
 - Sistema visual (`src/app/globals.css`, `src/components/ui.tsx`, `src/components/Iconos.tsx`). Paleta cerrada: fondo blanco, tres tintas (texto, tenue, sutil), un gris de relleno, verde de marca y su versión suave. Verde/rojo de montos solo como semáforo. No agregar colores fuera de los tokens.
-- Cada pantalla: encabezado con saludo y ajustes, chip del mes, y el número principal en `Resumen` (tarjeta blanca, centrado, leyenda abajo, cifras chicas debajo). Listas con `Grupo` + `FilaLista`, filas directas sobre blanco. Íconos de categoría en círculo verde suave. Botones pastilla (`Boton` / `estiloBoton`). Montos de movimientos con `MontoMovimiento` (signo en color).
+- Cada pantalla: encabezado con saludo y ajustes, chip del mes, y el número principal en `Resumen` (tarjeta blanca, centrado, leyenda abajo, cifras chicas debajo). Listas con `Grupo` + `FilaLista`, filas directas sobre blanco. Íconos de categoría en círculo con borde fino y sin relleno, como MP (`IconoCategoria`); fechas de pagos igual (`Fecha`, roja si venció). Botones pastilla (`Boton` / `estiloBoton`).
+- **Un solo gráfico por pantalla**, en la tarjeta de arriba. Las listas no llevan barras: dicen el estado con palabras ("Usaron el 31%", "Ojo, ya usaron el 85%", "Te pasaste" en rojo).
+- Montos: `MontoMovimiento` como MP, "- $14.900" en el color del texto y "+ $900.000" en verde solo si entra. `MontoGrande` con el "$" chico y arriba. Plata puesta en cero se muestra "$0", no "–".
+- Montos editables con `CampoMonto`: formato en vivo "5.000.000,32". Editar en Ajustes = tocar la fila y abrir `Hoja` desde abajo. Secciones largas con `Seccion` (cerrada, con su total a la vista).
+- Transiciones cortas (≤ 250 ms) que no bloquean: pantalla que entra (`app/template.tsx`), pasos de Cargar que deslizan, hojas que suben y bajan, tarjeta de Reparto que gira. Todas se apagan con "reducir movimiento". Sombras solo en lo que flota (tarjeta principal, hojas).
+- Pensar en Jime: tiene que poder usarla todos los días sin saber Excel. Frases en criollo antes que gráficos; Inicio responde "¿cuánto podemos gastar?" y "¿vamos bien?" (`planMes`).
 - Modo oscuro: los mismos tokens con otros valores en `globals.css` (sigue al celular; Ajustes → Apariencia lo fija en claro u oscuro con `data-tema` en `<html>`). Nunca usar colores fijos como `text-white` o `#fff` en componentes: sobre el verde de marca va `text-sobre-marca`.
 - Cada pantalla tiene identidad: Inicio saluda y el saldo queda fijo arriba al bajar (`SaldoFijo`); el resto lleva título grande y su propio gráfico (Pagos: línea del mes; Reparto: las dos fotos con la división).
 - Tacto: todo botón se hunde apenas al presionarlo y las filas se oscurecen (`globals.css`); `Tactil` vibra corto al tocar (Android con `navigator.vibrate`, iPhone con iOS 18+ vía interruptor nativo). No agregar animaciones decorativas.
 - Fotos de perfil: se cargan en Reparto, se guardan achicadas solo en el navegador (`src/lib/fotos.ts`). Nunca al repo.
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
-- Verde = lo que queda; rojo = te pasaste. Ceros como "–".
+- Verde = lo que queda; rojo = te pasaste. Ceros como "–", salvo plata puesta o saldos ("$0").
 - Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.
 - Nada de métricas que no sirvan (se sacó "gasto por día" de la planilla por inútil).
 
@@ -40,6 +45,8 @@ Leer antes de tocar lógica:
 
 - Te queda de verdad = entra − gastado − pagos fijos pendientes.
 - Te queda por categoría = techo − gastado.
+- Ideal para ahorrar = entra − gasto previsto. Pueden gastar = te queda − ideal para ahorrar (lo que falta usar de los techos menos los fijos pendientes). Pasarse en una categoría sale del ahorro.
+- "Te quedaba" de cada día en Inicio = te queda de hoy + lo gastado después de ese día (sin los gastos de pagos fijos, que ese día ya contaban como pendientes). Hoy dice "Te queda".
 - Techo de Deuda del mes = suma de cuotas fijas marcadas `es_deuda`.
 - Alquiler + AySA + TM se muestran como un solo pago.
 - Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).

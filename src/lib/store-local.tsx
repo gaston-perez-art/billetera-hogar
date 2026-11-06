@@ -79,6 +79,11 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
       marcarPagado: (pagoFijoId, mesPago) =>
         cambiar((d) => op.marcarPagado(d, pagoFijoId, mesPago, usuarioId, op.nuevoId())),
       desmarcarPagado: (pagoFijoId, mesPago) => cambiar((d) => op.desmarcarPagado(d, pagoFijoId, mesPago)),
+      agregarCategoria: (nombre) => {
+        const id = op.nuevoId();
+        cambiar((d) => op.agregarCategoria(d, id, nombre));
+        return id;
+      },
       actualizarTecho: (categoriaId, techo) => cambiar((d) => op.actualizarTecho(d, categoriaId, techo)),
       actualizarIngreso: (ingresoId, monto) => cambiar((d) => op.actualizarIngreso(d, ingresoId, monto)),
       actualizarPagoFijo: (pagoFijoId, cambios) => cambiar((d) => op.actualizarPagoFijo(d, pagoFijoId, cambios)),

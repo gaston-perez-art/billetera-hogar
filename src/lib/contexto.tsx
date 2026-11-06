@@ -17,6 +17,8 @@ export interface Billetera {
   borrarMovimiento: (id: string) => void;
   marcarPagado: (pagoFijoId: string, mes: Mes) => void;
   desmarcarPagado: (pagoFijoId: string, mes: Mes) => void;
+  /** Crea una categoría para los dos y devuelve su id (para elegirla al toque). */
+  agregarCategoria: (nombre: string) => string;
   /** En modo nube vale desde el mes elegido en adelante. */
   actualizarTecho: (categoriaId: string, techo: number) => void;
   actualizarIngreso: (ingresoId: string, monto: number) => void;

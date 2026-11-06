@@ -29,21 +29,22 @@ export default function Categorias() {
 
       <main className="mt-6 space-y-6">
         <Grupo titulo="Por categoría">
-          {activas.map(({ categoria, gastado, techo, queda }) => (
-            <div key={categoria.id} className="flex items-center gap-3 px-5 py-3">
-              <IconoCategoria nombre={categoria.nombre} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-[15px] font-medium">{categoria.nombre}</span>
-                  <MontoQueda monto={queda} className="shrink-0 text-[15px] font-semibold" />
+          {activas.map(({ categoria, gastado, techo, queda }) => {
+            const estado = estadoCategoria(gastado, techo);
+            return (
+              <div key={categoria.id} className="flex min-h-16 items-center gap-3 px-5 py-2.5">
+                <IconoCategoria nombre={categoria.nombre} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-medium">{categoria.nombre}</p>
+                  <p className={`mt-0.5 truncate text-[13px] ${estado.alerta ? "font-semibold text-pasaste" : "text-tenue"}`}>{estado.texto}</p>
                 </div>
-                <Barra parte={gastado} total={techo} fina />
-                <p className="mt-1.5 text-[13px] text-tenue tabular-nums">
-                  {techo > 0 ? `${pesos(gastado)} de ${pesos(techo)}` : `${pesos(gastado)}, sin techo`}
-                </p>
+                <div className="shrink-0 text-right">
+                  <p className={`text-[15px] font-semibold tabular-nums ${queda < 0 ? "text-pasaste" : ""}`}>{pesos(Math.abs(queda), { ceroComoGuion: false })}</p>
+                  <p className="mt-0.5 text-[13px] text-tenue">{queda < 0 ? "de más" : "quedan"}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </Grupo>
 
         {vacias.length > 0 && (
@@ -56,13 +57,23 @@ export default function Categorias() {
   );
 }
 
-/** Barra de avance. Tinta mientras alcanza; rojo si se pasa. */
-function Barra({ parte, total, fina = false }: { parte: number; total: number; fina?: boolean }) {
+/** Barra de avance de la tarjeta de arriba (el único gráfico de la pantalla). Rojo si se pasa. */
+function Barra({ parte, total }: { parte: number; total: number }) {
   const pasada = parte > total;
   const avance = total > 0 ? Math.min(parte / total, 1) : parte > 0 ? 1 : 0;
   return (
-    <div className={`overflow-hidden rounded-full bg-relleno ${fina ? "mt-2 h-1" : "h-1.5"}`}>
+    <div className="h-2 overflow-hidden rounded-full bg-relleno">
       <div className={`h-full rounded-full ${pasada ? "bg-pasaste" : "bg-marca"}`} style={{ width: `${avance * 100}%` }} />
     </div>
   );
+}
+
+/** El estado de una categoría con palabras, en lugar de una barra. */
+function estadoCategoria(gastado: number, techo: number): { texto: string; alerta: boolean } {
+  if (techo <= 0) return { texto: `${pesos(gastado)} gastado, sin techo`, alerta: false };
+  if (gastado > techo) return { texto: `Te pasaste del techo de ${pesos(techo)}`, alerta: true };
+  const uso = Math.round((gastado / techo) * 100);
+  if (gastado <= 0) return { texto: `Sin gastos, techo ${pesos(techo)}`, alerta: false };
+  if (uso >= 80) return { texto: `Ojo, ya usaron el ${uso}% de ${pesos(techo)}`, alerta: false };
+  return { texto: `Usaron el ${uso}% de ${pesos(techo)}`, alerta: false };
 }

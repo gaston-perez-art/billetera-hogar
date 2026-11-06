@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { mesDe, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { mesDe, hoy, montoATexto, montoEnVivo, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
 
 /*
  * Piezas compartidas. Reglas:
- * - Fondo blanco. El número principal de cada pantalla va en TarjetaSaldo, centrado.
- * - Listas sin contenedor: filas directas sobre blanco, ícono en círculo verde suave.
+ * - Fondo blanco. El número principal de cada pantalla va en Resumen, centrado.
+ * - Un solo gráfico por pantalla, en Resumen. Las listas no llevan barras: dicen el estado con palabras.
+ * - Listas sin contenedor: filas directas sobre blanco, ícono en círculo con borde fino (como MP).
  * - Botones en forma de pastilla. Verde lleno para la acción principal.
+ * - Signos de montos chicos y en el color del texto: "- $14.900". Verde solo para lo que entra.
  */
 
 /**
@@ -121,16 +123,16 @@ export function Resumen({ etiqueta, monto, tono, children }: { etiqueta: string;
   );
 }
 
-/** Monto grande con el "$" chico. */
+/** Monto grande: el "$" chico y arriba, como en MP; el signo menos fino y chico. */
 export function MontoGrande({ monto, className = "" }: { monto: number; className?: string }) {
   const texto = pesos(monto, { ceroComoGuion: false });
   const negativo = texto.startsWith("-");
   const numero = texto.replace(/^-?\$/, "");
   return (
-    <span className={`inline-flex items-baseline font-medium tracking-[-0.02em] tabular-nums ${className}`}>
-      {negativo && <span>−</span>}
-      <span className="mr-1 text-[0.55em] font-medium tracking-normal">$</span>
-      {numero}
+    <span className={`inline-flex items-start font-semibold tracking-[-0.03em] tabular-nums ${className}`}>
+      {negativo && <span className="mr-[0.08em] mt-[0.22em] text-[0.5em] font-medium leading-none">-</span>}
+      <span className="mr-[0.1em] mt-[0.16em] text-[0.45em] font-medium leading-none tracking-normal text-tenue">$</span>
+      <span className="leading-none">{numero}</span>
     </span>
   );
 }
@@ -245,12 +247,13 @@ export function FilaLista({
   );
 }
 
-/** Monto de un movimiento con el signo en color: − rojo si sale, + verde si entra. */
+/** Monto de un movimiento como en MP: "- $14.900" en el color del texto; "+ $900.000" en verde si entra. */
 export function MontoMovimiento({ monto }: { monto: number }) {
+  const entra = monto < 0;
   return (
-    <span className="tabular-nums">
-      <span className={monto < 0 ? "text-queda" : "text-pasaste"}>{monto < 0 ? "+" : "−"}</span>
-      {pesos(Math.abs(monto))}
+    <span className={`whitespace-nowrap tabular-nums ${entra ? "text-queda" : ""}`}>
+      <span className="font-normal">{entra ? "+" : "-"}&#8239;</span>
+      {pesos(Math.abs(monto), { ceroComoGuion: false })}
     </span>
   );
 }
@@ -262,23 +265,143 @@ export function MontoQueda({ monto, className = "" }: { monto: number; className
   return <span className={`tabular-nums ${color} ${className}`}>{pesos(monto)}</span>;
 }
 
-/** Hoja que sube desde abajo, para detalles y confirmaciones. */
-export function Hoja({ abierta, alCerrar, titulo, children }: { abierta: boolean; alCerrar: () => void; titulo: string; children: React.ReactNode }) {
+/**
+ * Hoja que sube desde abajo, para detalles y para editar. Baja suave al cerrarse.
+ * Con `mostrarTitulo`, el título va arriba de la hoja.
+ */
+export function Hoja({
+  abierta,
+  alCerrar,
+  titulo,
+  mostrarTitulo = false,
+  children,
+}: {
+  abierta: boolean;
+  alCerrar: () => void;
+  titulo: string;
+  mostrarTitulo?: boolean;
+  children: React.ReactNode;
+}) {
+  const [montada, setMontada] = useState(abierta);
+  const [saliendo, setSaliendo] = useState(false);
+  // Guarda el último contenido para que no desaparezca mientras la hoja baja.
+  const ultimo = useRef(children);
+  if (abierta) ultimo.current = children;
+
+  useEffect(() => {
+    if (abierta) {
+      setMontada(true);
+      setSaliendo(false);
+      return;
+    }
+    if (!montada) return;
+    setSaliendo(true);
+    const t = setTimeout(() => {
+      setMontada(false);
+      setSaliendo(false);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [abierta, montada]);
+
   useEffect(() => {
     if (!abierta) return;
     const tecla = (e: KeyboardEvent) => e.key === "Escape" && alCerrar();
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
   }, [abierta, alCerrar]);
-  if (!abierta) return null;
+
+  if (!montada) return null;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
-      <button className="velo-entra absolute inset-0 bg-black/40" aria-label="Cerrar" onClick={alCerrar} />
-      <div className="hoja-entra relative w-full max-w-md rounded-t-[28px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5">
-        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-linea" />
-        {children}
+      <button className={`absolute inset-0 bg-black/40 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" onClick={alCerrar} />
+      <div
+        className={`relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5 shadow-hoja ${
+          saliendo ? "hoja-sale" : "hoja-entra"
+        }`}
+      >
+        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-linea" />
+        {mostrarTitulo && <h2 className="mb-4 text-[20px] font-bold tracking-[-0.01em]">{titulo}</h2>}
+        {abierta ? children : ultimo.current}
       </div>
     </div>
+  );
+}
+
+/**
+ * Campo de monto grande, con formato mientras se escribe: "5.000.000,32".
+ * El "$" va chico y arriba, como en MP.
+ */
+export function CampoMonto({
+  valor,
+  onCambio,
+  autoFocus = false,
+  etiqueta = "Monto",
+  onEnter,
+}: {
+  valor: number;
+  onCambio: (v: number) => void;
+  autoFocus?: boolean;
+  etiqueta?: string;
+  onEnter?: () => void;
+}) {
+  const [texto, setTexto] = useState(() => montoATexto(valor));
+  return (
+    <label className="flex items-start justify-center text-[48px] font-semibold leading-none tracking-[-0.03em]">
+      <span className="mr-1.5 mt-[0.2em] text-[22px] font-medium tracking-normal text-tenue">$</span>
+      <input
+        autoFocus={autoFocus}
+        inputMode="decimal"
+        enterKeyHint="done"
+        value={texto}
+        onChange={(e) => {
+          const r = montoEnVivo(e.target.value, texto);
+          setTexto(r.texto);
+          onCambio(r.valor);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && onEnter) {
+            e.preventDefault();
+            onEnter();
+          }
+        }}
+        placeholder="0"
+        aria-label={etiqueta}
+        size={Math.max(texto.length, 1)}
+        className="min-w-[1ch] max-w-full bg-transparent text-left tabular-nums caret-marca outline-none placeholder:text-sutil"
+      />
+    </label>
+  );
+}
+
+/** Sección que se abre y se cierra, con su resumen a la vista cuando está cerrada. */
+export function Seccion({
+  titulo,
+  resumen,
+  abierta,
+  alTocar,
+  children,
+}: {
+  titulo: string;
+  resumen: React.ReactNode;
+  abierta: boolean;
+  alTocar: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mx-5 overflow-hidden rounded-3xl bg-tarjeta shadow-tarjeta ring-1 ring-linea">
+      <button onClick={alTocar} aria-expanded={abierta} className="fila flex w-full items-center gap-3 px-5 py-4 text-left">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[17px] font-semibold">{titulo}</span>
+          <span className="mt-0.5 block text-[14px] text-tenue tabular-nums">{resumen}</span>
+        </span>
+        <Icono trazo={ICONOS.adelante} className={`size-5 shrink-0 text-tenue transition-transform duration-200 ${abierta ? "rotate-90" : ""}`} />
+      </button>
+      <div className={`grid transition-[grid-template-rows] duration-250 ease-out motion-reduce:transition-none ${abierta ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-linea pb-2 pt-1">{children}</div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -292,12 +415,16 @@ export function Dato({ etiqueta, valor }: { etiqueta: string; valor: React.React
   );
 }
 
-/** Día del pago en el lugar del ícono. */
-export function Fecha({ dia, mes }: { dia: number; mes: string }) {
+/** Día del pago en el lugar del ícono: texto simple dentro de un círculo con borde fino. Rojo si venció. */
+export function Fecha({ dia, mes, vencida = false }: { dia: number; mes: string; vencida?: boolean }) {
   return (
-    <span className="flex size-11 shrink-0 flex-col items-center justify-center rounded-full bg-marca-suave leading-none text-marca">
+    <span
+      className={`flex size-11 shrink-0 flex-col items-center justify-center rounded-full border-[1.5px] leading-none ${
+        vencida ? "border-pasaste/40 text-pasaste" : "border-linea text-texto"
+      }`}
+    >
       <span className="text-[15px] font-semibold tabular-nums">{dia}</span>
-      <span className="mt-0.5 text-[10px] font-medium">{mes}</span>
+      <span className={`mt-0.5 text-[10px] font-medium ${vencida ? "" : "text-tenue"}`}>{mes}</span>
     </span>
   );
 }
