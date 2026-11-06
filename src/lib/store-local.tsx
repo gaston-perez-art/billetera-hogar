@@ -85,7 +85,8 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
         return id;
       },
       actualizarTecho: (categoriaId, techo) => cambiar((d) => op.actualizarTecho(d, categoriaId, techo)),
-      actualizarIngreso: (ingresoId, monto) => cambiar((d) => op.actualizarIngreso(d, ingresoId, monto)),
+      actualizarIngreso: (ingresoId, monto) =>
+        cambiar((d) => op.aplicarCambioIngreso(d, op.planCambioIngreso(d, ingresoId, monto, mes, op.nuevoId()))),
       actualizarPagoFijo: (pagoFijoId, cambios) => cambiar((d) => op.actualizarPagoFijo(d, pagoFijoId, cambios)),
       reiniciarDemo: () => cambiar(() => datosDemo()),
       importarDatos: async (nuevos) => {

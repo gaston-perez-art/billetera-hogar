@@ -26,6 +26,10 @@ export interface Ingreso {
   monto: number;
   /** `null` = se repite todos los meses (sueldo). Con mes = extra puntual (aguinaldo). */
   mes: Mes | null;
+  /** Solo para los que se repiten: primer mes en que vale. Sin valor = desde siempre. */
+  desde?: Mes | null;
+  /** Solo para los que se repiten: último mes en que vale. Sin valor = sin fin. */
+  hasta?: Mes | null;
 }
 
 export interface Movimiento {
@@ -49,6 +53,8 @@ export interface PagoFijo {
   /** Suma al techo de Deuda del mes. */
   esDeuda: boolean;
   activo: boolean;
+  /** Mes desde el que está dado de baja. Antes de ese mes sigue apareciendo. */
+  bajaDesde?: Mes | null;
 }
 
 export interface PagoMes {

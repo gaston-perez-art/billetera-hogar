@@ -8,7 +8,15 @@ export interface Filas {
   miembros: { id: string; nombre: string; user_id: string }[];
   categorias: { id: string; nombre: string; orden: number }[];
   techos: { id: string; categoria_id: string; mes: string; monto: number | string }[];
-  ingresos: { id: string; miembro_id: string; concepto: string; monto: number | string; mes: string | null }[];
+  ingresos: {
+    id: string;
+    miembro_id: string;
+    concepto: string;
+    monto: number | string;
+    mes: string | null;
+    desde?: string | null;
+    hasta?: string | null;
+  }[];
   movimientos: {
     id: string;
     fecha: string;
@@ -27,6 +35,7 @@ export interface Filas {
     monto: number | string;
     es_deuda: boolean;
     activo: boolean;
+    baja_desde?: string | null;
   }[];
   pagos_mes: {
     id: string;
@@ -68,6 +77,8 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       concepto: i.concepto,
       monto: num(i.monto),
       mes: i.mes,
+      desde: i.desde ?? null,
+      hasta: i.hasta ?? null,
     })),
     movimientos: f.movimientos.map((m) => ({
       id: m.id,
@@ -87,6 +98,7 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       monto: num(p.monto),
       esDeuda: p.es_deuda,
       activo: p.activo,
+      bajaDesde: p.baja_desde ?? null,
     })),
     pagosMes: f.pagos_mes.map((p) => ({
       id: p.id,

@@ -205,13 +205,41 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               .upsert({ hogar_id: hogarId, categoria_id: categoriaId, mes, monto: techo }, { onConflict: "categoria_id,mes" }),
         ),
 
-      actualizarIngreso: (ingresoId, monto) =>
-        ejecutar((d) => op.actualizarIngreso(d, ingresoId, monto), () => sb.from("ingresos").update({ monto }).eq("id", ingresoId)),
+      // Vale desde el mes elegido: si el ingreso venía de antes, se cierra y se abre uno nuevo.
+      actualizarIngreso: (ingresoId, monto) => {
+        const cambio = op.planCambioIngreso(datos, ingresoId, monto, mes, op.nuevoId());
+        if (!cambio) return;
+        ejecutar(
+          (d) => op.aplicarCambioIngreso(d, cambio),
+          async () => {
+            if (cambio.tipo === "monto") return sb.from("ingresos").update({ monto: cambio.monto }).eq("id", cambio.id);
+            const n = cambio.nuevo;
+            const cerrar = await sb.from("ingresos").update({ hasta: cambio.cerrar.hasta }).eq("id", cambio.cerrar.id);
+            if (cerrar.error) return cerrar;
+            return sb.from("ingresos").insert({
+              id: n.id,
+              hogar_id: hogarId,
+              miembro_id: n.miembroId,
+              concepto: n.concepto,
+              monto: n.monto,
+              mes: null,
+              desde: n.desde,
+              hasta: n.hasta,
+            });
+          },
+        );
+      },
 
       actualizarPagoFijo: (pagoFijoId, cambios) =>
         ejecutar(
           (d) => op.actualizarPagoFijo(d, pagoFijoId, cambios),
-          () => sb.from("pagos_fijos").update(cambios).eq("id", pagoFijoId),
+          () => {
+            const { bajaDesde, ...resto } = cambios;
+            return sb
+              .from("pagos_fijos")
+              .update({ ...resto, ...(bajaDesde !== undefined ? { baja_desde: bajaDesde } : {}) })
+              .eq("id", pagoFijoId);
+          },
         ),
 
       // Reemplaza todo lo del hogar. Si falla, no se borra nada (es una sola transacción).
