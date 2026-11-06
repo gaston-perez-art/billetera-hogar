@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // El POC no tiene backend: se exporta como sitio estático.
   output: "export",
   basePath,
+  // Con basePath, Next pide los datos de Inicio en "/billetera-hogar.txt", que en GitHub Pages
+  // queda fuera del sitio (404) y fuerza a recargar toda la app. Con barra final los pide en
+  // "/billetera-hogar/index.txt", que sí existe.
+  trailingSlash: true,
   images: { unoptimized: true },
 };
 
