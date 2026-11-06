@@ -45,7 +45,7 @@ export default function Cargar() {
   }
 
   return (
-    <main className="fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto bg-tarjeta px-5 pt-[env(safe-area-inset-top)]">
+    <main className="fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto bg-fondo px-5 pt-[env(safe-area-inset-top)]">
       <div className="mt-2 flex h-14 items-center justify-between">
         <button onClick={atras} className="grid size-10 place-items-center rounded-full active:bg-relleno" aria-label="Atrás">
           <Icono trazo={ICONOS.atras} className="size-[22px]" />
@@ -153,7 +153,7 @@ export default function Cargar() {
                     role="radio"
                     aria-checked={pagoPor === m.id}
                     onClick={() => setPagoPor(m.id)}
-                    className="rounded-full px-3.5 py-1.5 text-[14px] font-medium text-tenue aria-checked:bg-tarjeta aria-checked:text-texto aria-checked:shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    className="rounded-full px-3.5 py-1.5 text-[14px] font-medium text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca"
                   >
                     {m.nombre}
                   </button>

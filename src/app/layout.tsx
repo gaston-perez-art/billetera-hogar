@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Navegacion } from "@/components/Navegacion";
 import { ProveedorBilletera } from "@/lib/store";
+import { SCRIPT_TEMA } from "@/lib/tema";
 import "./globals.css";
 
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1110" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -21,7 +25,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-AR">
+    <html lang="es-AR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
       <body className={`${manrope.variable} font-sans antialiased`}>
         <ProveedorBilletera>
           <div className="mx-auto min-h-dvh max-w-md pb-24">{children}</div>

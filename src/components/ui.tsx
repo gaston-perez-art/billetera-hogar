@@ -70,14 +70,14 @@ function SelectorMes() {
 }
 
 export function Avatar({ nombre }: { nombre: string }) {
-  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-white">{nombre.charAt(0)}</span>;
+  return <span className="grid size-8 place-items-center rounded-full bg-marca text-[13px] font-semibold text-sobre-marca">{nombre.charAt(0)}</span>;
 }
 
 /** El número principal de la pantalla: tarjeta blanca, centrado, con su leyenda abajo. */
 export function Resumen({ etiqueta, monto, tono, children }: { etiqueta: string; monto: number; tono?: "queda"; children?: React.ReactNode }) {
   const color = tono === "queda" && Math.round(monto) < 0 ? "text-pasaste" : "text-texto";
   return (
-    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-[0_4px_20px_rgba(20,30,25,0.07)] ring-1 ring-linea">
+    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
       <MontoGrande monto={monto} className={`text-[40px] leading-none ${color}`} />
       <p className="mt-2 text-[14px] text-tenue">{etiqueta}</p>
       {children && <div className="mt-5 border-t border-linea pt-4">{children}</div>}
@@ -129,7 +129,7 @@ export function Boton({
 
 export function estiloBoton(variante: "principal" | "secundario" | "peligro" = "principal") {
   const colores = {
-    principal: "bg-marca text-white disabled:bg-relleno disabled:text-sutil",
+    principal: "bg-marca text-sobre-marca disabled:bg-relleno disabled:text-sutil",
     secundario: "bg-marca-suave text-marca",
     peligro: "bg-relleno text-pasaste",
   }[variante];
@@ -237,7 +237,7 @@ export function Hoja({ abierta, alCerrar, titulo, children }: { abierta: boolean
   if (!abierta) return null;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
-      <button className="velo-entra absolute inset-0 bg-black/30" aria-label="Cerrar" onClick={alCerrar} />
+      <button className="velo-entra absolute inset-0 bg-black/40" aria-label="Cerrar" onClick={alCerrar} />
       <div className="hoja-entra relative w-full max-w-md rounded-t-[28px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5">
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-linea" />
         {children}

@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Boton, Encabezado, estiloBoton, Grupo } from "@/components/ui";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
+import { useTema, type Tema } from "@/lib/tema";
 
 const numero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 
 export default function Ajustes() {
   const { datos, actualizarIngreso, actualizarTecho, actualizarPagoFijo, reiniciarDemo, importarDatos } = useBilletera();
+  const [tema, setTema] = useTema();
   const [avisoImportar, setAvisoImportar] = useState<{ ok: boolean; texto: string } | null>(null);
 
   async function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -85,6 +87,30 @@ export default function Ajustes() {
             </div>
           ))}
         </Grupo>
+
+        <section className="px-5">
+          <h2 className="text-[16px] font-semibold">Apariencia</h2>
+          <div className="mt-3 grid grid-cols-3 rounded-full bg-relleno p-1" role="radiogroup" aria-label="Apariencia">
+            {(
+              [
+                ["auto", "Automático"],
+                ["claro", "Claro"],
+                ["oscuro", "Oscuro"],
+              ] as [Tema, string][]
+            ).map(([valor, texto]) => (
+              <button
+                key={valor}
+                role="radio"
+                aria-checked={tema === valor}
+                onClick={() => setTema(valor)}
+                className="h-10 rounded-full text-[14px] font-semibold text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca"
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[13px] text-tenue">Automático usa el mismo modo que tu celular.</p>
+        </section>
 
         <section className="space-y-3 px-5">
           <h2 className="text-[16px] font-semibold">Datos</h2>
