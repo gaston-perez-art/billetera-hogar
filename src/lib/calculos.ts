@@ -6,7 +6,7 @@
 // Los tests de calculos.test.ts sirven como casos para validar esas vistas.
 
 import { mesDe } from "./formato";
-import type { Categoria, Datos, Mes, Movimiento, PagoFijo } from "./tipos";
+import type { Categoria, Datos, Fecha, Mes, Movimiento, PagoFijo } from "./tipos";
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -156,4 +156,38 @@ export function totalSantino(d: Datos, mes: Mes): number {
       )
       .map((m) => m.monto),
   );
+}
+
+export interface PlanMes {
+  /** Lo ideal para ahorrar: entra − gasto previsto. Negativo = el presupuesto supera lo que entra. */
+  ahorroIdeal: number;
+  /**
+   * Lo que todavía se puede gastar sin pasarse de los techos: te queda − ahorro ideal
+   * (= lo que falta usar de cada techo, menos los pagos fijos que faltan). Negativo = se pasaron.
+   */
+  puedenGastar: number;
+}
+
+export function planMes(d: Datos, mes: Mes): PlanMes {
+  const { entra, teQueda } = resumenMes(d, mes);
+  const ahorroIdeal = entra - gastoPrevisto(d, mes);
+  return { ahorroIdeal, puedenGastar: teQueda - ahorroIdeal };
+}
+
+/**
+ * "Te quedaba" al cierre de cada día con gastos del mes, para la actividad de Inicio.
+ * Parte del "te queda" de hoy y le devuelve lo que se gastó después de ese día.
+ * Los gastos que salen de un pago fijo no se devuelven: ese día ya contaban como "por pagar".
+ */
+export function quedabaPorDia(d: Datos, mes: Mes): Map<Fecha, number> {
+  const { teQueda } = resumenMes(d, mes);
+  const deFijos = new Set(d.pagosMes.filter((p) => p.pagado && p.movimientoId).map((p) => p.movimientoId));
+  const movs = movimientosDelMes(d, mes);
+  const fechas = [...new Set(movs.map((m) => m.fecha))].sort();
+  const resultado = new Map<Fecha, number>();
+  for (const fecha of fechas) {
+    const despues = suma(movs.filter((m) => m.fecha > fecha && !deFijos.has(m.id)).map((m) => m.monto));
+    resultado.set(fecha, teQueda + despues);
+  }
+  return resultado;
 }

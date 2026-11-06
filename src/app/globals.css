@@ -23,7 +23,8 @@
   --color-sobre-marca: #ffffff;
   --color-queda: #0f7a50;
   --color-pasaste: #d0402f;
-  --shadow-tarjeta: 0 4px 20px rgba(20, 30, 25, 0.07);
+  --shadow-tarjeta: 0 1px 2px rgba(20, 30, 25, 0.04), 0 8px 24px rgba(20, 30, 25, 0.06);
+  --shadow-hoja: 0 -8px 32px rgba(20, 30, 25, 0.12);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -50,6 +51,7 @@
     --color-queda: #4fd69d;
     --color-pasaste: #ff7f6e;
     --shadow-tarjeta: none;
+    --shadow-hoja: 0 -8px 32px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
@@ -67,6 +69,7 @@
   --color-queda: #4fd69d;
   --color-pasaste: #ff7f6e;
   --shadow-tarjeta: none;
+  --shadow-hoja: 0 -8px 32px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -111,15 +114,84 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 }
 .hoja-entra {
-  animation: subir 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: subir 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.hoja-sale {
+  animation: subir 200ms cubic-bezier(0.4, 0, 1, 1) reverse forwards;
 }
 .velo-entra {
   animation: aparecer 180ms ease-out;
 }
+.velo-sale {
+  animation: aparecer 200ms ease-in reverse forwards;
+}
+
+/*
+ * Transiciones. Cortas (menos de 250 ms) y sin bloquear: la pantalla responde al toque
+ * mientras se mueve. Con "reducir movimiento" en el celular, se apagan todas.
+ */
+/* Cambio de pantalla: el contenido aparece subiendo apenas. */
+@keyframes entrar-pantalla {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.pantalla-entra {
+  animation: entrar-pantalla 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Pasos de Cargar gasto: deslizan de lado, hacia adelante o hacia atrás. */
+@keyframes paso-adelante {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes paso-atras {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+.paso-adelante {
+  animation: paso-adelante 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.paso-atras {
+  animation: paso-atras 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Tarjeta que gira (Reparto). */
+.giro {
+  perspective: 1200px;
+}
+.giro-interior {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 450ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.giro-interior > * {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.giro-interior > :last-child {
+  transform: rotateY(180deg);
+}
+.giro-interior[data-dada-vuelta="true"] {
+  transform: rotateY(180deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hoja-entra,
-  .velo-entra {
+  .hoja-sale,
+  .velo-entra,
+  .velo-sale,
+  .pantalla-entra,
+  .paso-adelante,
+  .paso-atras {
     animation: none;
+  }
+  .giro-interior {
+    transition: none;
   }
 }
 

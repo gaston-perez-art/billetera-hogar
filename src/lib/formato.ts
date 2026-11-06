@@ -72,3 +72,47 @@ export function etiquetaDia(fecha: Fecha, referencia: Fecha = hoy()): string {
 export function mesCorto(mes: Mes): string {
   return MESES[Number(mes.slice(5, 7)) - 1].slice(0, 3);
 }
+
+const miles = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+
+/**
+ * Formatea un monto mientras se escribe, con puntos de miles y coma decimal: "5.000.000,32".
+ * El punto que escribe la persona (teclados que no tienen coma) se toma como coma decimal,
+ * porque los puntos de miles los pone la app.
+ */
+export function montoEnVivo(escrito: string, anterior = ""): { texto: string; valor: number } {
+  let s = escrito.replace(/[^\d.,]/g, "");
+  // Un punto recién tecleado al final (no de miles) vale como coma.
+  if (!s.includes(",") && s.endsWith(".") && !anterior.endsWith(".")) s = s.slice(0, -1) + ",";
+  const coma = s.indexOf(",");
+  const entera = (coma === -1 ? s : s.slice(0, coma)).replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  const decimales = coma === -1 ? null : s.slice(coma + 1).replace(/\D/g, "").slice(0, 2);
+  const enteraFormateada = entera ? miles.format(Number(entera)) : decimales !== null ? "0" : "";
+  const texto = decimales === null ? enteraFormateada : `${enteraFormateada},${decimales}`;
+  const valor = Number(`${entera || "0"}.${decimales || "0"}`);
+  return { texto, valor };
+}
+
+/** Texto inicial de un campo de monto: "1.234.567" o "1.234.567,50". */
+export function montoATexto(valor: number): string {
+  if (!valor) return "";
+  const [entera, dec] = Math.abs(valor).toFixed(2).split(".");
+  return dec === "00" ? miles.format(Number(entera)) : `${miles.format(Number(entera))},${dec}`;
+}
+
+/** Días de `desde` a `hasta` (positivo si `hasta` es después). */
+export function diasEntre(desde: Fecha, hasta: Fecha): number {
+  const [a, m, d] = desde.split("-").map(Number);
+  const [b, n, e] = hasta.split("-").map(Number);
+  return Math.round((Date.UTC(b, n - 1, e) - Date.UTC(a, m - 1, d)) / 86_400_000);
+}
+
+/** "Vence hoy", "Vence mañana", "Vence en 4 días", "Venció hace 2 días". */
+export function cuandoVence(dias: number): string {
+  if (dias === 0) return "Vence hoy";
+  if (dias === 1) return "Vence mañana";
+  if (dias > 1) return `Vence en ${dias} días`;
+  if (dias === -1) return "Venció ayer";
+  return `Venció hace ${-dias} días`;
+}
+
