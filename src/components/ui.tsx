@@ -39,8 +39,13 @@ function useUsuarios() {
   const { datos, usuarioId, setUsuarioId } = useBilletera();
   const actual = datos.miembros.find((m) => m.id === usuarioId) ?? datos.miembros[0];
   const otro = datos.miembros.find((m) => m.id !== actual?.id);
-  const cambiar = () => otro && setUsuarioId(otro.id);
-  const etiqueta = actual ? `Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.` : "";
+  // Con login (modo nube) quién usa la app lo define la cuenta: no se cambia desde acá.
+  const cambiar = () => otro && setUsuarioId?.(otro.id);
+  const etiqueta = !actual
+    ? ""
+    : setUsuarioId
+      ? `Usando la app como ${actual.nombre}. Tocá para cambiar${otro ? ` a ${otro.nombre}` : ""}.`
+      : `Usando la app como ${actual.nombre}.`;
   return { actual, cambiar, etiqueta };
 }
 

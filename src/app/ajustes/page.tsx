@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Boton, Encabezado, estiloBoton, Grupo } from "@/components/ui";
+import { nombreMes } from "@/lib/formato";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/tema";
@@ -9,7 +10,8 @@ import { useTema, type Tema } from "@/lib/tema";
 const numero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 
 export default function Ajustes() {
-  const { datos, actualizarIngreso, actualizarTecho, actualizarPagoFijo, reiniciarDemo, importarDatos } = useBilletera();
+  const { modo, email, datos, mes, actualizarIngreso, actualizarTecho, actualizarPagoFijo, reiniciarDemo, importarDatos, cerrarSesion } =
+    useBilletera();
   const [tema, setTema] = useTema();
   const [avisoImportar, setAvisoImportar] = useState<{ ok: boolean; texto: string } | null>(null);
 
@@ -19,8 +21,12 @@ export default function Ajustes() {
     if (!archivo) return;
     try {
       const nuevos = leerDatosImportados(await archivo.text());
-      if (!confirm(`¿Reemplazar todo lo de este celular con "${archivo.name}"?`)) return;
-      importarDatos(nuevos);
+      const pregunta =
+        modo === "nube"
+          ? `¿Reemplazar todos los datos del hogar con "${archivo.name}"? Lo van a ver los dos.`
+          : `¿Reemplazar todo lo de este celular con "${archivo.name}"?`;
+      if (!confirm(pregunta)) return;
+      await importarDatos(nuevos);
       setAvisoImportar({ ok: true, texto: `Listo: ${nuevos.movimientos.length} gastos importados.` });
     } catch (error) {
       setAvisoImportar({ ok: false, texto: error instanceof Error ? error.message : "No se pudo leer el archivo." });
@@ -32,7 +38,7 @@ export default function Ajustes() {
 
   return (
     <>
-      <Encabezado titulo="Ajustes" conMes={false} />
+      <Encabezado titulo="Ajustes" conMes={modo === "nube"} />
       <main className="space-y-8 pt-2">
         <Grupo titulo="Ingresos por mes">
           {datos.ingresos
@@ -48,7 +54,10 @@ export default function Ajustes() {
               <CampoMonto key={c.id} etiqueta={c.nombre} valor={c.techo} onCambio={(v) => actualizarTecho(c.id, v)} />
             ))}
           </Grupo>
-          <p className="mt-2 px-5 text-[13px] text-tenue">El techo de Deuda se arma solo con las cuotas fijas marcadas como deuda.</p>
+          <p className="mt-2 px-5 text-[13px] text-tenue">
+            {modo === "nube" && `Los techos que cambies valen desde ${nombreMes(mes)} en adelante. `}
+            El techo de Deuda se arma solo con las cuotas fijas marcadas como deuda.
+          </p>
         </div>
 
         <Grupo titulo="Pagos fijos">
@@ -121,10 +130,21 @@ export default function Ajustes() {
           {avisoImportar && (
             <p className={`px-1 text-[13px] ${avisoImportar.ok ? "text-queda" : "text-pasaste"}`}>{avisoImportar.texto}</p>
           )}
-          <Boton variante="peligro" onClick={() => confirm("¿Borrar todo y volver a los datos de demo?") && reiniciarDemo()}>
-            Volver a los datos de demo
-          </Boton>
-          <p className="px-1 text-[13px] text-tenue">Todo se guarda solo en este navegador.</p>
+          {reiniciarDemo && (
+            <Boton variante="peligro" onClick={() => confirm("¿Borrar todo y volver a los datos de demo?") && reiniciarDemo()}>
+              Volver a los datos de demo
+            </Boton>
+          )}
+          {cerrarSesion && (
+            <Boton variante="peligro" onClick={() => confirm("¿Salir de la cuenta en este celular?") && cerrarSesion()}>
+              Salir
+            </Boton>
+          )}
+          <p className="px-1 text-[13px] text-tenue">
+            {modo === "nube"
+              ? `Entraste como ${email}. Los datos se guardan en la nube y los ven los dos.`
+              : "Modo demo: todo se guarda solo en este navegador."}
+          </p>
         </section>
       </main>
     </>

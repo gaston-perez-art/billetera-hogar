@@ -12,7 +12,7 @@ Leer antes de tocar lógica:
 
 - Next.js (App Router) + TypeScript + Tailwind, PWA instalable en el celular.
 - Supabase: Auth (2 usuarios), Postgres con RLS por hogar, Realtime.
-- Deploy en Vercel.
+- Deploy en GitHub Pages como sitio estático (`output: "export"`): no hay servidor, todo va del navegador a Supabase con la clave pública y RLS.
 
 ## Convenciones
 
@@ -53,17 +53,23 @@ Leer antes de tocar lógica:
 - Variables en `.env.local` (ignorado). Dejar `.env.example` con nombres de variables vacías.
 - La service role key de Supabase nunca en el cliente.
 
-## Estado del código (POC)
+## Estado del código
 
-- `src/lib/store.tsx`: capa de datos en `localStorage`. Es lo único que se reemplaza al conectar Supabase.
-- `src/lib/calculos.ts`: reglas de negocio en TS **solo mientras no haya base**; al conectar Supabase se borran y se usan las vistas SQL. `calculos.test.ts` queda como casos para validar las vistas.
+- Las pantallas solo usan `useBilletera()` (`src/lib/contexto.tsx`). `src/lib/store.tsx` elige el modo:
+  - **Nube** (`store-nube.tsx`) si hay `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`: login con mail y contraseña (`components/Acceso.tsx`; cuentas creadas desde el panel, sin registro abierto ni mails), datos del hogar, Realtime y recarga al volver a la app. Cada cambio se muestra al instante con la operación pura y se guarda en la base; la recarga posterior corrige si la base lo rechazó.
+  - **Demo** (`store-local.tsx`) sin variables: datos ficticios en `localStorage`.
+- `src/lib/operaciones.ts`: cambios como funciones puras, compartidos por los dos modos.
+- `src/lib/nube.ts`: filas de Supabase ↔ tipos de la app, techo vigente por mes e importación de `.json`.
+- Marcar/desmarcar pagado e importar son funciones SQL (`0002_app.sql`), en una sola transacción. Borrar un gasto que venía de un pago fijo lo deja pendiente (trigger).
+- Techos por mes: se guarda en el mes elegido y vale hasta que se cargue otro (`techoVigente`). La vista `v_categorias_mes` todavía usa el techo exacto del mes: ajustarla al pasar los cálculos a SQL.
+- `src/lib/calculos.ts`: reglas de negocio en TS por ahora; el plan es pasarlas a las vistas SQL y usar `calculos.test.ts` como casos de validación.
 - `src/lib/demo.ts`: datos ficticios. Nunca poner montos reales.
-- Datos reales en el POC: se importan desde Ajustes → "Importar datos" con un `.json` que vive fuera del repo (`*.json` de datos reales nunca se commitea). Queda solo en el navegador.
+- Configuración de Supabase paso a paso: `docs/supabase.md`.
 
 ## Próximos pasos
 
 1. ~~Diseño de pantallas y scaffold~~ (POC hecho).
-2. Conectar Supabase (cliente, auth con magic link) reemplazando `store.tsx`.
-3. Aplicar migración y seed de categorías.
+2. ~~Conectar Supabase (cliente, login, Realtime)~~. Falta hacer la configuración de `docs/supabase.md` y verificar RLS con las dos cuentas.
+3. Pasar los cálculos de `calculos.ts` a las vistas SQL (techo vigente incluido).
 4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
 5. Explorar actualización de saldo real (ver "Ideas" en README).
