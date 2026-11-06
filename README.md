@@ -32,14 +32,14 @@ Ver [docs/reglas-de-negocio.md](docs/reglas-de-negocio.md) y [docs/modelo-de-dat
 
 - **Frontend**: Next.js (App Router) + TypeScript + Tailwind, instalable como PWA.
 - **Backend**: Supabase (Auth, Postgres con RLS, Realtime para que los dos vean los cambios al instante).
-- **Deploy**: Vercel.
+- **Deploy**: GitHub Pages (sitio estático que habla directo con Supabase).
 
 ## Estado
 
 - [x] Contexto, reglas de negocio y modelo de datos
 - [x] Esquema SQL inicial (`supabase/migrations/0001_init.sql`)
 - [x] POC navegable (Next.js, datos de demo en el navegador, sin login)
-- [ ] Conectar Supabase (auth con magic link, migración, Realtime)
+- [x] Conectar Supabase en el código (login con código por mail, Realtime). Configuración: [docs/supabase.md](docs/supabase.md)
 - [ ] Importador desde Google Sheets
 
 ## Correr el POC
@@ -56,9 +56,11 @@ Qué incluye:
 - Selector Gastón / Jime arriba en lugar de login.
 - Datos de demo **ficticios**, guardados en `localStorage`. "Reiniciar demo" en Ajustes vuelve al estado inicial.
 
-Qué falta para pasar de POC a MVP:
-- Supabase: reemplazar `src/lib/store.tsx` por el cliente de Supabase (las pantallas no cambian) y mover los cálculos de `src/lib/calculos.ts` a las vistas SQL, usando `calculos.test.ts` como casos de validación.
-- Techos e ingresos por mes (en el POC son los mismos para todos los meses).
+Con `.env.local` completo (ver `.env.example`), la app entra en modo nube: login y datos en Supabase.
+
+Qué falta para el MVP:
+- Mover los cálculos de `src/lib/calculos.ts` a las vistas SQL, usando `calculos.test.ts` como casos de validación.
+- Ingresos por mes (los techos ya son por mes en modo nube).
 - Presupuesto parcial de pagos fijos (lo pendiente = presupuesto − gastado).
 - Importador de la planilla.
 
