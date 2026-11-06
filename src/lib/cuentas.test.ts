@@ -26,7 +26,7 @@ const demo = () => datosDemo(FECHA);
 describe("los números coinciden entre pantallas", () => {
   it("Inicio: la resta de la tarjeta cierra", () => {
     const p = planMes(demo(), MES);
-    cerca(p.entra - p.gastado - p.faltan - p.paraAhorrar, p.paraGastar);
+    cerca(p.entra - p.gastado - p.faltan - p.paraCadaUno, p.paraGastar);
   });
 
   it("Inicio: lo de Gastón más lo de Jime es el número grande", () => {
@@ -53,7 +53,7 @@ describe("los números coinciden entre pantallas", () => {
     const d = demo();
     const r = repartoMes(d, MES);
     cerca(suma(r.miembros.map((m) => m.puso)), resumenMes(d, MES).gastado);
-    cerca(suma(r.miembros.map((m) => m.leQuedaPlan)), planMes(d, MES).ahorroIdeal);
+    cerca(suma(r.miembros.map((m) => m.leQuedaPlan)), planMes(d, MES).sobrante);
   });
 
   it("Inicio: el saldo de los dos es lo que entró menos lo gastado, y lo de cada uno suma eso", () => {
@@ -72,7 +72,7 @@ describe("los números coinciden entre pantallas", () => {
 
   it("Inicio: del saldo, restando pagos que faltan y ahorro, queda lo de 'para gastar'", () => {
     const p = planMes(demo(), MES);
-    cerca(p.saldo - p.faltan - p.paraAhorrar, p.paraGastar);
+    cerca(p.saldo - p.faltan - p.paraCadaUno, p.paraGastar);
   });
 
   it("cargar un gasto baja lo mismo en Inicio, en la categoría y en quien lo pagó", () => {

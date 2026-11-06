@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
-import { ingresosDelMes, paraGastarPorPersona, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
+import { ingresosDelMes, previstoPorTipo, repartoMes, type RepartoMiembro } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
 import { prepararFoto, useFotos } from "@/lib/fotos";
@@ -16,7 +16,6 @@ export default function Reparto() {
   const { previsto, miembros } = repartoMes(datos, mes);
   const { fijos, variables } = previstoPorTipo(datos, mes);
   const entra = ingresosDelMes(datos, mes);
-  const porPersona = new Map(paraGastarPorPersona(datos, mes).map((p) => [p.miembroId, p]));
   const [a, b] = miembros;
 
   return (
@@ -56,21 +55,21 @@ export default function Reparto() {
         dorso={<Ingresos entra={entra} miembros={miembros} />}
       />
 
-      <p className="mx-5 mt-4 text-[13px] leading-5 text-tenue">Cada uno pone en proporción a lo que gana. Así a los dos les queda lo mismo en proporción para ahorrar.</p>
+      <p className="mx-5 mt-7 text-[13px] leading-5 text-tenue">Cada uno pone para la casa según lo que gana. Lo que sobra después de poner su parte es de cada uno.</p>
 
       <main className="mt-5 space-y-4 px-5">
         {miembros.map((m) => (
-          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} paraGastar={porPersona.get(m.miembroId)?.paraGastar ?? 0} />
+          <TarjetaPersona key={m.miembroId} m={m} fijos={fijos * m.proporcion} variables={variables * m.proporcion} />
         ))}
       </main>
     </>
   );
 }
 
-function TarjetaPersona({ m, fijos, variables, paraGastar }: { m: RepartoMiembro; fijos: number; variables: number; paraGastar: number }) {
+function TarjetaPersona({ m, fijos, variables }: { m: RepartoMiembro; fijos: number; variables: number }) {
   const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
   const d = Math.round(m.diferencia);
-  const ahorroIdeal = Math.round(m.leQuedaPlan);
+  const sobrante = Math.round(m.leQuedaPlan);
 
   return (
     <section className="rounded-3xl bg-tarjeta p-5 shadow-tarjeta ring-1 ring-linea">
@@ -100,19 +99,27 @@ function TarjetaPersona({ m, fijos, variables, paraGastar }: { m: RepartoMiembro
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-marca-suave p-3.5">
-          <p className="text-[13px] text-tenue">{ahorroIdeal >= 0 ? "Ideal para ahorrar" : "No le alcanza"}</p>
-          <p className={`mt-1 text-[18px] font-bold tabular-nums ${ahorroIdeal >= 0 ? "text-marca" : "text-pasaste"}`}>{pesos(Math.abs(m.leQuedaPlan), { ceroComoGuion: false })}</p>
+          <p className="text-[13px] text-tenue">{sobrante >= 0 ? `Queda para ${m.nombre}` : "No le alcanza"}</p>
+          <p className={`mt-1 text-[18px] font-bold tabular-nums ${sobrante >= 0 ? "text-marca" : "text-pasaste"}`}>{pesos(Math.abs(m.leQuedaPlan), { ceroComoGuion: false })}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-tenue">{sobrante >= 0 ? "Lo que gana menos su parte de la casa" : "Su parte de la casa supera lo que gana"}</p>
         </div>
         <div className="rounded-2xl bg-relleno p-3.5">
-          <p className="text-[13px] text-tenue">Le queda</p>
+          <p className="text-[13px] text-tenue">Le queda hoy</p>
           <p className={`mt-1 text-[18px] font-bold tabular-nums ${Math.round(m.leQuedaReal) < 0 ? "text-pasaste" : ""}`}>{pesos(m.leQuedaReal, { ceroComoGuion: false })}</p>
-          <p className="mt-0.5 text-[12px] leading-4 text-tenue">Para gastar {pesos(paraGastar, { ceroComoGuion: false })}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-tenue">Lo que le entró menos lo que ya puso</p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-linea pt-4">
-        <span className="text-[15px] font-semibold">{d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}</span>
-        <MontoQueda monto={m.diferencia} className="text-[17px] font-bold" />
+      <div className="mt-4 border-t border-linea pt-4">
+        <div className="flex items-center justify-between">
+          <span className="text-[15px] font-semibold">{d > 0 ? "Le falta poner" : d < 0 ? "Puso de más" : "Está al día"}</span>
+          <MontoQueda monto={m.diferencia} className="text-[17px] font-bold" />
+        </div>
+        {d < 0 && (
+          <p className="mt-1 text-[13px] leading-5 text-tenue">
+            Puso {pesos(-m.diferencia)} más que su parte: eso sale de lo que le queda para {m.nombre}. Al cerrar el mes, se compensa entre los dos.
+          </p>
+        )}
       </div>
     </section>
   );
@@ -167,13 +174,20 @@ function FotoEditable({ id, nombre }: { id: string; nombre: string }) {
  */
 function TarjetaQueGira({ frente, dorso }: { frente: React.ReactNode; dorso: React.ReactNode }) {
   const [vuelta, setVuelta] = useState(false);
-  const [dorsoEnFlujo, setDorsoEnFlujo] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setDorsoEnFlujo(vuelta), 225);
-    return () => clearTimeout(t);
+  const caraFrente = useRef<HTMLSpanElement>(null);
+  const caraDorso = useRef<HTMLSpanElement>(null);
+  const [alto, setAlto] = useState<number>();
+  // La tarjeta cambia de alto al mismo ritmo que gira: empuja lo de abajo en vez de taparlo.
+  useLayoutEffect(() => {
+    const visible = (vuelta ? caraDorso : caraFrente).current;
+    if (!visible) return;
+    const medir = () => setAlto(visible.offsetHeight);
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(visible);
+    return () => obs.disconnect();
   }, [vuelta]);
-  const cara = "rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea";
-  const fuera = "absolute inset-x-0 top-0";
+  const cara = "absolute inset-x-0 top-0 flex flex-col rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea";
   return (
     <div
       role="button"
@@ -189,15 +203,15 @@ function TarjetaQueGira({ frente, dorso }: { frente: React.ReactNode; dorso: Rea
       aria-label={vuelta ? "Tarjeta de ingresos. Tocá para volver a los gastos del mes" : "Tarjeta de gastos. Tocá para ver cuánto entra"}
       className="giro mx-5 mt-4 block cursor-pointer select-none text-left"
     >
-      <span className="giro-interior relative" data-dada-vuelta={vuelta}>
-        <span className={`${cara} flex flex-col ${dorsoEnFlujo ? fuera : ""}`} aria-hidden={vuelta}>
+      <span className="giro-interior relative block transition-[height] duration-[450ms] ease-[cubic-bezier(0.3,0.7,0.2,1)] motion-reduce:transition-none" style={{ height: alto }} data-dada-vuelta={vuelta}>
+        <span ref={caraFrente} className={cara} aria-hidden={vuelta}>
           {frente}
           <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
             Tocá para ver cuánto entra
             <Icono trazo={ICONOS.adelante} className="size-4" />
           </span>
         </span>
-        <span className={`${cara} flex flex-col ${dorsoEnFlujo ? "" : fuera}`} aria-hidden={!vuelta}>
+        <span ref={caraDorso} className={cara} aria-hidden={!vuelta}>
           {dorso}
           <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
             <Icono trazo={ICONOS.atras} className="size-4" />
