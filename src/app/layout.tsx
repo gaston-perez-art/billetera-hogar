@@ -32,7 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${manrope.variable} font-sans antialiased`}>
         <ProveedorBilletera>
-          <div className="mx-auto min-h-dvh max-w-md pb-24">{children}</div>
+          <div className="mx-auto min-h-dvh max-w-md pb-[calc(68px+env(safe-area-inset-bottom)+1.5rem)]">{children}</div>
           <Navegacion />
           <Tactil />
         </ProveedorBilletera>

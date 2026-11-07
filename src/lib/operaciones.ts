@@ -84,6 +84,38 @@ export function actualizarTecho(d: Datos, categoriaId: string, techo: number): D
   return { ...d, categorias: d.categorias.map((c) => (c.id === categoriaId ? { ...c, techo } : c)) };
 }
 
+/**
+ * Categorías con lógica atada al nombre (techo de Deuda, total de Santino, meses viejos de Chicos):
+ * no se renombran o se rompen esas cuentas.
+ */
+export const CATEGORIAS_FIJAS = ["Deuda", "Santino", "Chicos"];
+
+/** Cambiar el nombre de una categoría. Los gastos la siguen por id: no cambia nada del pasado. */
+export function renombrarCategoria(d: Datos, categoriaId: string, nombre: string): Datos {
+  const limpio = nombre.trim();
+  const c = d.categorias.find((x) => x.id === categoriaId);
+  if (!c || !limpio || CATEGORIAS_FIJAS.includes(c.nombre)) return d;
+  return { ...d, categorias: d.categorias.map((x) => (x.id === categoriaId ? { ...x, nombre: limpio } : x)) };
+}
+
+/**
+ * Ids de un ingreso y de sus versiones anteriores (mismo miembro, mismo nombre, que se repite):
+ * al cambiar el sueldo se abre una versión nueva; el nombre se cambia en todas para que no queden dos.
+ */
+export function versionesIngreso(d: Datos, ingresoId: string): string[] {
+  const i = d.ingresos.find((x) => x.id === ingresoId);
+  if (!i) return [];
+  if (i.mes !== null) return [i.id];
+  return d.ingresos.filter((x) => x.mes === null && x.miembroId === i.miembroId && x.concepto === i.concepto).map((x) => x.id);
+}
+
+export function renombrarIngreso(d: Datos, ingresoId: string, concepto: string): Datos {
+  const limpio = concepto.trim();
+  const ids = versionesIngreso(d, ingresoId);
+  if (!limpio || ids.length === 0) return d;
+  return { ...d, ingresos: d.ingresos.map((x) => (ids.includes(x.id) ? { ...x, concepto: limpio } : x)) };
+}
+
 export type CambioIngreso =
   | { tipo: "monto"; id: string; monto: number }
   | { tipo: "nuevaVersion"; cerrar: { id: string; hasta: Mes }; nuevo: Ingreso };

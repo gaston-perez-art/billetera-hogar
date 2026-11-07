@@ -156,6 +156,19 @@ input[type="number"]::-webkit-outer-spin-button {
 .velo-entra {
   animation: aparecer 180ms ease-out;
 }
+/* Modal centrado (avisos): crece apenas desde el centro. */
+@keyframes modal {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+}
+.modal-entra {
+  animation: modal 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.modal-sale {
+  animation: modal 180ms cubic-bezier(0.4, 0, 1, 1) reverse forwards;
+}
 .velo-sale {
   animation: aparecer 200ms ease-in reverse forwards;
 }
@@ -219,6 +232,8 @@ input[type="number"]::-webkit-outer-spin-button {
   .hoja-sale,
   .velo-entra,
   .velo-sale,
+  .modal-entra,
+  .modal-sale,
   .pantalla-entra,
   .paso-adelante,
   .paso-atras {

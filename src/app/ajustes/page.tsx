@@ -13,7 +13,7 @@ import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/tema";
-import type { NuevoPagoFijo } from "@/lib/operaciones";
+import { CATEGORIAS_FIJAS, type NuevoPagoFijo } from "@/lib/operaciones";
 import type { Fecha, PagoFijo } from "@/lib/tipos";
 
 type Edicion =
@@ -156,11 +156,11 @@ export default function Ajustes() {
               : "Modo demo: todo se guarda solo en este navegador."}
           </p>
           <Boton variante="secundario" onClick={() => setExportando(true)}>
-            <Icono trazo={ICONOS.archivo} className="size-5" />
+            <Icono trazo={ICONOS.exportar} className="size-5" />
             Exportar para la planilla
           </Boton>
           <label className={`${estiloBoton("secundario")} cursor-pointer`}>
-            <Icono trazo={ICONOS.archivo} className="size-5" />
+            <Icono trazo={ICONOS.importar} className="size-5" />
             Importar archivo .json
             <input type="file" accept=".json,application/json" onChange={alElegirArchivo} className="sr-only" />
           </label>
@@ -215,12 +215,12 @@ function Vacio({ texto }: { texto: string }) {
 
 /** Hoja para editar un ingreso, un techo o un pago fijo. Guarda al tocar Guardar. */
 function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar: () => void }) {
-  const { datos, mes, modo, actualizarIngreso, actualizarTecho, actualizarPagoFijo, agregarPagoFijo } = useBilletera();
+  const { datos, mes, modo, actualizarIngreso, actualizarTecho, actualizarPagoFijo, agregarPagoFijo, renombrarCategoria, renombrarIngreso } = useBilletera();
   const ingreso = edicion?.tipo === "ingreso" ? datos.ingresos.find((i) => i.id === edicion.id) : undefined;
   const categoria = edicion?.tipo === "techo" ? datos.categorias.find((c) => c.id === edicion.id) : undefined;
   const pago = edicion?.tipo === "pago" ? datos.pagosFijos.find((p) => p.id === edicion.id) : undefined;
   const nuevoPago = edicion?.tipo === "nuevoPago";
-  const titulo = ingreso?.concepto ?? (categoria ? `Techo de ${categoria.nombre}` : nuevoPago ? "Nuevo pago fijo" : pago?.concepto ?? "Editar");
+  const titulo = ingreso ? "Editar ingreso" : categoria ? "Editar techo" : nuevoPago ? "Nuevo pago fijo" : "Editar pago fijo";
 
   return (
     <Hoja abierta={edicion !== null} alCerrar={alCerrar} titulo={titulo} mostrarTitulo>
@@ -249,6 +249,13 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
           // Se reinicia el borrador cada vez que se abre otra fila.
           key={ingreso ? `ingreso-${ingreso.id}` : `techo-${categoria?.id}`}
           montoInicial={ingreso?.monto ?? categoria?.techo ?? 0}
+          nombreInicial={ingreso?.concepto ?? categoria?.nombre ?? ""}
+          etiquetaNombre={ingreso ? "Nombre" : "Categoría"}
+          nombreFijo={
+            categoria && CATEGORIAS_FIJAS.includes(categoria.nombre)
+              ? "Este nombre no se cambia: la app lo usa para sus cuentas."
+              : undefined
+          }
           ayuda={
             ingreso
               ? `Lo que le entra por mes a ${datos.miembros.find((m) => m.id === ingreso.miembroId)?.nombre ?? "esta persona"}. Vale desde ${nombreMes(mes)} en adelante: los meses anteriores no cambian.`
@@ -260,9 +267,15 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
                     : "Poné 0 para dejarla sin techo."
                 : ""
           }
-          alGuardar={(monto) => {
-            if (ingreso) actualizarIngreso(ingreso.id, monto);
-            if (categoria) actualizarTecho(categoria.id, monto);
+          alGuardar={(monto, nombre) => {
+            if (ingreso) {
+              if (nombre !== ingreso.concepto) renombrarIngreso(ingreso.id, nombre);
+              if (monto !== ingreso.monto) actualizarIngreso(ingreso.id, monto);
+            }
+            if (categoria) {
+              if (nombre !== categoria.nombre) renombrarCategoria(categoria.id, nombre);
+              if (monto !== categoria.techo) actualizarTecho(categoria.id, monto);
+            }
             alCerrar();
           }}
         />
@@ -273,15 +286,24 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
 
 function Formulario({
   montoInicial,
+  nombreInicial,
+  etiquetaNombre,
+  nombreFijo,
   ayuda,
   alGuardar,
 }: {
   montoInicial: number;
+  nombreInicial: string;
+  etiquetaNombre: string;
+  /** Si viene, el nombre no se puede cambiar y se explica por qué. */
+  nombreFijo?: string;
   ayuda: string;
-  alGuardar: (monto: number) => void;
+  alGuardar: (monto: number, nombre: string) => void;
 }) {
   const [monto, setMonto] = useState(montoInicial);
-  const guardar = () => alGuardar(monto);
+  const [nombre, setNombre] = useState(nombreInicial);
+  const valido = nombre.trim() !== "";
+  const guardar = () => valido && alGuardar(monto, nombre.trim());
 
   return (
     <form
@@ -290,12 +312,52 @@ function Formulario({
         guardar();
       }}
     >
-      <p className="text-[14px] leading-5 text-tenue">{ayuda}</p>
+      <CampoNombre etiqueta={etiquetaNombre} valor={nombre} onCambio={setNombre} fijo={nombreFijo} />
+      <p className="mt-4 text-[14px] leading-5 text-tenue">{ayuda}</p>
       <div className="py-8">
-        <CampoMonto valor={monto} onCambio={setMonto} autoFocus onEnter={guardar} lapiz />
+        <CampoMonto valor={monto} onCambio={setMonto} onEnter={guardar} lapiz />
       </div>
-      <Boton type="submit">Guardar</Boton>
+      <Boton type="submit" disabled={!valido}>
+        Guardar
+      </Boton>
     </form>
+  );
+}
+
+/** Nombre editable arriba de la hoja, con lápiz. Con `fijo`, se muestra sin poder tocarlo y con el motivo. */
+function CampoNombre({
+  etiqueta,
+  valor,
+  onCambio,
+  fijo,
+  placeholder,
+  autoFocus = false,
+}: {
+  etiqueta: string;
+  valor: string;
+  onCambio: (v: string) => void;
+  fijo?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label className="flex min-h-14 items-center gap-3 rounded-2xl bg-relleno px-4">
+        <span className="shrink-0 text-[15px] font-medium">{etiqueta}</span>
+        <input
+          value={valor}
+          onChange={(e) => onCambio(e.target.value)}
+          readOnly={!!fijo}
+          placeholder={placeholder}
+          maxLength={40}
+          autoFocus={autoFocus}
+          enterKeyHint="done"
+          className={`min-w-0 flex-1 truncate bg-transparent text-right text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-sutil ${fijo ? "text-tenue" : ""}`}
+        />
+        {!fijo && <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />}
+      </label>
+      {fijo && <p className="mt-1.5 px-1 text-[13px] text-tenue">{fijo}</p>}
+    </div>
   );
 }
 
@@ -329,30 +391,17 @@ function FormularioPago({
         guardar();
       }}
     >
-      <p className="text-[14px] leading-5 text-tenue">
+      <CampoNombre etiqueta="Nombre" valor={concepto} onCambio={setConcepto} placeholder="Por ejemplo, Internet" autoFocus={!pago} />
+      <p className="mt-4 text-[14px] leading-5 text-tenue">
         {pago
           ? "Lo que se paga todos los meses. El día es cuándo vence. Los meses ya pagados no cambian."
           : `Aparece en Pagos fijos desde ${nombreMes(mes)}. Los meses anteriores no cambian.`}
       </p>
       <div className="py-8">
-        <CampoMonto valor={monto} onCambio={setMonto} autoFocus={!!pago} onEnter={guardar} lapiz />
+        <CampoMonto valor={monto} onCambio={setMonto} onEnter={guardar} lapiz />
       </div>
 
       <div className="mb-6 divide-y divide-linea rounded-2xl bg-relleno">
-        <label className="flex min-h-14 items-center gap-3 px-4">
-          <span className="shrink-0 text-[15px] font-medium">Nombre</span>
-          <input
-            value={concepto}
-            onChange={(e) => setConcepto(e.target.value)}
-            placeholder="Por ejemplo, Internet"
-            maxLength={40}
-            autoFocus={!pago}
-            enterKeyHint="done"
-            className="min-w-0 flex-1 truncate bg-transparent text-right text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-sutil"
-          />
-          <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />
-        </label>
-
         <div className="flex min-h-14 items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[15px] font-medium">Vence el día</span>
@@ -533,7 +582,7 @@ function HojaExportar({ abierta, alCerrar }: { abierta: boolean; alCerrar: () =>
       </p>
       <div className="mt-5 space-y-2.5">
         <Boton onClick={exportar} disabled={!valido || cantidad === 0}>
-          <Icono trazo={ICONOS.archivo} className="size-5" />
+          <Icono trazo={ICONOS.exportar} className="size-5" />
           Exportar
         </Boton>
         {aviso && <p className="px-1 text-center text-[13px] text-queda">{aviso}</p>}
