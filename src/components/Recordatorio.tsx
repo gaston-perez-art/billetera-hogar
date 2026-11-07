@@ -18,7 +18,8 @@ import { useBilletera } from "@/lib/store";
 const CLAVE = "billetera-hogar:recordatorio-cerrado";
 // Prueba única (pedida por Gastón): se le muestra una vez en cada celular, aunque no toque
 // por la regla, para ver cómo queda. Después sigue la regla normal. Se puede borrar más adelante.
-const CLAVE_PRUEBA = "billetera-hogar:recordatorio-prueba-vista";
+// Cambiar la versión al final de la clave vuelve a mostrar la prueba una vez (v2: modal centrado).
+const CLAVE_PRUEBA = "billetera-hogar:recordatorio-prueba-v2";
 const NOMBRE_PRUEBA = "Gastón";
 
 function pruebaPendiente(nombre: string): boolean {
