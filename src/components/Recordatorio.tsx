@@ -15,6 +15,19 @@ import { motivoRecordatorio, type Motivo } from "@/lib/recordatorio";
 import { useBilletera } from "@/lib/store";
 
 const CLAVE = "billetera-hogar:recordatorio-cerrado";
+// Prueba única (pedida por Gastón): se le muestra una vez en cada celular, aunque no toque
+// por la regla, para ver cómo queda. Después sigue la regla normal. Se puede borrar más adelante.
+const CLAVE_PRUEBA = "billetera-hogar:recordatorio-prueba-vista";
+const NOMBRE_PRUEBA = "Gastón";
+
+function pruebaPendiente(nombre: string): boolean {
+  if (nombre !== NOMBRE_PRUEBA) return false;
+  try {
+    return !localStorage.getItem(CLAVE_PRUEBA);
+  } catch {
+    return false;
+  }
+}
 
 function leerCerrado(): Date | null {
   try {
@@ -34,8 +47,9 @@ export function Recordatorio() {
   const cargas = datos.movimientos.filter((m) => m.pagoPor === usuarioId).map((m) => m.creadoEn);
   const clave = cargas.join("|");
   const revisar = useCallback(() => {
-    setMotivo(motivoRecordatorio(clave ? clave.split("|") : [], new Date(), leerCerrado()));
-  }, [clave]);
+    const motivo = motivoRecordatorio(clave ? clave.split("|") : [], new Date(), leerCerrado());
+    setMotivo(motivo ?? (pruebaPendiente(nombre) ? "un-dia" : null));
+  }, [clave, nombre]);
 
   useEffect(() => {
     // Un respiro para que la pantalla aparezca antes que la hoja.
@@ -51,6 +65,7 @@ export function Recordatorio() {
   const cerrar = () => {
     try {
       localStorage.setItem(CLAVE, new Date().toISOString());
+      if (nombre === NOMBRE_PRUEBA) localStorage.setItem(CLAVE_PRUEBA, "1");
     } catch {
       // Sin storage: vuelve a aparecer la próxima vez.
     }

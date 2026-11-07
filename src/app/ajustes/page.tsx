@@ -4,16 +4,17 @@
 // Tres secciones cerradas con su total a la vista; tocar una fila abre una hoja
 // desde abajo con el monto grande y formato mientras se escribe.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
 import { ingresoVigente } from "@/lib/calculos";
-import { nombreMes, pesos } from "@/lib/formato";
+import { diasDelMes, fechaCorta, fechaEnMes, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/tema";
 import type { NuevoPagoFijo } from "@/lib/operaciones";
-import type { PagoFijo } from "@/lib/tipos";
+import type { Fecha, PagoFijo } from "@/lib/tipos";
 
 type Edicion =
   | { tipo: "ingreso"; id: string }
@@ -29,6 +30,7 @@ export default function Ajustes() {
   const [tema, setTema] = useTema();
   const [abierta, setAbierta] = useState<Abierta>(null);
   const [edicion, setEdicion] = useState<Edicion | null>(null);
+  const [exportando, setExportando] = useState(false);
   const [avisoImportar, setAvisoImportar] = useState<{ ok: boolean; texto: string } | null>(null);
 
   const alternar = (s: Exclude<Abierta, null>) => setAbierta((a) => (a === s ? null : s));
@@ -153,6 +155,10 @@ export default function Ajustes() {
               ? `Entraste como ${email}. Los datos se guardan en la nube y los ven los dos.`
               : "Modo demo: todo se guarda solo en este navegador."}
           </p>
+          <Boton variante="secundario" onClick={() => setExportando(true)}>
+            <Icono trazo={ICONOS.archivo} className="size-5" />
+            Exportar para la planilla
+          </Boton>
           <label className={`${estiloBoton("secundario")} cursor-pointer`}>
             <Icono trazo={ICONOS.archivo} className="size-5" />
             Importar archivo .json
@@ -173,6 +179,7 @@ export default function Ajustes() {
       </main>
 
       <HojaEdicion edicion={edicion} alCerrar={() => setEdicion(null)} />
+      <HojaExportar abierta={exportando} alCerrar={() => setExportando(false)} />
     </>
   );
 }
@@ -422,5 +429,115 @@ function FormularioPago({
         </div>
       )}
     </form>
+  );
+}
+
+/**
+ * Exportar gastos a CSV con las columnas de la hoja "Base de datos" de la planilla,
+ * que queda solo para revisar. Período elegible con calendario (desde / hasta) y atajos.
+ * En el celular abre el menú de compartir (guardar en Archivos, Drive, mandarlo por mail);
+ * en la compu descarga el archivo.
+ */
+function HojaExportar({ abierta, alCerrar }: { abierta: boolean; alCerrar: () => void }) {
+  const { datos, mes } = useBilletera();
+  const finDeMes = (m: string) => fechaEnMes(m, diasDelMes(m));
+  const [desde, setDesde] = useState<Fecha>(mes);
+  const [hasta, setHasta] = useState<Fecha>(finDeMes(mes));
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  // Cada vez que se abre, arranca en el mes elegido en la app.
+  useEffect(() => {
+    if (!abierta) return;
+    setDesde(mes);
+    setHasta(fechaEnMes(mes, diasDelMes(mes)));
+    setAviso(null);
+  }, [abierta, mes]);
+
+  const primera = datos.movimientos.reduce<Fecha>((a, m) => (m.fecha < a ? m.fecha : a), hoy());
+  const atajos: [string, Fecha, Fecha][] = [
+    [nombreMes(mes), mes, finDeMes(mes)],
+    [nombreMes(sumarMeses(mes, -1)), sumarMeses(mes, -1), finDeMes(sumarMeses(mes, -1))],
+    ["Todo", primera, hoy() > finDeMes(mes) ? hoy() : finDeMes(mes)],
+  ];
+  const valido = desde <= hasta;
+  const cantidad = valido ? gastosEntre(datos, desde, hasta).length : 0;
+
+  async function exportar() {
+    const nombre = nombreArchivo(desde, hasta);
+    // Con BOM, para que Excel lea bien los acentos.
+    const archivo = new File(["\ufeff" + csvParaPlanilla(datos, desde, hasta)], nombre, { type: "text/csv" });
+    try {
+      if (navigator.canShare?.({ files: [archivo] })) {
+        await navigator.share({ files: [archivo], title: nombre });
+        alCerrar();
+        return;
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+    }
+    const url = URL.createObjectURL(archivo);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setAviso(`Listo: ${nombre}`);
+  }
+
+  return (
+    <Hoja abierta={abierta} alCerrar={alCerrar} titulo="Exportar para la planilla" mostrarTitulo>
+      <p className="text-[14px] leading-5 text-tenue">
+        Un archivo con las columnas de la hoja «Base de datos»: Fecha, Monto, Categoría, Detalle, Medio de pago y Pagó. En la planilla, Archivo → Importar.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {atajos.map(([texto, d, h]) => (
+          <button
+            key={texto}
+            aria-pressed={desde === d && hasta === h}
+            onClick={() => {
+              setDesde(d);
+              setHasta(h);
+              setAviso(null);
+            }}
+            className="h-9 rounded-full bg-relleno px-4 text-[14px] font-semibold first-letter:uppercase text-tenue aria-pressed:bg-marca aria-pressed:text-sobre-marca"
+          >
+            {texto}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 overflow-hidden rounded-2xl superficie shadow-tarjeta ring-1 ring-linea">
+        {(
+          [
+            ["Desde", desde, setDesde],
+            ["Hasta", hasta, setHasta],
+          ] as [string, Fecha, (f: Fecha) => void][]
+        ).map(([texto, valor, cambiar]) => (
+          <label key={texto} className="flex min-h-14 items-center justify-between gap-4 px-4">
+            <span className="text-[15px] text-tenue">{texto}</span>
+            <input
+              type="date"
+              value={valor}
+              onChange={(e) => {
+                if (e.target.value) cambiar(e.target.value);
+                setAviso(null);
+              }}
+              className="campo-fecha min-w-0 bg-transparent text-right font-medium outline-none"
+            />
+          </label>
+        ))}
+      </div>
+      <p className={`mt-3 px-1 text-[13px] ${valido ? "text-tenue" : "text-pasaste"}`}>
+        {valido
+          ? `${cantidad} ${cantidad === 1 ? "gasto" : "gastos"} del ${fechaCorta(desde)} al ${fechaCorta(hasta)}.`
+          : "La fecha de inicio tiene que ser antes que la del final."}
+      </p>
+      <div className="mt-5 space-y-2.5">
+        <Boton onClick={exportar} disabled={!valido || cantidad === 0}>
+          <Icono trazo={ICONOS.archivo} className="size-5" />
+          Exportar
+        </Boton>
+        {aviso && <p className="px-1 text-center text-[13px] text-queda">{aviso}</p>}
+      </div>
+    </Hoja>
   );
 }
