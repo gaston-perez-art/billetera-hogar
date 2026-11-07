@@ -15,9 +15,12 @@ import {
   Hoja,
   MontoGrande,
   MontoMovimiento,
+  TarjetaLista,
 } from "@/components/ui";
+import { Recordatorio } from "@/components/Recordatorio";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import {
+  gastosDe,
   movimientosDelMes,
   pagosDelMes,
   paraGastarPorPersona,
@@ -39,16 +42,22 @@ import {
 } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import type { Movimiento } from "@/lib/tipos";
+import { useVista } from "@/lib/vista";
 
 export default function Inicio() {
   const { datos, mes, usuarioId, borrarMovimiento } = useBilletera();
   const [abierto, setAbierto] = useState<Movimiento | null>(null);
+  const [vista] = useVista();
+  const soloYo = vista === "mio";
   const plan = planMes(datos, mes);
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
   const fechaHoy = hoy();
   const pendientes = pagosDelMes(datos, mes).filter((p) => !p.pagado);
-  const movimientos = movimientosDelMes(datos, mes);
+  // "Solo yo": la actividad muestra solo lo que cargó quien usa la app.
+  const movimientos = movimientosDelMes(datos, mes).filter((m) => !soloYo || m.pagoPor === usuarioId);
+  const mios = gastosDe(datos, mes, usuarioId);
+  const yo = personas.find((p) => p.miembroId === usuarioId);
   const categoria = (id: string) =>
     datos.categorias.find((c) => c.id === id)?.nombre ?? "";
   const miembro = (id: string) =>
@@ -63,10 +72,36 @@ export default function Inicio() {
 
   return (
     <>
-      <Encabezado />
-      <SaldoFijo monto={plan.saldo} etiqueta="Tienen entre los dos">
-        <CuentaDelMes plan={plan} personas={personas} />
-      </SaldoFijo>
+      <Encabezado conVista />
+      {soloYo ? (
+        <SaldoFijo monto={mios.gastado} etiqueta="Gastaste este mes">
+          <section className="mx-5 mt-4 rounded-3xl superficie px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
+            <MontoGrande monto={mios.gastado} className="text-[40px]" />
+            <p className="mt-2 text-[14px] text-tenue">Gastaste este mes</p>
+            <dl className="mt-5 grid grid-cols-2 divide-x divide-linea border-t border-linea pt-4">
+              <div className="px-2">
+                <dt className="text-[12px] text-tenue">Te queda</dt>
+                <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${yo && Math.round(yo.saldo) < 0 ? "text-pasaste" : ""}`}>
+                  {pesos(yo?.saldo ?? 0, { ceroComoGuion: false })}
+                </dd>
+              </div>
+              <div className="px-2">
+                <dt className="text-[12px] text-tenue">Cargaste</dt>
+                <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
+                  {mios.cantidad === 1 ? "1 gasto" : `${mios.cantidad} gastos`}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-[13px] leading-5 text-tenue">
+              Solo lo que cargaste vos. Te queda: lo que te entró menos lo que pusiste.
+            </p>
+          </section>
+        </SaldoFijo>
+      ) : (
+        <SaldoFijo monto={plan.saldo} etiqueta="Tienen entre los dos">
+          <CuentaDelMes plan={plan} personas={personas} />
+        </SaldoFijo>
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-3 px-5">
         <Link href="/cargar" className={estiloBoton("principal")}>
@@ -86,27 +121,36 @@ export default function Inicio() {
 
         {movimientos.length === 0 ? (
           <div className="px-9 py-10 text-center">
-            <p className="text-[15px] font-semibold">Sin gastos este mes</p>
+            <p className="text-[15px] font-semibold">{soloYo ? "No cargaste gastos este mes" : "Sin gastos este mes"}</p>
             <p className="mt-1 text-[15px] text-tenue">
               Lo que cargues va a aparecer acá.
             </p>
           </div>
         ) : (
-          <Grupo titulo="Tu actividad">
+          <Grupo titulo={soloYo ? "Lo tuyo" : "Tu actividad"} sinTarjeta>
             {[...porDia].map(([fecha, lista]) => {
               // Saldo al cierre de ese día: el de hoy es el número grande de la tarjeta.
+              // En "Solo yo" el saldo es de los dos: se muestra lo que gastaste ese día.
               const saldo = saldos.get(fecha);
+              const delDia = lista.reduce((a, m) => a + Math.max(m.monto, 0), 0);
               return (
-                <div key={fecha}>
-                  <h3 className="flex items-baseline justify-between gap-3 px-5 pb-1 pt-4 text-[14px]">
+                <div key={fecha} className="mt-3 first:mt-0">
+                  <h3 className="flex items-baseline justify-between gap-3 px-6 pb-2 pt-2 text-[14px]">
                     <span className="font-semibold">{etiquetaDia(fecha)}</span>
-                    {saldo !== undefined && (
+                    {soloYo ? (
                       <span className="text-[13px] text-tenue tabular-nums">
-                        {fecha >= fechaHoy ? "Te queda" : "Te quedaba"}{" "}
-                        {pesos(saldo, { ceroComoGuion: false })}
+                        Gastaste {pesos(delDia, { ceroComoGuion: false })}
                       </span>
+                    ) : (
+                      saldo !== undefined && (
+                        <span className="text-[13px] text-tenue tabular-nums">
+                          {fecha >= fechaHoy ? "Te queda" : "Te quedaba"}{" "}
+                          {pesos(saldo, { ceroComoGuion: false })}
+                        </span>
+                      )
                     )}
                   </h3>
+                  <TarjetaLista>
                   {lista.map((m) => (
                     <FilaLista
                       key={m.id}
@@ -126,12 +170,15 @@ export default function Inicio() {
                       valor={<MontoMovimiento monto={m.monto} />}
                     />
                   ))}
+                  </TarjetaLista>
                 </div>
               );
             })}
           </Grupo>
         )}
       </main>
+
+      <Recordatorio />
 
       <Hoja
         abierta={abierto !== null}
@@ -233,7 +280,7 @@ function ProximosPagos({
         }`;
 
   return (
-    <section className="mx-5 rounded-3xl bg-relleno">
+    <section className="mx-5 overflow-hidden rounded-3xl superficie shadow-tarjeta ring-1 ring-linea">
       <button
         onClick={alternar}
         aria-expanded={abierto}
@@ -378,7 +425,7 @@ function CuentaDelMes({
   );
 
   return (
-    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta shadow-tarjeta ring-1 ring-linea">
+    <section className="mx-5 mt-4 rounded-3xl superficie shadow-tarjeta ring-1 ring-linea">
       <button
         onClick={alternar}
         aria-expanded={abierta}

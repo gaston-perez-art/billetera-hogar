@@ -33,12 +33,12 @@ export function datoCurioso(ingreso: number): { titulo: string; detalle: string 
         : `Están en el ${decil * 10}% de hogares que menos gana`;
   const comparacion =
     veces >= 1.15
-      ? `${veces.toLocaleString("es-AR", { maximumFractionDigits: 1 })} veces lo que entra en un hogar promedio`
+      ? `${veces.toLocaleString("es-AR", { maximumFractionDigits: 1 })} veces lo de un hogar promedio`
       : veces <= 0.85
-        ? "menos de lo que entra en un hogar promedio"
-        : "más o menos lo que entra en un hogar promedio";
+        ? "menos que un hogar promedio"
+        : "más o menos lo de un hogar promedio";
   return {
     titulo,
-    detalle: `Es ${comparacion} de las ciudades del país, según el INDEC (${PERIODO}). Los montos del INDEC son de ese trimestre: con la inflación, hoy serían más altos.`,
+    detalle: `Es ${comparacion} (INDEC, ${PERIODO}).`,
   };
 }

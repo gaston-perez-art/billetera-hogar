@@ -312,3 +312,39 @@ export function estadisticasPersona(d: Datos, mes: Mes, miembroId: string, mesAn
     totalAnterior: suma(suyos(mesAnterior).filter((mv) => !deFijos.has(mv.id)).map((mv) => mv.monto)),
   };
 }
+
+export interface GastosDe {
+  /** Lo que gastó en el mes (incluye pagos fijos que pagó; sin la plata que entra). */
+  gastado: number;
+  /** Plata que entró a su nombre sin ser ingreso (montos negativos), en positivo. */
+  entro: number;
+  cantidad: number;
+  /** Por categoría, de mayor a menor. `parte` = monto / gastado. */
+  categorias: { categoria: Categoria; monto: number; cantidad: number; parte: number }[];
+}
+
+/**
+ * Vista "Solo yo": lo que cargó una persona en el mes. Entre los dos,
+ * gastado − entró suma lo gastado de Inicio.
+ */
+export function gastosDe(d: Datos, mes: Mes, miembroId: string): GastosDe {
+  const suyos = movimientosDelMes(d, mes).filter((mv) => mv.pagoPor === miembroId);
+  const gastos = suyos.filter((mv) => mv.monto > 0);
+  const gastado = suma(gastos.map((mv) => mv.monto));
+  const porCategoria = new Map<string, { monto: number; cantidad: number }>();
+  for (const mv of gastos) {
+    const c = porCategoria.get(mv.categoriaId) ?? { monto: 0, cantidad: 0 };
+    porCategoria.set(mv.categoriaId, { monto: c.monto + mv.monto, cantidad: c.cantidad + 1 });
+  }
+  return {
+    gastado,
+    entro: -suma(suyos.filter((mv) => mv.monto < 0).map((mv) => mv.monto)),
+    cantidad: gastos.length,
+    categorias: [...porCategoria]
+      .flatMap(([id, c]) => {
+        const categoria = d.categorias.find((x) => x.id === id);
+        return categoria ? [{ categoria, ...c, parte: gastado > 0 ? c.monto / gastado : 0 }] : [];
+      })
+      .sort((a, b) => b.monto - a.monto),
+  };
+}

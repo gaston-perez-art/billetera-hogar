@@ -17,6 +17,11 @@ export function fechaDePago(mes: Mes, dia: number, fechaHoy = hoy()) {
   return mesDe(fechaHoy) === mes ? fechaHoy : fechaEnMes(mes, dia);
 }
 
+/** Foto de perfil de un miembro (null la saca). */
+export function cambiarFoto(d: Datos, miembroId: string, foto: string | null): Datos {
+  return { ...d, miembros: d.miembros.map((m) => (m.id === miembroId ? { ...m, foto } : m)) };
+}
+
 export function agregarMovimiento(d: Datos, m: Movimiento): Datos {
   return { ...d, movimientos: [...d.movimientos, m] };
 }

@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   categoriasDelMes,
+  gastosDe,
   pagosDelMes,
   paraGastarPorPersona,
   planMes,
@@ -32,6 +33,13 @@ describe("los números coinciden entre pantallas", () => {
   it("Inicio: lo de Gastón más lo de Jime es el número grande", () => {
     const d = demo();
     cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.paraGastar)), planMes(d, MES).paraGastar);
+  });
+
+  it("Solo yo: lo de cada uno, sumado, es lo gastado de Inicio", () => {
+    const d = demo();
+    const porPersona = d.miembros.map((m) => gastosDe(d, MES, m.id));
+    cerca(suma(porPersona.map((g) => g.gastado - g.entro)), planMes(d, MES).gastado);
+    for (const g of porPersona) cerca(suma(g.categorias.map((c) => c.monto)), g.gastado);
   });
 
   it("Categorías: lo libre de todas las categorías es el número de Inicio", () => {
