@@ -50,7 +50,7 @@ Leer antes de tocar lógica:
 - Te queda de verdad = entra − gastado − pagos fijos pendientes.
 - Te queda por categoría = techo − gastado.
 - **Las cuentas cierran entre pantallas** (`src/lib/cuentas.test.ts`): lo libre de todas las categorías, lo de cada persona (`paraGastarPorPersona`) y el "le queda para gastar" de Reparto suman el número de Inicio; lo comprometido en pagos fijos por categoría suma lo que falta pagar en Pagos. Cualquier cálculo nuevo tiene que sumarse a esos tests.
-- **Editar no cambia el pasado:** cambiar un sueldo vale desde el mes elegido (cierra el ingreso anterior con `hasta` y abre otro con `desde`); dar de baja un pago fijo guarda `bajaDesde`; los techos ya valían desde el mes en que se cargan; los pagos ya pagados guardan su monto en `pagos_mes`.
+- **Editar no cambia el pasado:** cambiar un sueldo vale desde el mes elegido (cierra el ingreso anterior con `hasta` y abre otro con `desde`); dar de baja un pago fijo guarda `bajaDesde` (y no vuelve a aparecer salvo en meses que se pagó); un pago fijo nuevo (Ajustes → Agregar pago fijo) guarda `altaDesde` y no aparece en meses anteriores; renombrarlo no cambia los gastos ya cargados; los techos ya valían desde el mes en que se cargan; los pagos ya pagados guardan su monto en `pagos_mes`.
 - **Tarjeta de Inicio:** plegada muestra el saldo, "tienen entre los dos" = entra − gastado, y lo que le queda a cada uno (= ingresa − puso; suman el saldo). Abierta, la cuenta: entró − ya gastaron = tienen; − pagos que faltan − para cada uno = queda para la casa. El "Te queda / Te quedaba" de cada día es el saldo al cierre de ese día (`saldoPorDia`).
 - **Ojito** (encabezado): oculta todos los montos como "$***" en este celular (`src/lib/privacidad.ts`, `fijarMontosOcultos` en `formato.ts`). Toda cifra que se muestre tiene que pasar por `pesos()` para respetarlo; los campos de edición no se ocultan.
 - **"Queda para {nombre}"** (Reparto) = lo que gana − su parte de la casa (`leQuedaPlan`). Responde "¿cuánto me queda para mí después de aportar?". Es calculado, no una meta: baja si se pasan de algún techo (sube la parte de cada uno). Entre los dos suman "para cada uno" (`paraCadaUno` = max(entra − gasto previsto, 0)). Si alguien puso más que su parte, Reparto lo dice: sale de lo suyo y se compensa al cerrar el mes.
@@ -85,7 +85,7 @@ Leer antes de tocar lógica:
 ## Próximos pasos
 
 1. ~~Diseño de pantallas y scaffold~~ (POC hecho).
-2. ~~Conectar Supabase (cliente, login, Realtime)~~. Falta hacer la configuración de `docs/supabase.md` y verificar RLS con las dos cuentas.
+2. ~~Conectar Supabase (cliente, login, Realtime)~~. Falta hacer la configuración de `docs/supabase.md` y verificar RLS con las dos cuentas. **Pendiente:** correr `supabase/migrations/0005_alta_pagos.sql` en Supabase (sin eso, agregar un pago fijo falla en la nube) y mergear la rama `claude/pensive-bohr-3blxot`.
 3. Pasar los cálculos de `calculos.ts` a las vistas SQL (techo vigente incluido).
 4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
 5. Explorar actualización de saldo real (ver "Ideas" en README).
