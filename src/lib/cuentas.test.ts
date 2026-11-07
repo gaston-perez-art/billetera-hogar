@@ -135,4 +135,16 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     expect(tiene(baja, MES)).toBe(false);
     expect(tiene(baja, sumarMeses(MES, 1))).toBe(false);
   });
+
+  it("agregar un pago fijo vale desde el mes elegido y suma a lo que falta pagar", () => {
+    const d = demo();
+    const pf = op.armarPagoFijo({ concepto: " Internet ", categoriaId: d.categorias[0].id, dia: 28, monto: 1000, esDeuda: false }, MES, "inet");
+    const con = op.agregarPagoFijo(d, pf);
+    const tiene = (x: Datos, m: string) => pagosDelMes(x, m).some((p) => p.pagoFijo.id === "inet");
+    expect(pf.concepto).toBe("Internet");
+    expect(tiene(con, sumarMeses(MES, -1))).toBe(false);
+    expect(tiene(con, MES)).toBe(true);
+    expect(planMes(con, sumarMeses(MES, -1))).toEqual(planMes(d, sumarMeses(MES, -1)));
+    expect(planMes(con, MES).faltan).toBe(planMes(d, MES).faltan + 1000);
+  });
 });

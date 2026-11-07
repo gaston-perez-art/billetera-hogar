@@ -266,6 +266,25 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
           },
         ),
 
+      agregarPagoFijo: (nuevo) => {
+        const pf = op.armarPagoFijo(nuevo, mes);
+        ejecutar(
+          (d) => op.agregarPagoFijo(d, pf),
+          () =>
+            sb.from("pagos_fijos").insert({
+              id: pf.id,
+              hogar_id: hogarId,
+              concepto: pf.concepto,
+              categoria_id: pf.categoriaId,
+              dia: pf.dia,
+              monto: pf.monto,
+              es_deuda: pf.esDeuda,
+              activo: true,
+              alta_desde: pf.altaDesde,
+            }),
+        );
+      },
+
       // Reemplaza todo lo del hogar. Si falla, no se borra nada (es una sola transacción).
       importarDatos: async (nuevos) => {
         const preparados = prepararImportacion(nuevos, datos.miembros, mesDe(hoy()));

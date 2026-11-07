@@ -36,6 +36,11 @@ export function deBajaEn(pf: PagoFijo, mes: Mes): boolean {
   return !pf.activo && (!pf.bajaDesde || pf.bajaDesde <= mes);
 }
 
+/** Vale en el mes: ya estaba dado de alta y todavía no se dio de baja. */
+export function pagoFijoVigente(pf: PagoFijo, mes: Mes): boolean {
+  return !deBajaEn(pf, mes) && (!pf.altaDesde || pf.altaDesde <= mes);
+}
+
 export interface PagoDelMes {
   pagoFijo: PagoFijo;
   mes: Mes;
@@ -49,7 +54,9 @@ export function pagosDelMes(d: Datos, mes: Mes): PagoDelMes[] {
   return d.pagosFijos
     .flatMap((pf): PagoDelMes[] => {
       const registro = d.pagosMes.find((p) => p.pagoFijoId === pf.id && p.mes === mes);
-      if (deBajaEn(pf, mes) && !registro) return [];
+      // Fuera de vigencia solo aparece si ese mes ya se pagó (un registro sin pagar, por
+      // ejemplo de un pago que se desmarcó, no lo trae de vuelta).
+      if (!pagoFijoVigente(pf, mes) && !registro?.pagado) return [];
       return [{
         pagoFijo: pf,
         mes,

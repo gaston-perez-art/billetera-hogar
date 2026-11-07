@@ -6,7 +6,8 @@ import { fechaEnMes, hoy, mesDe, sumarMeses } from "./formato";
 import type { Datos, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
-export type CambiosPagoFijo = Partial<Pick<PagoFijo, "monto" | "dia" | "activo" | "bajaDesde">>;
+export type CambiosPagoFijo = Partial<Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde">>;
+export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda">;
 
 export function nuevoId() {
   return crypto.randomUUID();
@@ -110,6 +111,15 @@ export function aplicarCambioIngreso(d: Datos, c: CambioIngreso | null): Datos {
     ...d,
     ingresos: [...d.ingresos.map((i) => (i.id === c.cerrar.id ? { ...i, hasta: c.cerrar.hasta } : i)), c.nuevo],
   };
+}
+
+/** Pago fijo nuevo: vale desde el mes elegido, los anteriores no cambian. */
+export function agregarPagoFijo(d: Datos, pf: PagoFijo): Datos {
+  return { ...d, pagosFijos: [...d.pagosFijos, pf] };
+}
+
+export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): PagoFijo {
+  return { ...nuevo, concepto: nuevo.concepto.trim(), id, activo: true, bajaDesde: null, altaDesde: mes };
 }
 
 export function actualizarPagoFijo(d: Datos, pagoFijoId: string, cambios: CambiosPagoFijo): Datos {

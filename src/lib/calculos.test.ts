@@ -74,6 +74,19 @@ describe("pagos fijos", () => {
     d.pagosMes.push({ id: "p", pagoFijoId: "viejo", mes: MES, monto: 99, pagado: true });
     expect(pagosDelMes(d, MES).map((p) => p.pagoFijo.id)).toContain("viejo");
   });
+
+  it("un dado de baja con registro sin pagar (se desmarcó o se borró el gasto) no aparece", () => {
+    const d = base();
+    d.pagosMes.push({ id: "p", pagoFijoId: "viejo", mes: MES, monto: 99, pagado: false });
+    expect(pagosDelMes(d, MES).map((p) => p.pagoFijo.id)).not.toContain("viejo");
+  });
+
+  it("uno nuevo aparece desde su mes de alta, no antes", () => {
+    const d = base();
+    d.pagosFijos.push({ ...d.pagosFijos[0], id: "nuevo", altaDesde: MES });
+    expect(pagosDelMes(d, MES).map((p) => p.pagoFijo.id)).toContain("nuevo");
+    expect(pagosDelMes(d, "2026-02-01").map((p) => p.pagoFijo.id)).not.toContain("nuevo");
+  });
 });
 
 describe("en qué se va", () => {

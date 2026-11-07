@@ -6,17 +6,20 @@
 
 import { useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, Encabezado, estiloBoton, Hoja, Seccion } from "@/components/ui";
+import { Boton, CampoMonto, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
 import { ingresoVigente } from "@/lib/calculos";
 import { nombreMes, pesos } from "@/lib/formato";
 import { leerDatosImportados } from "@/lib/importar";
 import { useBilletera } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/tema";
+import type { NuevoPagoFijo } from "@/lib/operaciones";
+import type { PagoFijo } from "@/lib/tipos";
 
 type Edicion =
   | { tipo: "ingreso"; id: string }
   | { tipo: "techo"; id: string }
-  | { tipo: "pago"; id: string };
+  | { tipo: "pago"; id: string }
+  | { tipo: "nuevoPago" };
 
 type Abierta = "ingresos" | "techos" | "pagos" | null;
 
@@ -111,6 +114,12 @@ export default function Ajustes() {
               onClick={() => setEdicion({ tipo: "pago", id: p.id })}
             />
           ))}
+          <button onClick={() => setEdicion({ tipo: "nuevoPago" })} className="fila flex min-h-14 w-full items-center gap-3 px-5 py-2.5 text-left">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full border border-linea text-marca">
+              <Icono trazo={ICONOS.mas} className="size-4" />
+            </span>
+            <span className="text-[15px] font-medium text-marca">Agregar pago fijo</span>
+          </button>
         </Seccion>
 
         <section className="px-5 pt-5">
@@ -199,36 +208,22 @@ function Vacio({ texto }: { texto: string }) {
 
 /** Hoja para editar un ingreso, un techo o un pago fijo. Guarda al tocar Guardar. */
 function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar: () => void }) {
-  const { datos, mes, modo, actualizarIngreso, actualizarTecho, actualizarPagoFijo } = useBilletera();
+  const { datos, mes, modo, actualizarIngreso, actualizarTecho, actualizarPagoFijo, agregarPagoFijo } = useBilletera();
   const ingreso = edicion?.tipo === "ingreso" ? datos.ingresos.find((i) => i.id === edicion.id) : undefined;
   const categoria = edicion?.tipo === "techo" ? datos.categorias.find((c) => c.id === edicion.id) : undefined;
   const pago = edicion?.tipo === "pago" ? datos.pagosFijos.find((p) => p.id === edicion.id) : undefined;
-  const titulo = ingreso?.concepto ?? (categoria ? `Techo de ${categoria.nombre}` : pago?.concepto ?? "Editar");
+  const nuevoPago = edicion?.tipo === "nuevoPago";
+  const titulo = ingreso?.concepto ?? (categoria ? `Techo de ${categoria.nombre}` : nuevoPago ? "Nuevo pago fijo" : pago?.concepto ?? "Editar");
 
   return (
     <Hoja abierta={edicion !== null} alCerrar={alCerrar} titulo={titulo} mostrarTitulo>
-      {edicion && (
-        <Formulario
-          // Se reinicia el borrador cada vez que se abre otra fila.
-          key={`${edicion.tipo}-${edicion.id}`}
-          montoInicial={ingreso?.monto ?? categoria?.techo ?? pago?.monto ?? 0}
-          diaInicial={pago?.dia}
-          ayuda={
-            ingreso
-              ? `Lo que le entra por mes a ${datos.miembros.find((m) => m.id === ingreso.miembroId)?.nombre ?? "esta persona"}. Vale desde ${nombreMes(mes)} en adelante: los meses anteriores no cambian.`
-              : categoria
-                ? categoria.nombre === "Deuda"
-                  ? "Las cuotas de los pagos fijos marcados como deuda ya se suman solas. Acá va solo lo extra."
-                  : modo === "nube"
-                    ? `Vale desde ${nombreMes(mes)} en adelante. Poné 0 para dejarla sin techo.`
-                    : "Poné 0 para dejarla sin techo."
-                : "Lo que se paga todos los meses. El día es cuándo vence. Los meses ya pagados no cambian."
-          }
-          activo={pago?.activo}
-          alGuardar={(monto, dia) => {
-            if (ingreso) actualizarIngreso(ingreso.id, monto);
-            if (categoria) actualizarTecho(categoria.id, monto);
-            if (pago) actualizarPagoFijo(pago.id, { monto, ...(dia ? { dia } : {}) });
+      {(pago || nuevoPago) && edicion && (
+        <FormularioPago
+          key={pago ? `pago-${pago.id}` : "nuevo"}
+          pago={pago}
+          alGuardar={(cambios) => {
+            if (pago) actualizarPagoFijo(pago.id, { concepto: cambios.concepto, monto: cambios.monto, dia: cambios.dia });
+            else agregarPagoFijo(cambios);
             alCerrar();
           }}
           alCambiarActivo={
@@ -242,29 +237,44 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
           }
         />
       )}
+      {(ingreso || categoria) && edicion && (
+        <Formulario
+          // Se reinicia el borrador cada vez que se abre otra fila.
+          key={ingreso ? `ingreso-${ingreso.id}` : `techo-${categoria?.id}`}
+          montoInicial={ingreso?.monto ?? categoria?.techo ?? 0}
+          ayuda={
+            ingreso
+              ? `Lo que le entra por mes a ${datos.miembros.find((m) => m.id === ingreso.miembroId)?.nombre ?? "esta persona"}. Vale desde ${nombreMes(mes)} en adelante: los meses anteriores no cambian.`
+              : categoria
+                ? categoria.nombre === "Deuda"
+                  ? "Las cuotas de los pagos fijos marcados como deuda ya se suman solas. Acá va solo lo extra."
+                  : modo === "nube"
+                    ? `Vale desde ${nombreMes(mes)} en adelante. Poné 0 para dejarla sin techo.`
+                    : "Poné 0 para dejarla sin techo."
+                : ""
+          }
+          alGuardar={(monto) => {
+            if (ingreso) actualizarIngreso(ingreso.id, monto);
+            if (categoria) actualizarTecho(categoria.id, monto);
+            alCerrar();
+          }}
+        />
+      )}
     </Hoja>
   );
 }
 
 function Formulario({
   montoInicial,
-  diaInicial,
   ayuda,
-  activo,
   alGuardar,
-  alCambiarActivo,
 }: {
   montoInicial: number;
-  diaInicial?: number;
   ayuda: string;
-  activo?: boolean;
-  alGuardar: (monto: number, dia?: number) => void;
-  alCambiarActivo?: (activo: boolean) => void;
+  alGuardar: (monto: number) => void;
 }) {
-  const { mes } = useBilletera();
   const [monto, setMonto] = useState(montoInicial);
-  const [dia, setDia] = useState(diaInicial);
-  const guardar = () => alGuardar(monto, dia);
+  const guardar = () => alGuardar(monto);
 
   return (
     <form
@@ -277,9 +287,66 @@ function Formulario({
       <div className="py-8">
         <CampoMonto valor={monto} onCambio={setMonto} autoFocus onEnter={guardar} lapiz />
       </div>
+      <Boton type="submit">Guardar</Boton>
+    </form>
+  );
+}
 
-      {dia !== undefined && (
-        <div className="mb-6 flex items-center justify-between rounded-2xl bg-relleno px-4 py-3">
+/**
+ * Pago fijo: nombre, monto y día. Uno nuevo además elige categoría y si es deuda
+ * (en uno que ya existe no se cambian: moverían los techos de los meses pasados).
+ */
+function FormularioPago({
+  pago,
+  alGuardar,
+  alCambiarActivo,
+}: {
+  pago?: PagoFijo;
+  alGuardar: (pago: NuevoPagoFijo) => void;
+  alCambiarActivo?: (activo: boolean) => void;
+}) {
+  const { datos, mes } = useBilletera();
+  const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
+  const [concepto, setConcepto] = useState(pago?.concepto ?? "");
+  const [monto, setMonto] = useState(pago?.monto ?? 0);
+  const [dia, setDia] = useState(pago?.dia ?? 10);
+  const [categoriaId, setCategoriaId] = useState(pago?.categoriaId ?? categorias[0]?.id ?? "");
+  const [esDeuda, setEsDeuda] = useState(pago?.esDeuda ?? false);
+  const valido = concepto.trim() !== "" && monto > 0 && categoriaId !== "";
+  const guardar = () => valido && alGuardar({ concepto: concepto.trim(), monto, dia, categoriaId, esDeuda });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        guardar();
+      }}
+    >
+      <p className="text-[14px] leading-5 text-tenue">
+        {pago
+          ? "Lo que se paga todos los meses. El día es cuándo vence. Los meses ya pagados no cambian."
+          : `Aparece en Pagos fijos desde ${nombreMes(mes)}. Los meses anteriores no cambian.`}
+      </p>
+      <div className="py-8">
+        <CampoMonto valor={monto} onCambio={setMonto} autoFocus={!!pago} onEnter={guardar} lapiz />
+      </div>
+
+      <div className="mb-6 divide-y divide-linea rounded-2xl bg-relleno">
+        <label className="flex min-h-14 items-center gap-3 px-4">
+          <span className="shrink-0 text-[15px] font-medium">Nombre</span>
+          <input
+            value={concepto}
+            onChange={(e) => setConcepto(e.target.value)}
+            placeholder="Por ejemplo, Internet"
+            maxLength={40}
+            autoFocus={!pago}
+            enterKeyHint="done"
+            className="min-w-0 flex-1 truncate bg-transparent text-right text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-sutil"
+          />
+          <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />
+        </label>
+
+        <div className="flex min-h-14 items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[15px] font-medium">Vence el día</span>
             <span className="block text-[13px] text-tenue">De cada mes</span>
@@ -296,13 +363,47 @@ function Formulario({
             </button>
           </span>
         </div>
-      )}
 
-      <Boton type="submit">Guardar</Boton>
+        {pago ? (
+          <div className="flex min-h-14 items-center justify-between gap-3 px-4">
+            <span className="text-[15px] font-medium">Categoría</span>
+            <span className="text-[15px] text-tenue">{datos.categorias.find((c) => c.id === pago.categoriaId)?.nombre}</span>
+          </div>
+        ) : (
+          <>
+            <label className="flex min-h-14 items-center gap-3 px-4">
+              <span className="shrink-0 text-[15px] font-medium">Categoría</span>
+              <select
+                value={categoriaId}
+                onChange={(e) => setCategoriaId(e.target.value)}
+                className="min-w-0 flex-1 appearance-none bg-transparent text-right text-[16px] font-medium outline-none"
+              >
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+              <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />
+            </label>
+            <label className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
+              <span>
+                <span className="block text-[15px] font-medium">Es una cuota de deuda</span>
+                <span className="mt-0.5 block text-[13px] text-tenue">Se suma sola al techo de Deuda.</span>
+              </span>
+              <Interruptor activo={esDeuda} onCambio={setEsDeuda} />
+            </label>
+          </>
+        )}
+      </div>
 
-      {alCambiarActivo && activo !== undefined && (
+      <Boton type="submit" disabled={!valido}>
+        {pago ? "Guardar" : "Agregar"}
+      </Boton>
+
+      {pago && alCambiarActivo && (
         <div className="mt-3">
-          {activo ? (
+          {pago.activo ? (
             <>
               <Boton
                 type="button"
