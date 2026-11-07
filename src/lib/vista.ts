@@ -4,38 +4,47 @@
 // Es una preferencia de cada celular, como el ojito. Vale para Inicio y Categorías;
 // Pagos y Reparto se ven siempre igual porque son de los dos.
 // No hay vista "solo el otro": no se mira lo ajeno.
+//
+// Un solo valor en memoria para toda la app (useSyncExternalStore): el selector y la pantalla
+// leen lo mismo. localStorage solo lo recuerda para la próxima vez; si falla, el cambio vale
+// igual mientras la app esté abierta (antes se releía el storage y el cambio se deshacía).
 
-import { useCallback, useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export type Vista = "pareja" | "mio";
 
 const CLAVE = "billetera-hogar:vista";
-const EVENTO = "billetera-hogar:vista-cambio";
+
+let actual: Vista | null = null;
+const oyentes = new Set<() => void>();
 
 function leer(): Vista {
-  try {
-    return localStorage.getItem(CLAVE) === "mio" ? "mio" : "pareja";
-  } catch {
-    return "pareja";
+  if (actual === null) {
+    try {
+      actual = localStorage.getItem(CLAVE) === "mio" ? "mio" : "pareja";
+    } catch {
+      actual = "pareja";
+    }
   }
+  return actual;
+}
+
+export function fijarVista(v: Vista) {
+  actual = v;
+  try {
+    localStorage.setItem(CLAVE, v);
+  } catch {
+    // Sin storage: vale mientras la app esté abierta.
+  }
+  oyentes.forEach((f) => f());
+}
+
+function suscribir(f: () => void) {
+  oyentes.add(f);
+  return () => oyentes.delete(f);
 }
 
 export function useVista(): [Vista, (v: Vista) => void] {
-  const [vista, setVistaState] = useState<Vista>("pareja");
-  useEffect(() => {
-    setVistaState(leer());
-    const actualizar = () => setVistaState(leer());
-    window.addEventListener(EVENTO, actualizar);
-    return () => window.removeEventListener(EVENTO, actualizar);
-  }, []);
-  const setVista = useCallback((v: Vista) => {
-    try {
-      localStorage.setItem(CLAVE, v);
-    } catch {
-      // Sin storage: vale mientras la app esté abierta.
-    }
-    setVistaState(v);
-    window.dispatchEvent(new Event(EVENTO));
-  }, []);
-  return [vista, setVista];
+  const vista = useSyncExternalStore(suscribir, leer, () => "pareja" as Vista);
+  return [vista, fijarVista];
 }
