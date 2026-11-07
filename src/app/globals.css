@@ -2,7 +2,8 @@
 
 /*
  * Sistema de color, claro y con pocas piezas.
- * - fondo blanco; tarjeta: blanco con sombra suave (solo la tarjeta del número principal).
+ * - fondo: gris apenas marcado (como Galicia), para que las tarjetas blancas se despeguen.
+ * - tarjeta: blanco. Todo lo que agrupa (número principal, listas, secciones) va en tarjeta.
  * - texto / tenue / sutil: tres niveles de tinta.
  * - relleno: gris muy claro para chips, campos y botones redondos.
  * - marca: verde de la casa (botones, pestaña activa, barras). marca-suave: su fondo claro
@@ -11,19 +12,19 @@
  * No agregar colores fuera de estos tokens.
  */
 @theme {
-  --color-fondo: #ffffff;
+  --color-fondo: #f3f5f4;
   --color-tarjeta: #ffffff;
-  --color-texto: #1a1f1d;
-  --color-tenue: #6b7470;
-  --color-sutil: #a3aaa6;
-  --color-linea: #e9ecea;
-  --color-relleno: #f2f4f3;
+  --color-texto: #141917;
+  --color-tenue: #66706b;
+  --color-sutil: #a0a8a4;
+  --color-linea: #e8ebe9;
+  --color-relleno: #eff2f0;
   --color-marca: #0f7a50;
   --color-marca-suave: #e4f3eb;
   --color-sobre-marca: #ffffff;
   --color-queda: #0f7a50;
   --color-pasaste: #d0402f;
-  --shadow-tarjeta: 0 1px 2px rgba(20, 30, 25, 0.04), 0 8px 24px rgba(20, 30, 25, 0.06);
+  --shadow-tarjeta: 0 1px 2px rgba(20, 30, 25, 0.04), 0 6px 20px rgba(20, 30, 25, 0.045);
   --shadow-hoja: 0 -8px 32px rgba(20, 30, 25, 0.12);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
@@ -35,46 +36,65 @@
  */
 :root {
   color-scheme: light;
+  --brillo: none;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
-    --color-fondo: #0e1110;
-    --color-tarjeta: #171b19;
-    --color-texto: #eef1ef;
-    --color-tenue: #9ba49f;
-    --color-sutil: #636b67;
-    --color-linea: #252a28;
-    --color-relleno: #1f2422;
-    --color-marca: #46d197;
-    --color-marca-suave: #173328;
-    --color-sobre-marca: #052014;
-    --color-queda: #4fd69d;
-    --color-pasaste: #ff7f6e;
-    --shadow-tarjeta: none;
-    --shadow-hoja: 0 -8px 32px rgba(0, 0, 0, 0.5);
+    --color-fondo: #080a09;
+    --color-tarjeta: #121614;
+    --color-texto: #f1f4f2;
+    --color-tenue: #959f9a;
+    --color-sutil: #5a645f;
+    --color-linea: #222826;
+    --color-relleno: #1b201e;
+    --color-marca: #4cc993;
+    --color-marca-suave: #12281e;
+    --color-sobre-marca: #04190f;
+    --color-queda: #55d09b;
+    --color-pasaste: #ff8270;
+    --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-hoja: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 -8px 40px rgba(0, 0, 0, 0.6);
+    --brillo: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 55%);
     color-scheme: dark;
   }
 }
 :root[data-tema="oscuro"] {
-  --color-fondo: #0e1110;
-  --color-tarjeta: #171b19;
-  --color-texto: #eef1ef;
-  --color-tenue: #9ba49f;
-  --color-sutil: #636b67;
-  --color-linea: #252a28;
-  --color-relleno: #1f2422;
-  --color-marca: #46d197;
-  --color-marca-suave: #173328;
-  --color-sobre-marca: #052014;
-  --color-queda: #4fd69d;
-  --color-pasaste: #ff7f6e;
-  --shadow-tarjeta: none;
-  --shadow-hoja: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --color-fondo: #080a09;
+  --color-tarjeta: #121614;
+  --color-texto: #f1f4f2;
+  --color-tenue: #959f9a;
+  --color-sutil: #5a645f;
+  --color-linea: #222826;
+  --color-relleno: #1b201e;
+  --color-marca: #4cc993;
+  --color-marca-suave: #12281e;
+  --color-sobre-marca: #04190f;
+  --color-queda: #55d09b;
+  --color-pasaste: #ff8270;
+  --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-hoja: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 -8px 40px rgba(0, 0, 0, 0.6);
+  --brillo: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 55%);
   color-scheme: dark;
 }
 
 html {
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Superficie de tarjeta. En oscuro lleva un brillo muy leve arriba y un filo de luz
+ * (en la sombra): separa las capas sin agregar colores. En claro no cambia nada.
+ */
+.superficie {
+  background-color: var(--color-tarjeta);
+  background-image: var(--brillo);
+}
+
+/* iPhone agranda la pantalla al tocar un campo con letra de menos de 16 px: nunca más chica. */
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
 }
 
 body {
@@ -88,6 +108,20 @@ body {
     outline: 2px solid var(--color-marca);
     outline-offset: 2px;
   }
+}
+
+/* Fecha nativa sin la pastilla gris de iPhone: texto alineado a la derecha, como el resto de la fila. */
+.campo-fecha {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 1.5em;
+}
+.campo-fecha::-webkit-date-and-time-value {
+  text-align: right;
+  margin: 0;
+}
+.campo-fecha::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
 }
 
 input[type="number"]::-webkit-inner-spin-button,

@@ -9,6 +9,8 @@ export type Mes = string;
 export interface Miembro {
   id: string;
   nombre: string;
+  /** Foto de perfil achicada, en data URL. La ven los dos. */
+  foto?: string | null;
 }
 
 export interface Categoria {

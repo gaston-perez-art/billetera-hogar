@@ -92,6 +92,7 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
       actualizarIngreso: (ingresoId, monto) =>
         cambiar((d) => op.aplicarCambioIngreso(d, op.planCambioIngreso(d, ingresoId, monto, mes, op.nuevoId()))),
       actualizarPagoFijo: (pagoFijoId, cambios) => cambiar((d) => op.actualizarPagoFijo(d, pagoFijoId, cambios)),
+      guardarFoto: (miembroId, foto) => cambiar((d) => op.cambiarFoto(d, miembroId, foto)),
       reiniciarDemo: () => cambiar(() => datosDemo()),
       importarDatos: async (nuevos) => {
         cambiar(() => nuevos);

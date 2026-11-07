@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Datos, Mes, Miembro } from "./tipos";
 
 export interface Filas {
-  miembros: { id: string; nombre: string; user_id: string }[];
+  miembros: { id: string; nombre: string; user_id: string; foto?: string | null }[];
   categorias: { id: string; nombre: string; orden: number }[];
   techos: { id: string; categoria_id: string; mes: string; monto: number | string }[];
   ingresos: {
@@ -64,7 +64,7 @@ export function techoVigente(techos: Filas["techos"], categoriaId: string, mes: 
 
 export function filasADatos(f: Filas, mes: Mes): Datos {
   return {
-    miembros: f.miembros.map((m) => ({ id: m.id, nombre: m.nombre })),
+    miembros: f.miembros.map((m) => ({ id: m.id, nombre: m.nombre, foto: m.foto ?? null })),
     categorias: f.categorias.map((c) => ({
       id: c.id,
       nombre: c.nombre,

@@ -6,12 +6,14 @@ import { Icono, ICONOS } from "@/components/Iconos";
 import { mesDe, hoy, montoATexto, montoEnVivo, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
+import { useVista } from "@/lib/vista";
 
 /*
  * Piezas compartidas. Reglas:
- * - Fondo blanco. El número principal de cada pantalla va en Resumen, centrado.
+ * - Fondo gris apenas marcado y tarjetas blancas encima (como Galicia). El número principal
+ *   de cada pantalla va en Resumen, centrado.
  * - Un solo gráfico por pantalla, en Resumen. Las listas no llevan barras: dicen el estado con palabras.
- * - Listas sin contenedor: filas directas sobre blanco, ícono en círculo con borde fino (como MP).
+ * - Listas en una tarjeta (`TarjetaLista`), filas sin divisores, ícono en círculo con borde fino (como MP).
  * - Botones en forma de pastilla. Verde lleno para la acción principal.
  * - Signos de montos chicos y en el color del texto: "- $14.900". Verde solo para lo que entra.
  */
@@ -20,7 +22,7 @@ import { useBilletera } from "@/lib/store";
  * Encabezado. En Inicio: saludo con avatar. En el resto: el título grande de la pantalla,
  * para que se sepa dónde estás. Tocar el avatar cambia quién usa la app.
  */
-export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?: boolean }) {
+export function Encabezado({ titulo, conMes = true, conVista = false }: { titulo?: string; conMes?: boolean; conVista?: boolean }) {
   return (
     <header className="px-5 pt-[max(env(safe-area-inset-top),0.75rem)]">
       <div className="flex min-h-12 items-center justify-between gap-3">
@@ -28,15 +30,23 @@ export function Encabezado({ titulo, conMes = true }: { titulo?: string; conMes?
         <div className="flex items-center gap-2">
           {titulo && <CambiarUsuario />}
           <BotonOjito />
-          <Link href="/ajustes" aria-label="Ajustes" className="grid size-10 place-items-center rounded-full bg-relleno text-texto">
+          <Link href="/ajustes" aria-label="Ajustes" className={BOTON_REDONDO}>
             <Icono trazo={ICONOS.ajustes} className="size-5" />
           </Link>
         </div>
       </div>
-      {conMes && <SelectorMes />}
+      {(conMes || conVista) && (
+        <div className="mt-3 flex items-center gap-2">
+          {conMes && <SelectorMes />}
+          {conVista && <SelectorVista />}
+        </div>
+      )}
     </header>
   );
 }
+
+/** Botón redondo del encabezado: blanco sobre el fondo gris, como las tarjetas. */
+const BOTON_REDONDO = "grid size-10 place-items-center rounded-full superficie text-texto shadow-tarjeta ring-1 ring-linea";
 
 /** El ojito: oculta o muestra todos los montos (para usar la app delante de otras personas). */
 function BotonOjito() {
@@ -46,7 +56,7 @@ function BotonOjito() {
       onClick={alternarMontosOcultos}
       aria-pressed={montosOcultos}
       aria-label={montosOcultos ? "Mostrar los montos" : "Ocultar los montos"}
-      className="grid size-10 place-items-center rounded-full bg-relleno text-texto"
+      className={BOTON_REDONDO}
     >
       <Icono trazo={montosOcultos ? ICONOS.ojoTachado : ICONOS.ojo} className="size-5" />
     </button>
@@ -71,7 +81,7 @@ function Saludo() {
   const { actual, cambiar, etiqueta } = useUsuarios();
   if (!actual) return null;
   return (
-    <button onClick={cambiar} aria-label={etiqueta} className="flex items-center gap-2 rounded-full bg-relleno py-1 pl-1 pr-3.5">
+    <button onClick={cambiar} aria-label={etiqueta} className="flex items-center gap-2 rounded-full superficie py-1 pl-1 pr-3.5 shadow-tarjeta ring-1 ring-linea">
       <Avatar id={actual.id} nombre={actual.nombre} />
       <span className="text-[15px] font-semibold">¡Hola, {actual.nombre}!</span>
     </button>
@@ -93,7 +103,7 @@ function SelectorMes() {
   const { mes, setMes } = useBilletera();
   const esMesActual = mes === mesDe(hoy());
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <>
       <div className="flex items-center rounded-full border-[1.5px] border-marca p-0.5">
         <button onClick={() => setMes(sumarMeses(mes, -1))} aria-label="Mes anterior" className="grid size-8 place-items-center rounded-full text-marca active:bg-marca-suave">
           <Icono trazo={ICONOS.atras} className="size-4" />
@@ -104,10 +114,37 @@ function SelectorMes() {
         </button>
       </div>
       {!esMesActual && (
-        <button onClick={() => setMes(mesDe(hoy()))} className="h-9 rounded-full bg-relleno px-3.5 text-[14px] font-semibold active:opacity-70">
+        <button onClick={() => setMes(mesDe(hoy()))} className="h-9 rounded-full superficie px-3.5 text-[14px] font-semibold shadow-tarjeta ring-1 ring-linea active:opacity-70">
           Hoy
         </button>
       )}
+    </>
+  );
+}
+
+/**
+ * "Los dos" o "Solo yo": dos botones chicos, con el ícono de la pareja y la foto propia.
+ * Cambia Inicio y Categorías en este celular.
+ */
+function SelectorVista() {
+  const [vista, setVista] = useVista();
+  const { actual } = useUsuarios();
+  if (!actual) return null;
+  const opcion = "grid size-8 place-items-center rounded-full text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca";
+  return (
+    <div role="radiogroup" aria-label="Qué ver" className="ml-auto flex items-center gap-0.5 rounded-full superficie p-0.5 shadow-tarjeta ring-1 ring-linea">
+      <button role="radio" aria-checked={vista === "pareja"} aria-label="Ver lo de los dos" onClick={() => setVista("pareja")} className={opcion}>
+        <Icono trazo={ICONOS.reparto} className="size-[18px]" />
+      </button>
+      <button
+        role="radio"
+        aria-checked={vista === "mio"}
+        aria-label={`Ver solo lo de ${actual.nombre}`}
+        onClick={() => setVista("mio")}
+        className={`${opcion} aria-checked:ring-2 aria-checked:ring-marca`}
+      >
+        <Avatar id={actual.id} nombre={actual.nombre} tamano={vista === "mio" ? 28 : 24} />
+      </button>
     </div>
   );
 }
@@ -131,7 +168,7 @@ export function Avatar({ id, nombre, tamano = 32 }: { id?: string; nombre: strin
 export function Resumen({ etiqueta, monto, tono, children }: { etiqueta: string; monto: number; tono?: "queda"; children?: React.ReactNode }) {
   const color = tono === "queda" && Math.round(monto) < 0 ? "text-pasaste" : "text-texto";
   return (
-    <section className="mx-5 mt-4 rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
+    <section className="mx-5 mt-4 rounded-3xl superficie px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
       <MontoGrande monto={monto} className={`text-[40px] leading-none ${color}`} />
       <p className="mt-2 text-[14px] text-tenue">{etiqueta}</p>
       {children && <div className="mt-5 border-t border-linea pt-4">{children}</div>}
@@ -183,29 +220,39 @@ export function Boton({
 
 export function estiloBoton(variante: "principal" | "secundario" | "peligro" = "principal") {
   const colores = {
-    principal: "bg-marca text-sobre-marca disabled:bg-relleno disabled:text-sutil",
+    principal: "bg-marca text-sobre-marca disabled:bg-linea disabled:text-sutil",
     secundario: "bg-marca-suave text-marca",
     peligro: "bg-relleno text-pasaste",
   }[variante];
   return `flex h-[52px] items-center justify-center gap-2 rounded-full text-[16px] font-semibold transition active:opacity-80 ${colores}`;
 }
 
-/** Bloque de lista: título con flecha opcional y filas directas sobre blanco. */
+/** Tarjeta blanca que agrupa filas de una lista. */
+export function TarjetaLista({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`mx-5 overflow-hidden rounded-3xl superficie py-1 shadow-tarjeta ring-1 ring-linea ${className}`}>{children}</div>;
+}
+
+/**
+ * Bloque de lista: título con flecha opcional y las filas en una tarjeta.
+ * Con `sinTarjeta`, las filas van sueltas (para armar varias tarjetas adentro, como la actividad por día).
+ */
 export function Grupo({
   titulo,
   accion,
   detalle,
+  sinTarjeta = false,
   children,
 }: {
   titulo?: string;
   accion?: { texto: string; href: string };
   detalle?: React.ReactNode;
+  sinTarjeta?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section>
       {titulo && (
-        <div className="flex h-10 items-center justify-between px-5">
+        <div className="mb-1 flex h-10 items-center justify-between px-6">
           <h2 className="text-[16px] font-semibold">{titulo}</h2>
           {accion && (
             <Link href={accion.href} aria-label={accion.texto} className="grid size-8 place-items-center rounded-full bg-relleno active:opacity-70">
@@ -215,7 +262,7 @@ export function Grupo({
           {detalle && <span className="text-[13px] text-tenue tabular-nums">{detalle}</span>}
         </div>
       )}
-      <div>{children}</div>
+      {sinTarjeta ? <div>{children}</div> : <TarjetaLista>{children}</TarjetaLista>}
     </section>
   );
 }
@@ -253,7 +300,7 @@ export function FilaLista({
       )}
     </>
   );
-  const clases = "flex min-h-16 w-full items-center gap-3 px-5 py-2.5 text-left";
+  const clases = "flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left";
   return onClick ? (
     <button onClick={onClick} className={`${clases} fila`}>
       {contenido}
@@ -331,7 +378,7 @@ export function Hoja({
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
       <button className={`absolute inset-0 bg-black/40 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" onClick={alCerrar} />
       <div
-        className={`relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-tarjeta px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5 shadow-hoja ${
+        className={`relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] superficie px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5 shadow-hoja ${
           saliendo ? "hoja-sale" : "hoja-entra"
         }`}
       >
@@ -345,7 +392,11 @@ export function Hoja({
 
 /**
  * Campo de monto grande, con formato mientras se escribe: "5.000.000,32".
- * El "$" va chico y arriba, como en MP.
+ * El "$" va en la misma línea que el número, más chico y tenue, pegado a la cifra.
+ * El ancho del campo es el del texto (se mide con una copia invisible), así el monto
+ * queda centrado de verdad y el "$" no se despega cuando hay puntos de miles.
+ * Con `lapiz`, un lápiz sutil al lado avisa que el número se toca para editarlo.
+ * Con `entra`, el monto va en verde con un "+" (plata que entra).
  */
 export function CampoMonto({
   valor,
@@ -353,38 +404,50 @@ export function CampoMonto({
   autoFocus = false,
   etiqueta = "Monto",
   onEnter,
+  lapiz = false,
+  entra = false,
 }: {
   valor: number;
   onCambio: (v: number) => void;
   autoFocus?: boolean;
   etiqueta?: string;
   onEnter?: () => void;
+  lapiz?: boolean;
+  entra?: boolean;
 }) {
   const [texto, setTexto] = useState(() => montoATexto(valor));
+  const color = entra && valor > 0 ? "text-queda" : "";
   return (
-    <label className="flex items-start justify-center text-[48px] font-semibold leading-none tracking-[-0.03em]">
-      <span className="mr-1.5 mt-[0.2em] text-[22px] font-medium tracking-normal text-tenue">$</span>
-      <input
-        autoFocus={autoFocus}
-        inputMode="decimal"
-        enterKeyHint="done"
-        value={texto}
-        onChange={(e) => {
-          const r = montoEnVivo(e.target.value, texto);
-          setTexto(r.texto);
-          onCambio(r.valor);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && onEnter) {
-            e.preventDefault();
-            onEnter();
-          }
-        }}
-        placeholder="0"
-        aria-label={etiqueta}
-        size={Math.max(texto.length, 1)}
-        className="min-w-[1ch] max-w-full bg-transparent text-left tabular-nums caret-marca outline-none placeholder:text-sutil"
-      />
+    <label className={`flex cursor-text items-baseline justify-center text-[52px] font-semibold leading-none tracking-[-0.035em] tabular-nums ${color}`}>
+      {entra && <span className="mr-1 text-[30px] font-medium tracking-normal">+</span>}
+      <span className={`mr-1 text-[30px] font-medium tracking-normal ${entra && valor > 0 ? "" : "text-tenue"}`}>$</span>
+      <span className="relative inline-grid min-w-0">
+        <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+          {texto || "0"}
+        </span>
+        <input
+          autoFocus={autoFocus}
+          inputMode="decimal"
+          enterKeyHint="done"
+          value={texto}
+          onChange={(e) => {
+            const r = montoEnVivo(e.target.value, texto);
+            setTexto(r.texto);
+            onCambio(r.valor);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && onEnter) {
+              e.preventDefault();
+              onEnter();
+            }
+          }}
+          placeholder="0"
+          aria-label={etiqueta}
+          size={1}
+          className="col-start-1 row-start-1 w-full min-w-0 bg-transparent p-0 text-left tracking-[inherit] caret-marca outline-none placeholder:text-sutil"
+        />
+      </span>
+      {lapiz && <Icono trazo={ICONOS.lapiz} className="ml-2 size-5 shrink-0 self-center text-sutil" />}
     </label>
   );
 }
@@ -404,7 +467,7 @@ export function Seccion({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mx-5 overflow-hidden rounded-3xl bg-tarjeta shadow-tarjeta ring-1 ring-linea">
+    <section className="mx-5 overflow-hidden rounded-3xl superficie shadow-tarjeta ring-1 ring-linea">
       <button onClick={alTocar} aria-expanded={abierta} className="fila flex w-full items-center gap-3 px-5 py-4 text-left">
         <span className="min-w-0 flex-1">
           <span className="block text-[17px] font-semibold">{titulo}</span>

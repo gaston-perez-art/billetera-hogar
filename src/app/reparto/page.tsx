@@ -24,7 +24,7 @@ export default function Reparto() {
       <TarjetaQueGira
         frente={
           <>
-            <MontoGrande monto={previsto} className="text-[40px]" />
+            <MontoGrande monto={previsto} className="self-center text-[40px]" />
             <p className="mt-2 text-[14px] text-tenue">Gastos del mes, entre los dos</p>
             <div className="mt-5 border-t border-linea pt-4">
               {a && b && (
@@ -53,6 +53,21 @@ export default function Reparto() {
           </>
         }
         dorso={<Ingresos entra={entra} miembros={miembros} />}
+        etiqueta={(vuelta) => (vuelta ? "Tarjeta de ingresos. Tocá para volver a los gastos del mes" : "Tarjeta de gastos. Tocá para ver cuánto entra")}
+        pistas={{
+          frente: (
+            <>
+              Tocá para ver cuánto entra
+              <Icono trazo={ICONOS.adelante} className="size-4" />
+            </>
+          ),
+          dorso: (
+            <>
+              <Icono trazo={ICONOS.atras} className="size-4" />
+              Volver a los gastos
+            </>
+          ),
+        }}
       />
 
       <p className="mx-5 mt-7 text-[13px] leading-5 text-tenue">Cada uno pone para la casa según lo que gana. Lo que sobra después de poner su parte es de cada uno.</p>
@@ -90,31 +105,18 @@ function TarjetaPersona({
   estadisticas: EstadisticasPersona;
   mesAnterior: string;
 }) {
-  const [stats, setStats] = useState(false);
-  const alternar = () => setStats((v) => !v);
   const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
   const d = Math.round(m.diferencia);
   const sobrante = Math.round(m.leQuedaPlan);
 
   return (
-    <section
-      role="button"
-      tabIndex={0}
-      aria-pressed={stats}
-      aria-label={stats ? `En qué gasta ${m.nombre}. Tocá para volver al reparto` : `Reparto de ${m.nombre}. Tocá para ver en qué gasta`}
-      onClick={alternar}
-      onKeyDown={(e) => {
-        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          alternar();
-        }
-      }}
-      className="relative cursor-pointer select-none overflow-hidden rounded-3xl bg-tarjeta shadow-tarjeta ring-1 ring-linea"
-    >
-      <div
-        className={`p-5 transition-opacity duration-200 motion-reduce:transition-none ${stats ? "invisible opacity-0" : "opacity-100"}`}
-        aria-hidden={stats}
-      >
+    <TarjetaQueGira
+      mismoAlto
+      className="mx-0 mt-0"
+      cara="p-5 text-left"
+      etiqueta={(vuelta) => (vuelta ? `En qué gasta ${m.nombre}. Tocá para volver al reparto` : `Reparto de ${m.nombre}. Tocá para ver en qué gasta`)}
+      frente={
+      <>
       <div className="flex items-center gap-3">
         <FotoEditable id={m.miembroId} nombre={m.nombre} />
         <div className="min-w-0 flex-1">
@@ -166,28 +168,20 @@ function TarjetaPersona({
           </p>
         )}
       </div>
-      </div>
-
-      <EnQueGasta
-        visible={stats}
-        nombre={m.nombre}
-        id={m.miembroId}
-        e={estadisticas}
-        mesAnterior={mesAnterior}
-      />
-    </section>
+      </>
+      }
+      dorso={<EnQueGasta nombre={m.nombre} id={m.miembroId} e={estadisticas} mesAnterior={mesAnterior} />}
+    />
   );
 }
 
 /** La otra cara de la tarjeta de cada uno: en qué gasta este mes, con palabras y sin barras. */
 function EnQueGasta({
-  visible,
   nombre,
   id,
   e,
   mesAnterior,
 }: {
-  visible: boolean;
   nombre: string;
   id: string;
   e: EstadisticasPersona;
@@ -201,10 +195,7 @@ function EnQueGasta({
         ? `Igual que en ${mesAnterior}`
         : `${Math.abs(cambio)}% ${cambio > 0 ? "más" : "menos"} que en ${mesAnterior}`;
   return (
-    <div
-      aria-hidden={!visible}
-      className={`absolute inset-0 flex flex-col p-5 transition-opacity duration-200 motion-reduce:transition-none ${visible ? "opacity-100" : "invisible opacity-0"}`}
-    >
+    <div className="flex flex-1 flex-col">
       <div className="flex items-center gap-3">
         <Avatar id={id} nombre={nombre} tamano={40} />
         <div className="min-w-0 flex-1">
@@ -272,7 +263,7 @@ function Renglon({ etiqueta, valor, fuerte = false, sangria = false }: { etiquet
   );
 }
 
-/** Avatar que se toca para cargar una foto. Queda guardada solo en este celular. */
+/** Avatar que se toca para cargar una foto. Se guarda con los datos del hogar: la ven los dos. */
 function FotoEditable({ id, nombre }: { id: string; nombre: string }) {
   const { fotos, setFoto } = useFotos();
   const [error, setError] = useState<string | null>(null);
@@ -309,52 +300,66 @@ function FotoEditable({ id, nombre }: { id: string; nombre: string }) {
  * Tarjeta que se da vuelta al tocarla, como la del perfil de Airbnb.
  * La tarjeta toma el alto de la cara visible: la otra sale del flujo. El cambio de alto
  * se hace a mitad del giro, cuando la tarjeta está de canto y no se ve.
+ * Con `mismoAlto`, el dorso ocupa el alto del frente y la tarjeta no cambia de tamaño.
+ * Con `pistas`, cada cara lleva abajo el texto que dice qué pasa al tocarla.
  */
-function TarjetaQueGira({ frente, dorso }: { frente: React.ReactNode; dorso: React.ReactNode }) {
+function TarjetaQueGira({
+  frente,
+  dorso,
+  pistas,
+  etiqueta,
+  mismoAlto = false,
+  className = "mx-5 mt-4",
+  cara: claseCara = "px-5 pb-5 pt-6 text-center",
+}: {
+  frente: React.ReactNode;
+  dorso: React.ReactNode;
+  pistas?: { frente: React.ReactNode; dorso: React.ReactNode };
+  etiqueta: (vuelta: boolean) => string;
+  mismoAlto?: boolean;
+  className?: string;
+  cara?: string;
+}) {
   const [vuelta, setVuelta] = useState(false);
   const caraFrente = useRef<HTMLSpanElement>(null);
   const caraDorso = useRef<HTMLSpanElement>(null);
   const [alto, setAlto] = useState<number>();
   // La tarjeta cambia de alto al mismo ritmo que gira: empuja lo de abajo en vez de taparlo.
   useLayoutEffect(() => {
-    const visible = (vuelta ? caraDorso : caraFrente).current;
+    const visible = (vuelta && !mismoAlto ? caraDorso : caraFrente).current;
     if (!visible) return;
     const medir = () => setAlto(visible.offsetHeight);
     medir();
     const obs = new ResizeObserver(medir);
     obs.observe(visible);
     return () => obs.disconnect();
-  }, [vuelta]);
-  const cara = "absolute inset-x-0 top-0 flex flex-col rounded-3xl bg-tarjeta px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea";
+  }, [vuelta, mismoAlto]);
+  const cara = `absolute inset-x-0 top-0 flex flex-col rounded-3xl superficie shadow-tarjeta ring-1 ring-linea ${claseCara}`;
+  const pista = "mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca";
+  const alternar = () => setVuelta((v) => !v);
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => setVuelta((v) => !v)}
+      onClick={alternar}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
-          setVuelta((v) => !v);
+          alternar();
         }
       }}
       aria-pressed={vuelta}
-      aria-label={vuelta ? "Tarjeta de ingresos. Tocá para volver a los gastos del mes" : "Tarjeta de gastos. Tocá para ver cuánto entra"}
-      className="giro mx-5 mt-4 block cursor-pointer select-none text-left"
+      aria-label={etiqueta(vuelta)}
+      className={`giro block cursor-pointer select-none text-left ${className}`}
     >
       <span className="giro-interior relative block transition-[height] duration-[450ms] ease-[cubic-bezier(0.3,0.7,0.2,1)] motion-reduce:transition-none" style={{ height: alto }} data-dada-vuelta={vuelta}>
         <span ref={caraFrente} className={cara} aria-hidden={vuelta}>
           {frente}
-          <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
-            Tocá para ver cuánto entra
-            <Icono trazo={ICONOS.adelante} className="size-4" />
-          </span>
+          {pistas && <span className={pista}>{pistas.frente}</span>}
         </span>
-        <span ref={caraDorso} className={cara} aria-hidden={!vuelta}>
+        <span ref={caraDorso} className={`${cara} ${mismoAlto ? "bottom-0" : ""}`} aria-hidden={!vuelta}>
           {dorso}
-          <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
-            <Icono trazo={ICONOS.atras} className="size-4" />
-            Volver a los gastos
-          </span>
+          {pistas && <span className={pista}>{pistas.dorso}</span>}
         </span>
       </span>
     </div>
@@ -366,7 +371,7 @@ function Ingresos({ entra, miembros }: { entra: number; miembros: RepartoMiembro
   const dato = datoCurioso(entra);
   return (
     <>
-      <MontoGrande monto={entra} className="text-[40px]" />
+      <MontoGrande monto={entra} className="self-center text-[40px]" />
       <p className="mt-2 text-[14px] text-tenue">Entra al hogar por mes</p>
       <div className="mt-5 space-y-3 border-t border-linea pt-4 text-left">
         {miembros.map((m) => (
@@ -381,18 +386,20 @@ function Ingresos({ entra, miembros }: { entra: number; miembros: RepartoMiembro
         ))}
       </div>
       {entra > 0 && (
-        <div className="mt-5 rounded-2xl bg-marca-suave p-4 text-left">
-          <p className="text-[15px] font-semibold text-marca">{dato.titulo}</p>
-          <p className="mt-1 text-[13px] leading-5 text-tenue">{dato.detalle}</p>
-          <a
-            href={FUENTE_URL}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="mt-2 inline-block text-[13px] font-semibold text-marca underline underline-offset-2"
-          >
-            Ver el informe del INDEC
-          </a>
+        <div className="mt-4 rounded-2xl bg-marca-suave px-3.5 py-2.5 text-left">
+          <p className="text-[13px] font-semibold leading-[18px] text-marca">{dato.titulo}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-tenue">
+            {dato.detalle}{" "}
+            <a
+              href={FUENTE_URL}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="font-semibold text-marca underline underline-offset-2"
+            >
+              Ver informe
+            </a>
+          </p>
         </div>
       )}
     </>

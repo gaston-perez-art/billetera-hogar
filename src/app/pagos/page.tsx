@@ -48,7 +48,7 @@ export default function PagosFijos() {
         ? `${pesos(p.monto)}, ${cuandoVence(d).toLowerCase()}`
         : pesos(p.monto);
     return (
-      <div key={p.pagoFijo.id} className="flex min-h-16 items-center gap-3 px-5 py-2.5">
+      <div key={p.pagoFijo.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
         <Fecha dia={p.pagoFijo.dia} mes={mesCorto(mes)} vencida={vencido} />
         <div className="min-w-0 flex-1">
           <p className={`truncate text-[15px] font-medium ${p.pagado ? "text-tenue" : ""}`}>{p.pagoFijo.concepto}</p>

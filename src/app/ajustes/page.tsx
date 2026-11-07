@@ -188,7 +188,7 @@ function Fila({
         {bajada && <span className="mt-0.5 block truncate text-[13px] text-tenue">{bajada}</span>}
       </span>
       <span className={`shrink-0 text-[15px] font-semibold tabular-nums ${tenue ? "text-tenue" : ""}`}>{valor}</span>
-      <Icono trazo={ICONOS.adelante} className="size-4 shrink-0 text-sutil" />
+      <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />
     </button>
   );
 }
@@ -275,7 +275,7 @@ function Formulario({
     >
       <p className="text-[14px] leading-5 text-tenue">{ayuda}</p>
       <div className="py-8">
-        <CampoMonto valor={monto} onCambio={setMonto} autoFocus onEnter={guardar} />
+        <CampoMonto valor={monto} onCambio={setMonto} autoFocus onEnter={guardar} lapiz />
       </div>
 
       {dia !== undefined && (

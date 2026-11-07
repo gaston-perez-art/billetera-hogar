@@ -7,7 +7,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, Hoja } from "@/components/ui";
+import { Boton, CampoMonto, Hoja, MontoGrande, TarjetaLista } from "@/components/ui";
 import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
@@ -83,12 +83,12 @@ export default function Cargar() {
 
       <div key={paso} className={`flex flex-1 flex-col ${direccion === "adelante" ? "paso-adelante" : "paso-atras"}`}>
       <h1 className="mt-4 text-[24px] font-semibold tracking-tight">{titulos[paso]}</h1>
-      {paso !== "monto" && (
-        <p className="mt-1 text-[15px] text-tenue tabular-nums">
+      {paso === "categoria" && (
+        <button type="button" onClick={() => setPaso("monto")} className="mt-1 flex items-center gap-1.5 text-[15px] text-tenue tabular-nums">
           {entraPlata ? "Entran " : ""}
           {pesos(monto)}
-          {paso === "detalle" && categoria ? ` en ${categoria.nombre}` : ""}
-        </p>
+          <Icono trazo={ICONOS.lapiz} className="size-4 text-sutil" />
+        </button>
       )}
 
       {paso === "monto" && (
@@ -100,9 +100,9 @@ export default function Cargar() {
           }}
         >
           <div className="mt-12">
-            <CampoMonto valor={monto} onCambio={setMonto} autoFocus />
+            <CampoMonto valor={monto} onCambio={setMonto} autoFocus entra={entraPlata} />
           </div>
-          <label className="mt-8 flex items-center justify-between gap-4 border-t border-linea py-4">
+          <label className="mt-10 flex items-center justify-between gap-4 rounded-3xl superficie px-4 py-3.5 shadow-tarjeta ring-1 ring-linea">
             <span>
               <span className="block text-[15px] font-medium">Es plata que entra</span>
               <span className="mt-0.5 block text-[13px] text-tenue">Por ejemplo, un préstamo para cancelar deudas.</span>
@@ -151,23 +151,50 @@ export default function Cargar() {
             guardar();
           }}
         >
-          <div className="mt-6 divide-y divide-linea border-y border-linea">
-            <label className="flex items-center justify-between gap-4 py-3.5">
-              <span className="text-[15px] text-tenue">Detalle</span>
+          {/* Resumen de lo cargado: el monto y la categoría se tocan para cambiarlos. */}
+          <div className="mt-5 rounded-3xl superficie px-5 pb-4 pt-5 text-center shadow-tarjeta ring-1 ring-linea">
+            <button type="button" onClick={() => setPaso("monto")} aria-label="Cambiar el monto" className="inline-flex items-center gap-2">
+              <MontoGrande monto={monto} className={`text-[40px] ${entraPlata ? "text-queda" : ""}`} />
+              <Icono trazo={ICONOS.lapiz} className="size-[18px] text-sutil" />
+            </button>
+            {categoria && (
+              <button
+                type="button"
+                onClick={() => setPaso("categoria")}
+                aria-label="Cambiar la categoría"
+                className="mx-auto mt-3 flex items-center gap-2 rounded-full bg-relleno py-1 pl-1 pr-3"
+              >
+                <IconoCategoria nombre={categoria.nombre} entra={entraPlata} />
+                <span className="text-[15px] font-medium">{entraPlata ? `Entra en ${categoria.nombre}` : categoria.nombre}</span>
+                <Icono trazo={ICONOS.lapiz} className="size-4 text-sutil" />
+              </button>
+            )}
+          </div>
+
+          <TarjetaLista className="!mx-0 mt-4 divide-y divide-linea !py-0">
+            <label className="flex min-h-14 items-center gap-4 px-4">
+              <span className="shrink-0 text-[15px] text-tenue">Detalle</span>
               <input
                 value={detalle}
                 onChange={(e) => setDetalle(e.target.value)}
-                placeholder="Opcional"
-                className="min-w-0 flex-1 bg-transparent text-right text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-sutil"
+                placeholder={entraPlata ? "Por ejemplo, préstamo" : "Opcional"}
+                maxLength={60}
+                enterKeyHint="done"
+                className="min-w-0 flex-1 truncate bg-transparent text-right font-medium outline-none placeholder:font-normal placeholder:text-sutil"
               />
             </label>
-            <label className="flex items-center justify-between gap-4 py-3.5">
+            <label className="flex min-h-14 items-center justify-between gap-4 px-4">
               <span className="text-[15px] text-tenue">Fecha</span>
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value || hoy())} className="bg-transparent text-right text-[15px] font-medium outline-none" />
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value || hoy())}
+                className="campo-fecha min-w-0 bg-transparent text-right font-medium outline-none"
+              />
             </label>
-            <div className="flex items-center justify-between gap-4 py-3">
-              <span className="text-[15px] text-tenue">Pagó</span>
-              <div className="flex rounded-full bg-relleno p-0.5" role="radiogroup" aria-label="Pagó">
+            <div className="flex min-h-14 items-center justify-between gap-4 px-4">
+              <span className="text-[15px] text-tenue">{entraPlata ? "La recibió" : "Pagó"}</span>
+              <div className="flex rounded-full bg-relleno p-0.5" role="radiogroup" aria-label={entraPlata ? "La recibió" : "Pagó"}>
                 {datos.miembros.map((m) => (
                   <button
                     key={m.id}
@@ -182,7 +209,7 @@ export default function Cargar() {
                 ))}
               </div>
             </div>
-          </div>
+          </TarjetaLista>
           <Boton type="submit" className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
             Guardar
           </Boton>

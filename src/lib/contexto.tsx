@@ -25,6 +25,8 @@ export interface Billetera {
   actualizarIngreso: (ingresoId: string, monto: number) => void;
   actualizarPagoFijo: (pagoFijoId: string, cambios: CambiosPagoFijo) => void;
   importarDatos: (d: Datos) => Promise<void>;
+  /** Foto de perfil de cualquiera de los dos (null la saca). En modo nube la ven los dos. */
+  guardarFoto: (miembroId: string, foto: string | null) => void;
   reiniciarDemo?: () => void;
   cerrarSesion?: () => void;
   /** El ojito: montos ocultos en este celular. */

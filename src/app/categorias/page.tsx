@@ -2,13 +2,16 @@
 
 import { IconoCategoria } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
-import { Encabezado, Grupo, MontoQueda, Resumen } from "@/components/ui";
-import { categoriasDelMes, planMes } from "@/lib/calculos";
+import { Cifras, Encabezado, Grupo, MontoQueda, Resumen } from "@/components/ui";
+import { categoriasDelMes, gastosDe, planMes } from "@/lib/calculos";
 import { pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
+import { useVista } from "@/lib/vista";
 
 export default function Categorias() {
   const { datos, mes } = useBilletera();
+  const [vista] = useVista();
+  if (vista === "mio") return <CategoriasMias />;
   const categorias = categoriasDelMes(datos, mes);
   const plan = planMes(datos, mes);
   const total = categorias.reduce((a, c) => ({ gastado: a.gastado + c.gastado, techo: a.techo + c.techo }), { gastado: 0, techo: 0 });
@@ -17,7 +20,7 @@ export default function Categorias() {
 
   return (
     <>
-      <Encabezado titulo="Categorías" />
+      <Encabezado titulo="Categorías" conVista />
       <SaldoFijo monto={total.gastado} etiqueta="Gastado en el mes">
         <Resumen etiqueta="Gastado en el mes" monto={total.gastado}>
           <Barra parte={total.gastado} total={total.techo} />
@@ -38,7 +41,7 @@ export default function Categorias() {
           {activas.map(({ categoria, gastado, techo, pendiente, libre }) => {
             const estado = estadoCategoria(gastado, techo, pendiente);
             return (
-              <div key={categoria.id} className="flex min-h-16 items-center gap-3 px-5 py-2.5">
+              <div key={categoria.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
                 <IconoCategoria nombre={categoria.nombre} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-medium">{categoria.nombre}</p>
@@ -57,6 +60,61 @@ export default function Categorias() {
           <p className="px-5 text-[13px] leading-5 text-tenue">
             Sin techo ni gastos este mes: {vacias.map((c) => c.categoria.nombre).join(", ")}.
           </p>
+        )}
+      </main>
+    </>
+  );
+}
+
+/**
+ * "Solo yo": en qué gastaste vos este mes. Los techos son de los dos, así que acá no se comparan:
+ * se dice cuánto fue a cada categoría y qué parte de lo tuyo es.
+ */
+function CategoriasMias() {
+  const { datos, mes, usuarioId } = useBilletera();
+  const g = gastosDe(datos, mes, usuarioId);
+  const top = g.categorias.slice(0, 4);
+  return (
+    <>
+      <Encabezado titulo="Categorías" conVista />
+      <SaldoFijo monto={g.gastado} etiqueta="Gastaste este mes">
+        <Resumen etiqueta="Gastaste este mes" monto={g.gastado}>
+          {g.gastado > 0 && (
+            <div className="mb-4 flex h-2 gap-0.5 overflow-hidden rounded-full" role="img" aria-label="En qué se fue lo tuyo">
+              {top.map((c, i) => (
+                <span key={c.categoria.id} className={i === 0 ? "bg-marca" : i === 1 ? "bg-marca/60" : i === 2 ? "bg-marca/35" : "bg-sutil"} style={{ flexGrow: c.monto }} />
+              ))}
+              {g.categorias.length > top.length && <span className="bg-relleno" style={{ flexGrow: g.categorias.slice(top.length).reduce((a, c) => a + c.monto, 0) }} />}
+            </div>
+          )}
+          <Cifras
+            items={[
+              { etiqueta: "Gastos", valor: g.cantidad },
+              { etiqueta: "Más en", valor: g.categorias[0]?.categoria.nombre ?? "–" },
+            ]}
+          />
+        </Resumen>
+      </SaldoFijo>
+      <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">Solo lo que cargaste vos, pagos fijos incluidos. Los techos son de los dos: se ven en la vista de la pareja.</p>
+
+      <main className="mt-6">
+        {g.categorias.length === 0 ? (
+          <p className="px-9 py-10 text-center text-[15px] text-tenue">Todavía no cargaste gastos este mes.</p>
+        ) : (
+          <Grupo titulo="Por categoría">
+            {g.categorias.map((c) => (
+              <div key={c.categoria.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
+                <IconoCategoria nombre={c.categoria.nombre} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-medium">{c.categoria.nombre}</p>
+                  <p className="mt-0.5 text-[13px] text-tenue">
+                    {c.cantidad === 1 ? "1 gasto" : `${c.cantidad} gastos`}, {Math.round(c.parte * 100)}% de lo tuyo
+                  </p>
+                </div>
+                <p className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</p>
+              </div>
+            ))}
+          </Grupo>
         )}
       </main>
     </>

@@ -9,12 +9,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Acceso } from "@/components/Acceso";
 import { ContextoBilletera, PantallaCentrada, type Billetera } from "./contexto";
 import { hoy, mesDe } from "./formato";
+import { fotosLocales, olvidarFotoLocal } from "./fotos";
 import { cargarHogar, filasADatos, prepararImportacion, type Filas } from "./nube";
 import * as op from "./operaciones";
 import { useMontosOcultos } from "./privacidad";
 import type { Datos, Mes } from "./tipos";
 
-const TABLAS = ["categorias", "techos", "ingresos", "movimientos", "pagos_fijos", "pagos_mes"];
+const TABLAS = ["miembros", "categorias", "techos", "ingresos", "movimientos", "pagos_fijos", "pagos_mes"];
 
 type Miembro = { id: string; hogar_id: string; nombre: string };
 
@@ -110,6 +111,25 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
       sb.removeChannel(canal);
     };
   }, [sb, hogarId, recargar]);
+
+  // Fotos que quedaron solo en este navegador (versión anterior): se suben una vez a la nube.
+  const fotosSubidas = useRef(false);
+  useEffect(() => {
+    if (!filas || fotosSubidas.current) return;
+    fotosSubidas.current = true;
+    const locales = fotosLocales();
+    for (const m of filas.miembros) {
+      const local = locales[m.id];
+      if (!local) continue;
+      if (m.foto) {
+        olvidarFotoLocal(m.id);
+        continue;
+      }
+      sb.rpc("guardar_foto", { p_miembro: m.id, p_foto: local }).then(({ error }) => {
+        if (!error) olvidarFotoLocal(m.id);
+      });
+    }
+  }, [filas, sb]);
 
   /** Muestra el cambio ya y lo guarda; si la base lo rechaza, la recarga lo deshace. */
   const ejecutar = useCallback(
@@ -253,6 +273,12 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         if (error) throw new Error("No se pudo importar el archivo. No se cambió nada.");
         await recargar();
       },
+
+      guardarFoto: (miembroId, foto) =>
+        ejecutar(
+          (d) => op.cambiarFoto(d, miembroId, foto),
+          () => sb.rpc("guardar_foto", { p_miembro: miembroId, p_foto: foto }),
+        ),
 
       cerrarSesion: () => sb.auth.signOut(),
     };
