@@ -266,6 +266,20 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
           },
         ),
 
+      renombrarCategoria: (categoriaId, nombre) =>
+        ejecutar(
+          (d) => op.renombrarCategoria(d, categoriaId, nombre),
+          () => sb.from("categorias").update({ nombre: nombre.trim() }).eq("id", categoriaId),
+        ),
+
+      renombrarIngreso: (ingresoId, concepto) => {
+        const ids = op.versionesIngreso(datos, ingresoId);
+        ejecutar(
+          (d) => op.renombrarIngreso(d, ingresoId, concepto),
+          () => sb.from("ingresos").update({ concepto: concepto.trim() }).in("id", ids),
+        );
+      },
+
       agregarPagoFijo: (nuevo) => {
         const pf = op.armarPagoFijo(nuevo, mes);
         ejecutar(

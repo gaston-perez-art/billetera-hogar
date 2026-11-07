@@ -7,12 +7,13 @@ describe("recordatorio para cargar", () => {
   it("no aparece si cargó hace poco", () => {
     expect(motivoRecordatorio(["2026-11-06T10:00:00"], f("2026-11-06T20:00:00"), null)).toBeNull();
   });
-  it("aparece si pasaron más de 24 horas", () => {
-    expect(motivoRecordatorio(["2026-11-05T09:00:00"], f("2026-11-06T10:00:00"), null)).toBe("un-dia");
+  it("aparece si pasaron más de 12 horas", () => {
+    expect(motivoRecordatorio(["2026-11-06T08:00:00"], f("2026-11-06T20:30:00"), null)).toBe("sin-cargar");
+    expect(motivoRecordatorio(["2026-11-06T09:00:00"], f("2026-11-06T20:30:00"), null)).toBeNull();
   });
   it("cerrado hoy, no vuelve hasta mañana", () => {
     expect(motivoRecordatorio(["2026-11-05T09:00:00"], f("2026-11-06T18:00:00"), f("2026-11-06T10:00:00"))).toBeNull();
-    expect(motivoRecordatorio(["2026-11-05T09:00:00"], f("2026-11-07T08:00:00"), f("2026-11-06T10:00:00"))).toBe("un-dia");
+    expect(motivoRecordatorio(["2026-11-05T09:00:00"], f("2026-11-07T08:00:00"), f("2026-11-06T10:00:00"))).toBe("sin-cargar");
   });
   it("pasadas las 23, si hoy no cargó nada", () => {
     expect(motivoRecordatorio(["2026-11-05T22:00:00"], f("2026-11-06T23:10:00"), null)).toBe("noche");
@@ -23,6 +24,6 @@ describe("recordatorio para cargar", () => {
     expect(motivoRecordatorio(["2026-11-05T22:00:00"], f("2026-11-06T23:40:00"), f("2026-11-06T23:15:00"))).toBeNull();
   });
   it("sin ninguna carga, también avisa", () => {
-    expect(motivoRecordatorio([], f("2026-11-06T12:00:00"), null)).toBe("un-dia");
+    expect(motivoRecordatorio([], f("2026-11-06T12:00:00"), null)).toBe("sin-cargar");
   });
 });

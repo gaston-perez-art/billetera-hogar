@@ -24,6 +24,9 @@ export interface Billetera {
   /** Vale desde el mes elegido: los meses anteriores no cambian. */
   actualizarIngreso: (ingresoId: string, monto: number) => void;
   actualizarPagoFijo: (pagoFijoId: string, cambios: CambiosPagoFijo) => void;
+  /** Cambiar el nombre. No toca montos ni el pasado (los gastos siguen la categoría por id). */
+  renombrarCategoria: (categoriaId: string, nombre: string) => void;
+  renombrarIngreso: (ingresoId: string, concepto: string) => void;
   /** Pago fijo nuevo, desde el mes elegido (los meses anteriores no cambian). */
   agregarPagoFijo: (nuevo: NuevoPagoFijo) => void;
   importarDatos: (d: Datos) => Promise<void>;

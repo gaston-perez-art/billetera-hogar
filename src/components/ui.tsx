@@ -124,30 +124,31 @@ function SelectorMes() {
 }
 
 /**
- * "Los dos" o "Solo yo": dos botones chicos, con el ícono de la pareja y la foto propia.
- * Cambia Inicio y Categorías en este celular.
+ * "Los dos" o "Solo yo": un interruptor de dos lados, con el ícono de la pareja y la foto propia.
+ * Toda la pastilla es tocable: cualquier toque pasa al otro lado. Cambia Inicio y Categorías en este celular.
  */
 function SelectorVista() {
   const [vista, setVista] = useVista();
   const { actual } = useUsuarios();
   if (!actual) return null;
-  // 36 px de alto para que el dedo acierte; se toca con alTocar (en iPhone el click a veces no llegaba).
-  const opcion = "grid size-9 place-items-center rounded-full text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca";
+  const mio = vista === "mio";
+  const lado = "grid size-9 place-items-center rounded-full transition-colors";
+  // Un solo botón (se toca con alTocar: en iPhone el click a veces no llegaba). 44 px de alto con el borde.
   return (
-    <div role="radiogroup" aria-label="Qué ver" className="ml-auto flex items-center gap-0.5 rounded-full superficie p-0.5 shadow-tarjeta ring-1 ring-linea">
-      <button role="radio" aria-checked={vista === "pareja"} aria-label="Ver lo de los dos" {...alTocar(() => setVista("pareja"))} className={opcion}>
+    <button
+      role="switch"
+      aria-checked={mio}
+      aria-label={mio ? `Viendo solo lo de ${actual.nombre}. Tocá para ver lo de los dos.` : `Viendo lo de los dos. Tocá para ver solo lo de ${actual.nombre}.`}
+      {...alTocar(() => setVista(mio ? "pareja" : "mio"))}
+      className="ml-auto flex items-center gap-0.5 rounded-full superficie p-1 shadow-tarjeta ring-1 ring-linea"
+    >
+      <span className={`${lado} ${mio ? "text-tenue" : "bg-marca text-sobre-marca"}`}>
         <Icono trazo={ICONOS.reparto} className="size-[18px]" />
-      </button>
-      <button
-        role="radio"
-        aria-checked={vista === "mio"}
-        aria-label={`Ver solo lo de ${actual.nombre}`}
-        {...alTocar(() => setVista("mio"))}
-        className={`${opcion} aria-checked:ring-2 aria-checked:ring-marca`}
-      >
-        <Avatar id={actual.id} nombre={actual.nombre} tamano={vista === "mio" ? 28 : 24} />
-      </button>
-    </div>
+      </span>
+      <span className={`${lado} ${mio ? "ring-2 ring-marca" : ""}`}>
+        <Avatar id={actual.id} nombre={actual.nombre} tamano={mio ? 28 : 24} />
+      </span>
+    </button>
   );
 }
 
@@ -387,6 +388,69 @@ export function Hoja({
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-linea" />
         {mostrarTitulo && <h2 className="mb-4 text-[20px] font-bold tracking-[-0.01em]">{titulo}</h2>}
         {abierta ? children : ultimo.current}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Modal centrado para avisos (como los de MP): tarjeta con imagen arriba, título, texto y botones.
+ * La X va chica y discreta arriba a la derecha. Tocar afuera o Escape también cierra.
+ */
+export function Modal({
+  abierta,
+  alCerrar,
+  titulo,
+  imagen,
+  children,
+}: {
+  abierta: boolean;
+  alCerrar: () => void;
+  titulo: string;
+  imagen?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [montada, setMontada] = useState(abierta);
+  const [saliendo, setSaliendo] = useState(false);
+  const ultimo = useRef(children);
+  if (abierta) ultimo.current = children;
+
+  useEffect(() => {
+    if (abierta) {
+      setMontada(true);
+      setSaliendo(false);
+      return;
+    }
+    if (!montada) return;
+    setSaliendo(true);
+    const t = setTimeout(() => {
+      setMontada(false);
+      setSaliendo(false);
+    }, 180);
+    return () => clearTimeout(t);
+  }, [abierta, montada]);
+
+  useEffect(() => {
+    if (!abierta) return;
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && alCerrar();
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [abierta, alCerrar]);
+
+  if (!montada) return null;
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center px-5" role="dialog" aria-modal="true" aria-label={titulo}>
+      <button className={`absolute inset-0 bg-black/45 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" tabIndex={-1} onClick={alCerrar} />
+      <div className={`relative w-full max-w-[360px] overflow-hidden rounded-[28px] superficie shadow-hoja ring-1 ring-linea ${saliendo ? "modal-sale" : "modal-entra"}`}>
+        {imagen}
+        <button
+          onClick={alCerrar}
+          aria-label="Cerrar"
+          className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-tarjeta/70 text-tenue backdrop-blur"
+        >
+          <Icono trazo={ICONOS.cerrar} className="size-4" />
+        </button>
+        <div className="px-6 pb-6 pt-5">{abierta ? children : ultimo.current}</div>
       </div>
     </div>
   );

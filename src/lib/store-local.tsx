@@ -92,6 +92,8 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
       actualizarIngreso: (ingresoId, monto) =>
         cambiar((d) => op.aplicarCambioIngreso(d, op.planCambioIngreso(d, ingresoId, monto, mes, op.nuevoId()))),
       actualizarPagoFijo: (pagoFijoId, cambios) => cambiar((d) => op.actualizarPagoFijo(d, pagoFijoId, cambios)),
+      renombrarCategoria: (categoriaId, nombre) => cambiar((d) => op.renombrarCategoria(d, categoriaId, nombre)),
+      renombrarIngreso: (ingresoId, concepto) => cambiar((d) => op.renombrarIngreso(d, ingresoId, concepto)),
       agregarPagoFijo: (nuevo) => cambiar((d) => op.agregarPagoFijo(d, op.armarPagoFijo(nuevo, mes))),
       guardarFoto: (miembroId, foto) => cambiar((d) => op.cambiarFoto(d, miembroId, foto)),
       reiniciarDemo: () => cambiar(() => datosDemo()),
