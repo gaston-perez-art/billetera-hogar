@@ -85,7 +85,7 @@ Leer antes de tocar lógica:
 ## Próximos pasos
 
 1. ~~Diseño de pantallas y scaffold~~ (POC hecho).
-2. ~~Conectar Supabase (cliente, login, Realtime)~~. Falta hacer la configuración de `docs/supabase.md` y verificar RLS con las dos cuentas. **Pendiente:** correr `supabase/migrations/0005_alta_pagos.sql` en Supabase (sin eso, agregar un pago fijo falla en la nube) y mergear la rama `claude/pensive-bohr-3blxot`.
+2. ~~Conectar Supabase (cliente, login, Realtime)~~. Falta hacer la configuración de `docs/supabase.md` y verificar RLS con las dos cuentas.
 3. Pasar los cálculos de `calculos.ts` a las vistas SQL (techo vigente incluido).
 4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
 5. Explorar actualización de saldo real (ver "Ideas" en README).
