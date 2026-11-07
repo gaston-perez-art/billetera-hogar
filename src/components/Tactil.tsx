@@ -33,6 +33,33 @@ export function vibrar() {
   }
 }
 
+/**
+ * Dispara la acción apenas se levanta el dedo, sin esperar el "click".
+ * En iPhone Safari a veces no dispara el click (por ejemplo, si la pantalla todavía se desliza
+ * por el impulso del scroll): había que tocar de nuevo o no respondía. Con mouse o teclado
+ * sigue andando el click normal.
+ */
+export function alTocar(accion: () => void) {
+  let inicio: { x: number; y: number } | null = null;
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      inicio = { x: t.clientX, y: t.clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const t = e.changedTouches[0];
+      const desde = inicio;
+      inicio = null;
+      // Si el dedo se movió, era un scroll o un arrastre: no es un toque.
+      if (!desde || Math.hypot(t.clientX - desde.x, t.clientY - desde.y) > 10) return;
+      e.preventDefault(); // evita el click que vendría después (dispararía dos veces)
+      vibrar();
+      accion();
+    },
+    onClick: accion,
+  };
+}
+
 export function Tactil() {
   useEffect(() => {
     const alTocar = (e: MouseEvent) => {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
+import { alTocar } from "@/components/Tactil";
 import { mesDe, hoy, montoATexto, montoEnVivo, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
@@ -130,17 +131,18 @@ function SelectorVista() {
   const [vista, setVista] = useVista();
   const { actual } = useUsuarios();
   if (!actual) return null;
-  const opcion = "grid size-8 place-items-center rounded-full text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca";
+  // 36 px de alto para que el dedo acierte; se toca con alTocar (en iPhone el click a veces no llegaba).
+  const opcion = "grid size-9 place-items-center rounded-full text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca";
   return (
     <div role="radiogroup" aria-label="Qué ver" className="ml-auto flex items-center gap-0.5 rounded-full superficie p-0.5 shadow-tarjeta ring-1 ring-linea">
-      <button role="radio" aria-checked={vista === "pareja"} aria-label="Ver lo de los dos" onClick={() => setVista("pareja")} className={opcion}>
+      <button role="radio" aria-checked={vista === "pareja"} aria-label="Ver lo de los dos" {...alTocar(() => setVista("pareja"))} className={opcion}>
         <Icono trazo={ICONOS.reparto} className="size-[18px]" />
       </button>
       <button
         role="radio"
         aria-checked={vista === "mio"}
         aria-label={`Ver solo lo de ${actual.nombre}`}
-        onClick={() => setVista("mio")}
+        {...alTocar(() => setVista("mio"))}
         className={`${opcion} aria-checked:ring-2 aria-checked:ring-marca`}
       >
         <Avatar id={actual.id} nombre={actual.nombre} tamano={vista === "mio" ? 28 : 24} />
