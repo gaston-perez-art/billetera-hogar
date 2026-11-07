@@ -57,6 +57,8 @@ export interface PagoFijo {
   activo: boolean;
   /** Mes desde el que está dado de baja. Antes de ese mes sigue apareciendo. */
   bajaDesde?: Mes | null;
+  /** Mes en que se dio de alta. Antes de ese mes no aparece (null = desde siempre). */
+  altaDesde?: Mes | null;
 }
 
 export interface PagoMes {

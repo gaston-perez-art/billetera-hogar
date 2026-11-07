@@ -7,7 +7,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, Hoja, MontoGrande, TarjetaLista } from "@/components/ui";
+import { Boton, CampoMonto, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
 import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
@@ -235,15 +235,5 @@ export default function Cargar() {
         </form>
       </Hoja>
     </main>
-  );
-}
-
-function Interruptor({ activo, onCambio }: { activo: boolean; onCambio: (v: boolean) => void }) {
-  return (
-    <span className="relative shrink-0">
-      <input type="checkbox" role="switch" checked={activo} onChange={(e) => onCambio(e.target.checked)} className="peer sr-only" />
-      <span className="block h-[30px] w-[50px] rounded-full bg-linea transition peer-checked:bg-marca peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-texto" />
-      <span className="absolute left-[3px] top-[3px] size-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] transition peer-checked:translate-x-5" />
-    </span>
   );
 }

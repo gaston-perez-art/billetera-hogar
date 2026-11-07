@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { CambiosPagoFijo, NuevoMovimiento } from "./operaciones";
+import type { CambiosPagoFijo, NuevoMovimiento, NuevoPagoFijo } from "./operaciones";
 import type { Datos, Mes } from "./tipos";
 
 export interface Billetera {
@@ -24,6 +24,8 @@ export interface Billetera {
   /** Vale desde el mes elegido: los meses anteriores no cambian. */
   actualizarIngreso: (ingresoId: string, monto: number) => void;
   actualizarPagoFijo: (pagoFijoId: string, cambios: CambiosPagoFijo) => void;
+  /** Pago fijo nuevo, desde el mes elegido (los meses anteriores no cambian). */
+  agregarPagoFijo: (nuevo: NuevoPagoFijo) => void;
   importarDatos: (d: Datos) => Promise<void>;
   /** Foto de perfil de cualquiera de los dos (null la saca). En modo nube la ven los dos. */
   guardarFoto: (miembroId: string, foto: string | null) => void;
