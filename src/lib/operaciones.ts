@@ -4,14 +4,18 @@
 
 import { cuotaDelMes } from "./calculos";
 import { fechaEnMes, hoy, mesDe, sumarMeses } from "./formato";
-import type { Datos, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
+import type { Datos, Ingreso, Mes, Movimiento, PagoFijo, Tarjeta } from "./tipos";
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
-export type CambiosPagoFijo = Partial<Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde">>;
+export type CambiosPagoFijo = Partial<
+  Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde" | "altaDesde" | "cuotas" | "tarjetaId">
+>;
+export type NuevaTarjeta = Omit<Tarjeta, "id">;
 export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda"> & {
-  /** Compra en cuotas: cuántas son y en qué mes cae la primera. */
+  /** Compra en cuotas: cuántas son, en qué mes cae la primera y con qué tarjeta. */
   cuotas?: number | null;
   primeraCuota?: Mes;
+  tarjetaId?: string | null;
 };
 
 export function nuevoId() {
@@ -175,7 +179,7 @@ export function agregarPagoFijo(d: Datos, pf: PagoFijo): Datos {
 }
 
 export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): PagoFijo {
-  const { primeraCuota, cuotas, ...resto } = nuevo;
+  const { primeraCuota, cuotas, tarjetaId, ...resto } = nuevo;
   const enCuotas = cuotas != null && cuotas > 0;
   return {
     ...resto,
@@ -185,13 +189,40 @@ export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): P
     bajaDesde: null,
     altaDesde: enCuotas ? (primeraCuota ?? sumarMeses(mes, 1)) : mes,
     cuotas: enCuotas ? cuotas : null,
+    tarjetaId: enCuotas ? (tarjetaId ?? null) : null,
   };
 }
 
 /** Detalle del gasto que se crea al pagar: en cuotas lleva cuál ("Heladera, cuota 3 de 6"). Igual que marcar_pagado en SQL. */
 export function detalleDePago(pf: PagoFijo, mes: Mes): string {
   const c = cuotaDelMes(pf, mes);
-  return c ? `${pf.concepto}, cuota ${c.numero} de ${c.total}` : pf.concepto;
+  return c && c.numero >= 1 && c.numero <= c.total ? `${pf.concepto}, cuota ${c.numero} de ${c.total}` : pf.concepto;
+}
+
+export function agregarTarjeta(d: Datos, t: Tarjeta): Datos {
+  return { ...d, tarjetas: [...(d.tarjetas ?? []), t] };
+}
+
+export function armarTarjeta(nueva: NuevaTarjeta, id = nuevoId()): Tarjeta {
+  return { id, banco: nueva.banco.trim(), ultimos4: nueva.ultimos4.trim(), miembroId: nueva.miembroId };
+}
+
+export function actualizarTarjeta(d: Datos, tarjetaId: string, cambios: Partial<NuevaTarjeta>): Datos {
+  const limpio = {
+    ...cambios,
+    ...(cambios.banco !== undefined ? { banco: cambios.banco.trim() } : {}),
+    ...(cambios.ultimos4 !== undefined ? { ultimos4: cambios.ultimos4.trim() } : {}),
+  };
+  return { ...d, tarjetas: (d.tarjetas ?? []).map((t) => (t.id === tarjetaId ? { ...t, ...limpio } : t)) };
+}
+
+/** Borrar una tarjeta: sus compras quedan sin tarjeta (no se borran). */
+export function borrarTarjeta(d: Datos, tarjetaId: string): Datos {
+  return {
+    ...d,
+    tarjetas: (d.tarjetas ?? []).filter((t) => t.id !== tarjetaId),
+    pagosFijos: d.pagosFijos.map((p) => (p.tarjetaId === tarjetaId ? { ...p, tarjetaId: null } : p)),
+  };
 }
 
 export function actualizarPagoFijo(d: Datos, pagoFijoId: string, cambios: CambiosPagoFijo): Datos {

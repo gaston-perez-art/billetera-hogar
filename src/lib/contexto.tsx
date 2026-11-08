@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { CambiosMovimiento, CambiosPagoFijo, NuevoMovimiento, NuevoPagoFijo } from "./operaciones";
+import type { CambiosMovimiento, CambiosPagoFijo, NuevaTarjeta, NuevoMovimiento, NuevoPagoFijo } from "./operaciones";
 import type { Datos, Mes } from "./tipos";
 
 export interface Billetera {
@@ -31,6 +31,11 @@ export interface Billetera {
   renombrarIngreso: (ingresoId: string, concepto: string) => void;
   /** Pago fijo nuevo, desde el mes elegido (los meses anteriores no cambian). */
   agregarPagoFijo: (nuevo: NuevoPagoFijo) => void;
+  /** Tarjeta de crédito nueva; devuelve su id (para elegirla al toque). */
+  agregarTarjeta: (t: NuevaTarjeta) => string;
+  actualizarTarjeta: (tarjetaId: string, cambios: Partial<NuevaTarjeta>) => void;
+  /** Sus compras quedan sin tarjeta, no se borran. */
+  borrarTarjeta: (tarjetaId: string) => void;
   importarDatos: (d: Datos) => Promise<void>;
   /** Foto de perfil de cualquiera de los dos (null la saca). En modo nube la ven los dos. */
   guardarFoto: (miembroId: string, foto: string | null) => void;

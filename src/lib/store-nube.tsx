@@ -71,6 +71,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
   const [mes, setMes] = useState<Mes>(() => mesDe(hoy()));
   const privacidad = useMontosOcultos();
   const pendientes = useRef(0);
+  // Una compra con tarjeta nueva: el pago espera a que la tarjeta esté guardada (si no, la base lo rechaza).
+  const tarjetaGuardandose = useRef<PromiseLike<unknown>>(Promise.resolve());
   const ultimaCarga = useRef(0);
 
   const base = useMemo(() => (filas ? filasADatos(filas, mes) : null), [filas, mes]);
@@ -104,12 +106,18 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
       canal.on("postgres_changes", { event: "*", schema: "public", table, filter: `hogar_id=eq.${hogarId}` }, programar);
     }
     canal.subscribe();
+    // Tarjetas en un canal aparte: si todavía no se corrió 0007_tarjetas.sql, no afecta al resto.
+    const canalTarjetas = sb
+      .channel(`hogar-${hogarId}-tarjetas`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tarjetas", filter: `hogar_id=eq.${hogarId}` }, programar)
+      .subscribe();
     const alVolver = () => document.visibilityState === "visible" && programar();
     document.addEventListener("visibilitychange", alVolver);
     return () => {
       clearTimeout(espera);
       document.removeEventListener("visibilitychange", alVolver);
       sb.removeChannel(canal);
+      sb.removeChannel(canalTarjetas);
     };
   }, [sb, hogarId, recargar]);
 
@@ -272,11 +280,17 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
       actualizarPagoFijo: (pagoFijoId, cambios) =>
         ejecutar(
           (d) => op.actualizarPagoFijo(d, pagoFijoId, cambios),
-          () => {
-            const { bajaDesde, ...resto } = cambios;
+          async () => {
+            const { bajaDesde, altaDesde, tarjetaId, ...resto } = cambios;
+            if (tarjetaId) await tarjetaGuardandose.current;
             return sb
               .from("pagos_fijos")
-              .update({ ...resto, ...(bajaDesde !== undefined ? { baja_desde: bajaDesde } : {}) })
+              .update({
+                ...resto,
+                ...(bajaDesde !== undefined ? { baja_desde: bajaDesde } : {}),
+                ...(altaDesde !== undefined ? { alta_desde: altaDesde } : {}),
+                ...(tarjetaId !== undefined ? { tarjeta_id: tarjetaId } : {}),
+              })
               .eq("id", pagoFijoId);
           },
         ),
@@ -299,8 +313,9 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         const pf = op.armarPagoFijo(nuevo, mes);
         ejecutar(
           (d) => op.agregarPagoFijo(d, pf),
-          () =>
-            sb.from("pagos_fijos").insert({
+          async () => {
+            await tarjetaGuardandose.current;
+            return sb.from("pagos_fijos").insert({
               id: pf.id,
               hogar_id: hogarId,
               concepto: pf.concepto,
@@ -311,9 +326,51 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               activo: true,
               alta_desde: pf.altaDesde,
               cuotas: pf.cuotas,
-            }),
+              // Solo si hay: así anda aunque todavía no se haya corrido 0007_tarjetas.sql.
+              ...(pf.tarjetaId ? { tarjeta_id: pf.tarjetaId } : {}),
+            });
+          },
         );
       },
+
+      agregarTarjeta: (nueva) => {
+        const t = op.armarTarjeta(nueva);
+        ejecutar(
+          (d) => op.agregarTarjeta(d, t),
+          () => {
+            const guardado = sb
+              .from("tarjetas")
+              .insert({ id: t.id, hogar_id: hogarId, banco: t.banco, ultimos4: t.ultimos4, miembro_id: t.miembroId })
+              .then((r) => r);
+            tarjetaGuardandose.current = guardado;
+            return guardado;
+          },
+        );
+        return t.id;
+      },
+
+      actualizarTarjeta: (tarjetaId, cambios) =>
+        ejecutar(
+          (d) => op.actualizarTarjeta(d, tarjetaId, cambios),
+          () => {
+            const { miembroId, ...resto } = cambios;
+            return sb
+              .from("tarjetas")
+              .update({
+                ...(resto.banco !== undefined ? { banco: resto.banco.trim() } : {}),
+                ...(resto.ultimos4 !== undefined ? { ultimos4: resto.ultimos4.trim() } : {}),
+                ...(miembroId !== undefined ? { miembro_id: miembroId } : {}),
+              })
+              .eq("id", tarjetaId);
+          },
+        ),
+
+      // Las compras quedan sin tarjeta: la base lo hace sola (on delete set null).
+      borrarTarjeta: (tarjetaId) =>
+        ejecutar(
+          (d) => op.borrarTarjeta(d, tarjetaId),
+          () => sb.from("tarjetas").delete().eq("id", tarjetaId),
+        ),
 
       // Reemplaza todo lo del hogar. Si falla, no se borra nada (es una sola transacción).
       importarDatos: async (nuevos) => {

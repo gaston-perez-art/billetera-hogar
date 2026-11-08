@@ -44,7 +44,7 @@ export function pagoFijoVigente(pf: PagoFijo, mes: Mes): boolean {
 }
 
 /** Meses entre dos meses (b − a). */
-function mesesEntre(a: Mes, b: Mes): number {
+export function mesesEntre(a: Mes, b: Mes): number {
   const [aa, am] = a.split("-").map(Number);
   const [ba, bm] = b.split("-").map(Number);
   return (ba - aa) * 12 + (bm - am);
@@ -56,10 +56,10 @@ export function cuotaDelMes(pf: PagoFijo, mes: Mes): { numero: number; total: nu
   return { numero: mesesEntre(pf.altaDesde, mes) + 1, total: pf.cuotas };
 }
 
-/** "Cuota 3 de 6", o null si no es en cuotas. */
+/** "Cuota 3 de 6", o null si no es en cuotas o el mes cae fuera de las cuotas. */
 export function textoCuota(pf: PagoFijo, mes: Mes): string | null {
   const c = cuotaDelMes(pf, mes);
-  return c ? `Cuota ${c.numero} de ${c.total}` : null;
+  return c && c.numero >= 1 && c.numero <= c.total ? `Cuota ${c.numero} de ${c.total}` : null;
 }
 
 /** Última cuota de una compra (el mes en que termina). */

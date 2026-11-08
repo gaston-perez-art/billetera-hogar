@@ -4,6 +4,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Datos, Mes, Miembro } from "./tipos";
 
+type FilaTarjeta = { id: string; banco: string; ultimos4: string; miembro_id: string };
+
 export interface Filas {
   miembros: { id: string; nombre: string; user_id: string; foto?: string | null }[];
   categorias: { id: string; nombre: string; orden: number }[];
@@ -38,7 +40,10 @@ export interface Filas {
     baja_desde?: string | null;
     alta_desde?: string | null;
     cuotas?: number | null;
+    tarjeta_id?: string | null;
   }[];
+  /** Vacía si todavía no se corrió 0007_tarjetas.sql. */
+  tarjetas?: FilaTarjeta[];
   pagos_mes: {
     id: string;
     pago_fijo_id: string;
@@ -103,7 +108,9 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       bajaDesde: p.baja_desde ?? null,
       altaDesde: p.alta_desde ?? null,
       cuotas: p.cuotas ?? null,
+      tarjetaId: p.tarjeta_id ?? null,
     })),
+    tarjetas: (f.tarjetas ?? []).map((t) => ({ id: t.id, banco: t.banco, ultimos4: t.ultimos4, miembroId: t.miembro_id })),
     pagosMes: f.pagos_mes.map((p) => ({
       id: p.id,
       pagoFijoId: p.pago_fijo_id,
@@ -139,7 +146,9 @@ export async function cargarHogar(sb: SupabaseClient, hogarId: string): Promise<
     tabla<Filas["pagos_fijos"][number]>("pagos_fijos", "dia"),
     tabla<Filas["pagos_mes"][number]>("pagos_mes", "id"),
   ]);
-  return { miembros, categorias, techos, ingresos, movimientos, pagos_fijos, pagos_mes };
+  // Si la tabla todavía no existe (falta correr 0007_tarjetas.sql), la app sigue andando sin tarjetas.
+  const tarjetas = await tabla<FilaTarjeta>("tarjetas", "banco").catch(() => [] as FilaTarjeta[]);
+  return { miembros, categorias, techos, ingresos, movimientos, pagos_fijos, pagos_mes, tarjetas };
 }
 
 const normalizar = (s: string) =>
@@ -174,7 +183,8 @@ export function prepararImportacion(d: Datos, miembrosHogar: Miembro[], mesActua
     categorias: d.categorias.map((c) => ({ id: id(c.id), nombre: c.nombre, orden: c.orden })),
     techos: d.categorias.filter((c) => c.techo).map((c) => ({ categoriaId: id(c.id), mes: mesBase, monto: c.techo })),
     ingresos: d.ingresos.map((i) => ({ ...i, id: id(i.id), miembroId: quien(i.miembroId) })),
-    pagosFijos: d.pagosFijos.map((p) => ({ ...p, id: id(p.id), categoriaId: id(p.categoriaId) })),
+    tarjetas: (d.tarjetas ?? []).map((t) => ({ ...t, id: id(t.id), miembroId: quien(t.miembroId) })),
+    pagosFijos: d.pagosFijos.map((p) => ({ ...p, id: id(p.id), categoriaId: id(p.categoriaId), tarjetaId: p.tarjetaId ? id(p.tarjetaId) : null })),
     movimientos: d.movimientos.map((m) => ({
       ...m,
       id: id(m.id),
