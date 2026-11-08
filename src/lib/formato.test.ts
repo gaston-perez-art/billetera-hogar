@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { diasEntre, montoATexto, montoEnVivo } from "./formato";
+import { diasEntre, fijarMontosOcultos, montoATexto, montoEnVivo, pesosCortos } from "./formato";
+
+describe("pesosCortos", () => {
+  it("abrevia en mil y millones para que entre en una barra", () => {
+    expect(pesosCortos(950)).toBe("$950");
+    expect(pesosCortos(150000)).toBe("$150 mil");
+    expect(pesosCortos(999_600)).toBe("$1 M");
+    expect(pesosCortos(1_250_000)).toBe("$1,3 M");
+    expect(pesosCortos(12_400_000)).toBe("$12 M");
+  });
+  it("respeta el ojito", () => {
+    fijarMontosOcultos(true);
+    expect(pesosCortos(150000)).toBe("$***");
+    fijarMontosOcultos(false);
+  });
+});
 
 describe("montoEnVivo", () => {
   it("pone puntos de miles mientras se escribe", () => {
