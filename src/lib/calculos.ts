@@ -62,6 +62,54 @@ export function textoCuota(pf: PagoFijo, mes: Mes): string | null {
   return c && c.numero >= 1 && c.numero <= c.total ? `Cuota ${c.numero} de ${c.total}` : null;
 }
 
+/**
+ * Lo que falta pagar de una compra en cuotas, desde el mes elegido hasta la última:
+ * las cuotas sin pagar (con su monto guardado si ya tenían uno) y cuántas son.
+ * Las de meses anteriores sin pagar no cuentan acá: quedaron en su mes.
+ */
+export function restaDeCompra(d: Datos, pf: PagoFijo, mes: Mes): { monto: number; cuotas: number } {
+  const ultima = mesUltimaCuota(pf);
+  if (!ultima || !pf.altaDesde) return { monto: 0, cuotas: 0 };
+  let monto = 0;
+  let cuotas = 0;
+  for (let m = pf.altaDesde > mes ? pf.altaDesde : mes; m <= ultima; m = sumarMeses(m, 1)) {
+    if (deBajaEn(pf, m)) break;
+    const registro = d.pagosMes.find((p) => p.pagoFijoId === pf.id && p.mes === m);
+    if (registro?.pagado) continue;
+    monto += registro?.monto ?? pf.monto;
+    cuotas++;
+  }
+  return { monto, cuotas };
+}
+
+export interface ResumenTarjeta {
+  /** Cuotas de este mes con esta tarjeta (pagadas o no): lo mismo que suma Pagos → Fijos. */
+  delMes: number;
+  /** Lo que falta pagar desde este mes hasta la última cuota. */
+  resta: number;
+  /** Compras con cuota este mes. */
+  compras: number;
+  /** Mes de la última cuota de todas sus compras (null si no tiene nada pendiente). */
+  hasta: Mes | null;
+}
+
+/** Cuánto va en una tarjeta en el mes (`null` = las compras sin tarjeta). */
+export function resumenTarjeta(d: Datos, tarjetaId: string | null, mes: Mes): ResumenTarjeta {
+  const deEsta = (pf: PagoFijo) => !!pf.cuotas && (pf.tarjetaId ?? null) === tarjetaId;
+  const pagos = pagosDelMes(d, mes).filter((p) => deEsta(p.pagoFijo));
+  const restas = d.pagosFijos.filter(deEsta).map((pf) => ({ pf, r: restaDeCompra(d, pf, mes) }));
+  const pendientes = restas.filter((x) => x.r.cuotas > 0);
+  return {
+    delMes: pagos.reduce((a, p) => a + p.monto, 0),
+    resta: pendientes.reduce((a, x) => a + x.r.monto, 0),
+    compras: pagos.length,
+    hasta: pendientes.reduce<Mes | null>((a, x) => {
+      const u = mesUltimaCuota(x.pf);
+      return u && (!a || u > a) ? u : a;
+    }, null),
+  };
+}
+
 /** Última cuota de una compra (el mes en que termina). */
 export function mesUltimaCuota(pf: PagoFijo): Mes | null {
   if (!pf.cuotas || !pf.altaDesde) return null;
