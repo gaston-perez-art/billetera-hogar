@@ -4,6 +4,7 @@
 // Cada cuota también aparece en Fijos para pagarla; acá se cargan, se editan y se ve
 // cuánto va en cada tarjeta. Una tarjeta es solo banco, últimos 4 números y de quién es.
 
+import { LoQueDeben } from "@/components/Deudas";
 import { useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, CampoNombre, Contador, FilaLista, Grupo, Hoja } from "@/components/ui";
@@ -164,6 +165,7 @@ export function VistaTarjetas() {
       </div>
 
       <main className="mt-5 space-y-5">
+        <LoQueDeben />
         {lugar.tipo === "agregar" ? (
           <p className="mx-6 text-[14px] leading-5 text-tenue">
             Solo banco, últimos 4 números y de quién es, para reconocerla. Nunca el número completo.

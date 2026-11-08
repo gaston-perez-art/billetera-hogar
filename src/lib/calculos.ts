@@ -81,7 +81,7 @@ export function restaDeCompra(d: Datos, pf: PagoFijo, mes: Mes): { monto: number
     if (deBajaEn(pf, m)) break;
     const registro = d.pagosMes.find((p) => p.pagoFijoId === pf.id && p.mes === m);
     if (registro?.pagado) continue;
-    monto += registro?.monto ?? pf.monto;
+    monto += montoPendiente(d, pf, m, registro);
     cuotas++;
   }
   return { monto, cuotas };
@@ -121,6 +121,69 @@ export function mesUltimaCuota(pf: PagoFijo): Mes | null {
   return sumarMeses(pf.altaDesde, pf.cuotas - 1);
 }
 
+/** Préstamo en dólares: deuda y cuota mínima en USD, se paga en pesos al dólar del día. */
+export function esEnDolares(pf: PagoFijo): boolean {
+  return !!pf.prestamo && !!pf.usdTotal && !!pf.usdCuota;
+}
+
+/** Dólar con el que se estima en pesos lo que falta: el del último pago (o el de la carga). */
+export function dolarEstimado(pf: PagoFijo): number {
+  return pf.usdCuota ? pf.monto / pf.usdCuota : 0;
+}
+
+const centavos = (n: number) => Math.round(n * 100) / 100;
+const pagadosDe = (d: Datos, pf: PagoFijo) => d.pagosMes.filter((p) => p.pagoFijoId === pf.id && p.pagado);
+
+/** Dólares ya pagados de un préstamo en dólares (un mes pagado sin el dato cuenta la cuota mínima). */
+export function dolaresPagados(d: Datos, pf: PagoFijo): number {
+  return centavos(suma(pagadosDe(d, pf).map((p) => p.usd ?? pf.usdCuota ?? 0)));
+}
+
+/** Lo que deben todavía, en dólares. */
+export function saldoDolares(d: Datos, pf: PagoFijo): number {
+  return Math.max(centavos((pf.usdTotal ?? 0) - dolaresPagados(d, pf)), 0);
+}
+
+/**
+ * Cuántas cuotas tiene un préstamo en dólares según lo pagado: hasta el último mes pagado,
+ * más las que hacen falta pagando el mínimo (los meses salteados también se llevan su parte).
+ * Si un mes se puso más, termina antes.
+ */
+export function cuotasEnDolares(d: Datos, pf: PagoFijo): number {
+  const c = pf.usdCuota ?? 0;
+  if (!pf.altaDesde || c <= 0) return pf.cuotas ?? 1;
+  const indices = pagadosDe(d, pf).map((p) => mesesEntre(pf.altaDesde!, p.mes) + 1).filter((i) => i >= 1);
+  const ultimo = Math.max(0, ...indices);
+  const salteados = ultimo - new Set(indices).size;
+  const queda = saldoDolares(d, pf) - salteados * c;
+  return Math.max(ultimo + Math.max(Math.ceil(queda / c - 1e-9), 0), 1);
+}
+
+/**
+ * Dólares que le tocan a cada mes sin pagar, en orden: la cuota mínima hasta cubrir lo que deben
+ * (la última puede ser menor). Suman lo que deben.
+ */
+export function dolaresPorMes(d: Datos, pf: PagoFijo): Map<Mes, number> {
+  const r = new Map<Mes, number>();
+  const ultima = mesUltimaCuota(pf);
+  if (!esEnDolares(pf) || !pf.altaDesde || !ultima) return r;
+  let queda = saldoDolares(d, pf);
+  for (let m = pf.altaDesde; m <= ultima; m = sumarMeses(m, 1)) {
+    if (deBajaEn(pf, m)) break;
+    if (d.pagosMes.some((p) => p.pagoFijoId === pf.id && p.mes === m && p.pagado)) continue;
+    const usd = centavos(Math.min(pf.usdCuota!, queda));
+    r.set(m, usd);
+    queda = centavos(queda - usd);
+  }
+  return r;
+}
+
+/** Monto de un mes sin pagar: el guardado o el de siempre; en dólares, su parte al dólar estimado. */
+function montoPendiente(d: Datos, pf: PagoFijo, mes: Mes, registro?: { monto: number }): number {
+  if (!esEnDolares(pf)) return registro?.monto ?? pf.monto;
+  return Math.round((dolaresPorMes(d, pf).get(mes) ?? 0) * dolarEstimado(pf));
+}
+
 export interface PagoDelMes {
   pagoFijo: PagoFijo;
   mes: Mes;
@@ -140,7 +203,7 @@ export function pagosDelMes(d: Datos, mes: Mes): PagoDelMes[] {
       return [{
         pagoFijo: pf,
         mes,
-        monto: registro?.monto ?? pf.monto,
+        monto: registro?.pagado ? registro.monto : montoPendiente(d, pf, mes, registro),
         pagado: registro?.pagado ?? false,
         movimientoId: registro?.movimientoId,
       }];
@@ -512,4 +575,43 @@ export function ahorro(d: Datos, mes?: Mes): Ahorro {
     delMes: mes ? suma(movs.filter((m) => mesDe(m.fecha) === mes).map((m) => m.monto)) : 0,
     movimientos: movs,
   };
+}
+
+export interface Deudas {
+  /** Cuotas del mes elegido, pagadas o no: lo mismo que suman Tarjetas y Préstamos. */
+  delMes: { tarjetas: number; prestamos: number };
+  /** Lo que falta pagar desde el mes elegido hasta la última cuota. */
+  resta: { tarjetas: number; prestamos: number };
+  /** Lo que deben en dólares (en `resta` va en pesos, al dólar estimado). */
+  usd: number;
+  /** Mes por mes desde el elegido, mientras haya cuotas: tarjetas y préstamos (pagadas o no). */
+  porMes: { mes: Mes; tarjetas: number; prestamos: number }[];
+}
+
+/** Lo que deben entre tarjetas y préstamos: el mes, el total y los meses que vienen. */
+export function deudas(d: Datos, mes: Mes, meses = 12): Deudas {
+  const deTarjeta = (pf: PagoFijo) => esCompraEnCuotas(pf);
+  const dePrestamo = (pf: PagoFijo) => !!pf.prestamo && !!pf.cuotas;
+  const delMesEn = (m: Mes) => {
+    const pagos = pagosDelMes(d, m);
+    return {
+      mes: m,
+      tarjetas: suma(pagos.filter((p) => deTarjeta(p.pagoFijo)).map((p) => p.monto)),
+      prestamos: suma(pagos.filter((p) => dePrestamo(p.pagoFijo)).map((p) => p.monto)),
+    };
+  };
+  const porMes = Array.from({ length: meses }, (_, i) => delMesEn(sumarMeses(mes, i)));
+  while (porMes.length > 1 && porMes[porMes.length - 1].tarjetas + porMes[porMes.length - 1].prestamos === 0) porMes.pop();
+  const resta = (f: (pf: PagoFijo) => boolean) => suma(d.pagosFijos.filter(f).map((pf) => restaDeCompra(d, pf, mes).monto));
+  return {
+    delMes: { tarjetas: porMes[0].tarjetas, prestamos: porMes[0].prestamos },
+    resta: { tarjetas: resta(deTarjeta), prestamos: resta(dePrestamo) },
+    usd: centavos(suma(d.pagosFijos.filter((pf) => esEnDolares(pf) && pagoFijoVigenteOFuturo(pf, mes)).map((pf) => saldoDolares(d, pf)))),
+    porMes,
+  };
+}
+
+/** Vale en el mes o empieza más adelante (no terminó ni se dio de baja). */
+function pagoFijoVigenteOFuturo(pf: PagoFijo, mes: Mes): boolean {
+  return pagoFijoVigente(pf, mes) || (pf.activo && !!pf.altaDesde && pf.altaDesde > mes);
 }

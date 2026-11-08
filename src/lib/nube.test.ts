@@ -42,6 +42,26 @@ describe("filasADatos", () => {
     expect(d.movimientos[0]).toMatchObject({ monto: -200, detalle: "", categoriaId: "super", pagoPor: "g" });
     expect(d.pagosMes[0].movimientoId).toBeUndefined();
   });
+
+  it("lee un préstamo en dólares y saca las cuotas de lo pagado", () => {
+    const d = filasADatos(
+      {
+        miembros: [{ id: "g", nombre: "Gastón", user_id: "u1" }],
+        categorias: [{ id: "deuda", nombre: "Deuda", orden: 0 }],
+        techos: [],
+        ingresos: [],
+        movimientos: [],
+        pagos_fijos: [
+          // En la base quedó 15 (se guardó antes del adelanto); con US$ 1.000 pagados son 14.
+          { id: "pf", concepto: "Papá", categoria_id: "deuda", dia: 10, monto: "560000", es_deuda: true, activo: true, alta_desde: "2026-12-01", cuotas: 15, prestamo: true, usd_total: "6000.00", usd_cuota: "400.00" },
+        ],
+        pagos_mes: [{ id: "pm", pago_fijo_id: "pf", mes: "2026-12-01", monto: "1450000", pagado: true, movimiento_id: null, usd: "1000.00" }],
+      },
+      "2026-12-01",
+    );
+    expect(d.pagosFijos[0]).toMatchObject({ usdTotal: 6000, usdCuota: 400, cuotas: 14 });
+    expect(d.pagosMes[0].usd).toBe(1000);
+  });
 });
 
 describe("prepararImportacion", () => {

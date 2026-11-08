@@ -10,10 +10,10 @@ import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { SelloLogro } from "@/components/Ilustracion";
-import { VistaPrestamos } from "@/components/Prestamos";
+import { DetallePrestamo, VistaPrestamos } from "@/components/Prestamos";
 import { VistaTarjetas } from "@/components/Tarjetas";
-import { Cifras, Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
-import { logroPagos, pagosDelMes, textoCuota, type PagoDelMes } from "@/lib/calculos";
+import { Cifras, Encabezado, Fecha, Grupo, Hoja, Resumen } from "@/components/ui";
+import { esEnDolares, logroPagos, pagosDelMes, textoCuota, type PagoDelMes } from "@/lib/calculos";
 import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
@@ -72,6 +72,8 @@ function PagosFijos() {
   const fechaHoy = hoy();
   const mesActual = mesDe(fechaHoy);
   const pagos = pagosDelMes(datos, mes);
+  const [enDolares, setEnDolares] = useState<string | null>(null);
+  const prestamoEnDolares = datos.pagosFijos.find((p) => p.id === enDolares);
   const pendientes = pagos.filter((p) => !p.pagado);
   const pagados = pagos.filter((p) => p.pagado);
   const faltan = pendientes.reduce((a, p) => a + p.monto, 0);
@@ -128,7 +130,11 @@ function PagosFijos() {
             <Icono trazo={ICONOS.check} className="size-5" />
           </button>
         ) : (
-          <button onClick={() => marcarPagado(p.pagoFijo.id, mes)} className="h-9 rounded-full bg-marca px-4 text-[14px] font-semibold text-sobre-marca">
+          <button
+            // En dólares se paga desde su hoja: cuántos dólares y a qué precio.
+            onClick={() => (esEnDolares(p.pagoFijo) ? setEnDolares(p.pagoFijo.id) : marcarPagado(p.pagoFijo.id, mes))}
+            className="h-9 rounded-full bg-marca px-4 text-[14px] font-semibold text-sobre-marca"
+          >
             Pagar
           </button>
         )}
@@ -183,6 +189,10 @@ function PagosFijos() {
           </div>
         )}
       </main>
+
+      <Hoja abierta={!!prestamoEnDolares} alCerrar={() => setEnDolares(null)} titulo={prestamoEnDolares?.concepto ?? "Préstamo"} mostrarTitulo={false}>
+        {prestamoEnDolares && <DetallePrestamo key={prestamoEnDolares.id} prestamo={prestamoEnDolares} alCerrar={() => setEnDolares(null)} />}
+      </Hoja>
     </>
   );
 }

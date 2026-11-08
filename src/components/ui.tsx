@@ -562,6 +562,8 @@ export function CampoMonto({
   onEnter,
   lapiz = false,
   entra = false,
+  moneda = "$",
+  chico = false,
 }: {
   valor: number;
   onCambio: (v: number) => void;
@@ -570,13 +572,18 @@ export function CampoMonto({
   onEnter?: () => void;
   lapiz?: boolean;
   entra?: boolean;
+  /** "US$" para montos en dólares. */
+  moneda?: "$" | "US$";
+  /** Más chico, para un segundo monto en la misma hoja (la cotización). */
+  chico?: boolean;
 }) {
   const [texto, setTexto] = useState(() => montoATexto(valor));
   const color = entra && valor > 0 ? "text-queda" : "";
+  const signo = chico ? "text-[20px]" : "text-[30px]";
   return (
-    <label className={`flex cursor-text items-baseline justify-center text-[52px] font-semibold leading-none tracking-[-0.035em] tabular-nums ${color}`}>
-      {entra && <span className="mr-1 text-[30px] font-medium tracking-normal">+</span>}
-      <span className={`mr-1 text-[30px] font-medium tracking-normal ${entra && valor > 0 ? "" : "text-tenue"}`}>$</span>
+    <label className={`flex cursor-text items-baseline justify-center font-semibold leading-none tracking-[-0.035em] tabular-nums ${chico ? "text-[34px]" : "text-[52px]"} ${color}`}>
+      {entra && <span className={`mr-1 ${signo} font-medium tracking-normal`}>+</span>}
+      <span className={`mr-1 ${signo} font-medium tracking-normal ${entra && valor > 0 ? "" : "text-tenue"}`}>{moneda}</span>
       <span className="relative inline-grid min-w-0">
         <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
           {texto || "0"}
@@ -641,7 +648,7 @@ export function Seccion({
 }
 
 /** Fila etiqueta / valor para detalles. */
-export function Dato({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }) {
+export function Dato({ etiqueta, valor }: { etiqueta: React.ReactNode; valor: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
       <dt className="text-[15px] text-tenue">{etiqueta}</dt>

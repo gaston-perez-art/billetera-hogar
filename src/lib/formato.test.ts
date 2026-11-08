@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diasEntre, fijarMontosOcultos, montoATexto, montoEnVivo, pesosCortos } from "./formato";
+import { diasEntre, dolares, fijarMontosOcultos, montoATexto, montoEnVivo, pesosCortos } from "./formato";
 
 describe("pesosCortos", () => {
   it("abrevia en mil y millones para que entre en una barra", () => {
@@ -48,5 +48,18 @@ describe("diasEntre", () => {
     expect(diasEntre("2026-11-06", "2026-11-10")).toBe(4);
     expect(diasEntre("2026-11-06", "2026-11-01")).toBe(-5);
     expect(diasEntre("2026-10-30", "2026-11-02")).toBe(3);
+  });
+});
+
+describe("dolares", () => {
+  it("con puntos de miles y centavos solo si los hay", () => {
+    expect(dolares(6000)).toBe("US$ 6.000");
+    expect(dolares(412.5)).toBe("US$ 412,50");
+  });
+
+  it("respeta el ojito", () => {
+    fijarMontosOcultos(true);
+    expect(dolares(6000)).toBe("US$***");
+    fijarMontosOcultos(false);
   });
 });

@@ -213,27 +213,45 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
       borrarMovimiento: (id) =>
         ejecutar((d) => op.borrarMovimiento(d, id), () => sb.from("movimientos").delete().eq("id", id)),
 
-      marcarPagado: (pagoFijoId, mesPago, monto) => {
+      marcarPagado: (pagoFijoId, mesPago, monto, usd) => {
         const pf = datos.pagosFijos.find((p) => p.id === pagoFijoId);
         if (!pf || datos.pagosMes.some((p) => p.pagoFijoId === pagoFijoId && p.mes === mesPago && p.pagado)) return;
         const movimientoId = op.nuevoId();
+        // Lo que queda guardado ese mes (en dólares: pesos y USD, aunque no se hayan pasado).
+        const despues = op.marcarPagado(datos, pagoFijoId, mesPago, usuarioId, movimientoId, undefined, monto, usd);
+        const registro = despues.pagosMes.find((p) => p.pagoFijoId === pagoFijoId && p.mes === mesPago);
+        const cuotas = despues.pagosFijos.find((p) => p.id === pagoFijoId)?.cuotas;
+        const enDolares = registro?.usd != null;
         ejecutar(
-          (d) => op.marcarPagado(d, pagoFijoId, mesPago, usuarioId, movimientoId, undefined, monto),
+          (d) => op.marcarPagado(d, pagoFijoId, mesPago, usuarioId, movimientoId, undefined, monto, usd),
           async () => {
             // Monto de este mes primero (marcar_pagado usa el del mes si hay), después el pago.
-            if (monto !== undefined) {
+            if (monto !== undefined || enDolares) {
               const r = await sb
                 .from("pagos_mes")
-                .upsert({ hogar_id: hogarId, pago_fijo_id: pagoFijoId, mes: mesPago, monto, pagado: false }, { onConflict: "pago_fijo_id,mes" });
+                .upsert(
+                  {
+                    hogar_id: hogarId,
+                    pago_fijo_id: pagoFijoId,
+                    mes: mesPago,
+                    monto: registro?.monto ?? monto,
+                    pagado: false,
+                    ...(enDolares ? { usd: registro.usd } : {}),
+                  },
+                  { onConflict: "pago_fijo_id,mes" },
+                );
               if (r.error) return r;
             }
-            return await sb.rpc("marcar_pagado", {
+            const r = await sb.rpc("marcar_pagado", {
               p_pago_fijo: pagoFijoId,
               p_mes: mesPago,
               p_pago_por: usuarioId,
               p_fecha: op.fechaDePago(mesPago, pf.dia),
               p_movimiento: movimientoId,
             });
+            // Si se puso más que el mínimo, termina antes: queda guardado para el detalle de las próximas.
+            if (r.error || !enDolares || cuotas === pf.cuotas) return r;
+            return await sb.from("pagos_fijos").update({ cuotas }).eq("id", pagoFijoId);
           },
         );
       },
@@ -297,7 +315,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         ejecutar(
           (d) => op.actualizarPagoFijo(d, pagoFijoId, cambios),
           async () => {
-            const { bajaDesde, altaDesde, tarjetaId, categoriaId, esDeuda, ...resto } = cambios;
+            const { bajaDesde, altaDesde, tarjetaId, categoriaId, esDeuda, usdTotal, usdCuota, ...resto } = cambios;
             if (tarjetaId) await tarjetaGuardandose.current;
             return sb
               .from("pagos_fijos")
@@ -308,6 +326,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
                 ...(tarjetaId !== undefined ? { tarjeta_id: tarjetaId } : {}),
                 ...(categoriaId !== undefined ? { categoria_id: categoriaId } : {}),
                 ...(esDeuda !== undefined ? { es_deuda: esDeuda } : {}),
+                ...(usdTotal !== undefined ? { usd_total: usdTotal } : {}),
+                ...(usdCuota !== undefined ? { usd_cuota: usdCuota } : {}),
               })
               .eq("id", pagoFijoId);
           },
@@ -348,6 +368,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               ...(pf.tarjetaId ? { tarjeta_id: pf.tarjetaId } : {}),
               // Ídem con 0008_prestamos.sql.
               ...(pf.prestamo ? { prestamo: true, uva: !!pf.uva } : {}),
+              // Ídem con 0009_dolares.sql.
+              ...(pf.usdTotal && pf.usdCuota ? { usd_total: pf.usdTotal, usd_cuota: pf.usdCuota } : {}),
             });
           },
         );

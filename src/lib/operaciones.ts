@@ -2,13 +2,13 @@
 // El modo demo los usa para guardar en el navegador; el modo nube, para mostrar el
 // cambio al instante mientras se guarda en Supabase (y la base confirma después).
 
-import { cuotaDelMes } from "./calculos";
+import { cuotaDelMes, cuotasEnDolares, dolaresPorMes, esEnDolares, pagosDelMes } from "./calculos";
 import { fechaEnMes, hoy, mesDe, sumarMeses } from "./formato";
 import type { Datos, Ingreso, Mes, Movimiento, PagoFijo, Tarjeta } from "./tipos";
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
 export type CambiosPagoFijo = Partial<
-  Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde" | "altaDesde" | "cuotas" | "tarjetaId" | "categoriaId" | "esDeuda" | "prestamo" | "uva">
+  Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde" | "altaDesde" | "cuotas" | "tarjetaId" | "categoriaId" | "esDeuda" | "prestamo" | "uva" | "usdTotal" | "usdCuota">
 >;
 export type NuevaTarjeta = Omit<Tarjeta, "id">;
 export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda"> & {
@@ -19,6 +19,9 @@ export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | 
   /** Préstamo: sin tarjeta, en la pestaña Préstamos. */
   prestamo?: boolean;
   uva?: boolean;
+  /** Préstamo en dólares: lo que deben y la cuota mínima, en USD. */
+  usdTotal?: number | null;
+  usdCuota?: number | null;
 };
 
 export function nuevoId() {
@@ -60,11 +63,11 @@ export function editarMovimiento(d: Datos, id: string, cambios: CambiosMovimient
 
 /** Si el gasto venía de un pago fijo, el pago vuelve a quedar pendiente. */
 export function borrarMovimiento(d: Datos, id: string): Datos {
-  return {
+  return ajustarCuotasEnDolares({
     ...d,
     movimientos: d.movimientos.filter((m) => m.id !== id),
     pagosMes: d.pagosMes.map((p) => (p.movimientoId === id ? { ...p, pagado: false, movimientoId: undefined } : p)),
-  };
+  });
 }
 
 /** Regla clave: marcar pagado CREA el gasto (en la planilla se olvidaba cargarlo). */
@@ -77,12 +80,17 @@ export function marcarPagado(
   fechaHoy = hoy(),
   /** Monto real de este mes, si no es el de siempre (la cuota de un préstamo UVA). */
   montoReal?: number,
+  /** Préstamo en dólares: cuántos USD se pagaron (sin dato, lo que le toca al mes). */
+  usdReal?: number,
 ): Datos {
   const pf = d.pagosFijos.find((p) => p.id === pagoFijoId);
   if (!pf) return d;
   const existente = d.pagosMes.find((p) => p.pagoFijoId === pagoFijoId && p.mes === mes);
   if (existente?.pagado) return d;
-  const monto = montoReal ?? existente?.monto ?? pf.monto;
+  const enDolares = esEnDolares(pf);
+  const pendiente = pagosDelMes(d, mes).find((p) => p.pagoFijo.id === pagoFijoId);
+  const monto = montoReal ?? (enDolares ? pendiente?.monto : existente?.monto) ?? pf.monto;
+  const usd = enDolares ? (usdReal ?? dolaresPorMes(d, pf).get(mes) ?? pf.usdCuota ?? 0) : undefined;
   const movimiento: Movimiento = {
     id: movimientoId,
     fecha: fechaDePago(mes, pf.dia, fechaHoy),
@@ -92,11 +100,24 @@ export function marcarPagado(
     pagoPor,
     creadoEn: new Date().toISOString(),
   };
-  const registro = { id: existente?.id ?? nuevoId(), pagoFijoId, mes, monto, pagado: true, movimientoId };
-  return {
+  const registro = { id: existente?.id ?? nuevoId(), pagoFijoId, mes, monto, pagado: true, movimientoId, ...(enDolares ? { usd } : {}) };
+  return ajustarCuotasEnDolares({
     ...d,
     movimientos: [...d.movimientos, movimiento],
     pagosMes: existente ? d.pagosMes.map((p) => (p.id === existente.id ? registro : p)) : [...d.pagosMes, registro],
+  });
+}
+
+/** Préstamos en dólares: las cuotas salen de lo pagado (si un mes se puso más, termina antes). */
+export function ajustarCuotasEnDolares(d: Datos): Datos {
+  if (!d.pagosFijos.some(esEnDolares)) return d;
+  return {
+    ...d,
+    pagosFijos: d.pagosFijos.map((pf) => {
+      if (!esEnDolares(pf)) return pf;
+      const cuotas = cuotasEnDolares(d, pf);
+      return cuotas === pf.cuotas ? pf : { ...pf, cuotas };
+    }),
   };
 }
 
@@ -184,11 +205,13 @@ export function agregarPagoFijo(d: Datos, pf: PagoFijo): Datos {
 }
 
 export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): PagoFijo {
-  const { primeraCuota, cuotas, tarjetaId, prestamo, uva, ...resto } = nuevo;
+  const { primeraCuota, cuotas, tarjetaId, prestamo, uva, usdTotal, usdCuota, ...resto } = nuevo;
   const enCuotas = cuotas != null && cuotas > 0;
+  const enDolares = !!prestamo && !!usdTotal && !!usdCuota;
   return {
     ...resto,
-    ...(prestamo ? { prestamo: true, uva: !!uva } : {}),
+    ...(prestamo ? { prestamo: true, uva: !enDolares && !!uva } : {}),
+    ...(enDolares ? { usdTotal, usdCuota } : {}),
     concepto: nuevo.concepto.trim(),
     id,
     activo: true,
@@ -232,5 +255,5 @@ export function borrarTarjeta(d: Datos, tarjetaId: string): Datos {
 }
 
 export function actualizarPagoFijo(d: Datos, pagoFijoId: string, cambios: CambiosPagoFijo): Datos {
-  return { ...d, pagosFijos: d.pagosFijos.map((p) => (p.id === pagoFijoId ? { ...p, ...cambios } : p)) };
+  return ajustarCuotasEnDolares({ ...d, pagosFijos: d.pagosFijos.map((p) => (p.id === pagoFijoId ? { ...p, ...cambios } : p)) });
 }

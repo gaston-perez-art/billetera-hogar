@@ -7,7 +7,11 @@ import {
   categoriasDelMes,
   esCompraEnCuotas,
   cuotaDelMes,
+  cuotasEnDolares,
+  deudas,
+  dolaresPorMes,
   gastosDe,
+  saldoDolares,
   restaDeCompra,
   resumenTarjeta,
   pagosDelMes,
@@ -340,5 +344,109 @@ describe("ahorro y préstamos", () => {
     const convertido = op.actualizarPagoFijo(pagadoAntes, "pf-prestamo", { cuotas: 36, altaDesde: MES, prestamo: true, uva: true });
     expect(pagosDelMes(convertido, anterior).find((p) => p.pagoFijo.id === "pf-prestamo")).toMatchObject({ pagado: true, monto: 180_000 });
     expect(cuotaDelMes(convertido.pagosFijos.find((p) => p.id === "pf-prestamo")!, MES)).toEqual({ numero: 1, total: 36 });
+  });
+});
+
+describe("préstamo en dólares", () => {
+  // US$ 6.000, mínimo US$ 400 por mes, primera cuota el mes que viene, dólar a $1.400.
+  const conDolares = () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const pf = op.armarPagoFijo(
+      { concepto: "Papá", categoriaId: deuda.id, dia: 10, monto: 400 * 1400, esDeuda: true, cuotas: 15, primeraCuota: sumarMeses(MES, 1), prestamo: true, usdTotal: 6000, usdCuota: 400 },
+      MES,
+      "usd",
+    );
+    return op.agregarPagoFijo(d, pf);
+  };
+  const DIC = sumarMeses(MES, 1);
+  const prestamo = (d: Datos) => d.pagosFijos.find((p) => p.id === "usd")!;
+
+  it("pagando el mínimo son 15 cuotas desde el mes que viene, estimadas al dólar cargado", () => {
+    const d = conDolares();
+    const pf = prestamo(d);
+    expect(pf).toMatchObject({ usdTotal: 6000, usdCuota: 400, uva: false, altaDesde: DIC });
+    expect(cuotasEnDolares(d, pf)).toBe(15);
+    expect(pagosDelMes(d, MES).some((p) => p.pagoFijo.id === "usd")).toBe(false);
+    expect(pagosDelMes(d, DIC).find((p) => p.pagoFijo.id === "usd")).toMatchObject({ monto: 560_000, pagado: false });
+    expect(restaDeCompra(d, pf, MES)).toEqual({ monto: 6000 * 1400, cuotas: 15 });
+  });
+
+  it("pagar más que el mínimo se descuenta de lo que deben y termina antes; el mes siguiente vuelve al mínimo", () => {
+    const pagado = op.marcarPagado(conDolares(), "usd", DIC, "gaston", "mov-usd", "2026-12-10", 1_000 * 1450, 1_000);
+    const pf = prestamo(pagado);
+    expect(pagado.movimientos.find((m) => m.id === "mov-usd")).toMatchObject({ monto: 1_450_000, detalle: "Papá, cuota 1 de 15" });
+    expect(pagado.pagosMes.find((p) => p.pagoFijoId === "usd" && p.mes === DIC)).toMatchObject({ usd: 1_000, monto: 1_450_000, pagado: true });
+    expect(saldoDolares(pagado, pf)).toBe(5_000);
+    // 1 pagada + 12 de 400 + una de 200.
+    expect(pf.cuotas).toBe(14);
+    const porMes = dolaresPorMes(pagado, pf);
+    expect(porMes.get(sumarMeses(DIC, 1))).toBe(400);
+    expect(porMes.get(sumarMeses(DIC, 13))).toBe(200);
+    expect(suma([...porMes.values()])).toBe(5_000);
+    expect(pagosDelMes(pagado, sumarMeses(DIC, 14)).some((p) => p.pagoFijo.id === "usd")).toBe(false);
+  });
+
+  it("desmarcar el pago devuelve la deuda y las cuotas", () => {
+    const pagado = op.marcarPagado(conDolares(), "usd", DIC, "gaston", "mov-usd", "2026-12-10", 1_450_000, 1_000);
+    const vuelta = op.desmarcarPagado(pagado, "usd", DIC);
+    expect(saldoDolares(vuelta, prestamo(vuelta))).toBe(6_000);
+    expect(prestamo(vuelta).cuotas).toBe(15);
+  });
+
+  it("pagado sin decir cuántos dólares (desde Fijos), cuenta lo que le toca al mes", () => {
+    const pagado = op.marcarPagado(conDolares(), "usd", DIC, "jime", "mov-usd", "2026-12-10");
+    expect(pagado.pagosMes.find((p) => p.pagoFijoId === "usd" && p.mes === DIC)).toMatchObject({ usd: 400, monto: 560_000 });
+    expect(saldoDolares(pagado, prestamo(pagado))).toBe(5_600);
+  });
+
+  it("las cuentas siguen cerrando con un préstamo en dólares pagado", () => {
+    // En este mes, para que los datos de demo no pasen lo que entra.
+    const d0 = conDolares();
+    const d1 = op.actualizarPagoFijo(d0, "usd", { altaDesde: MES, monto: 400 * 500 });
+    const d = op.marcarPagado(d1, "usd", MES, "gaston", "mov-usd", FECHA, 500 * 510, 500);
+    const p = planMes(d, MES);
+    expect(p.paraCadaUno).toBeGreaterThan(0);
+    cerca(p.entra - p.gastado - p.faltan - p.paraCadaUno, p.paraGastar);
+    cerca(suma(categoriasDelMes(d, MES).map((c) => c.libre)), p.paraGastar);
+    cerca(suma(categoriasDelMes(d, MES).map((c) => c.pendiente)), suma(pagosDelMes(d, MES).filter((x) => !x.pagado).map((x) => x.monto)));
+  });
+});
+
+describe("lo que deben entre tarjetas y préstamos", () => {
+  const conTodo = () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const pf = op.armarPagoFijo(
+      { concepto: "Papá", categoriaId: deuda.id, dia: 10, monto: 560_000, esDeuda: true, cuotas: 15, primeraCuota: MES, prestamo: true, usdTotal: 6000, usdCuota: 400 },
+      MES,
+      "usd",
+    );
+    return op.agregarPagoFijo(d, pf);
+  };
+
+  it("lo del mes es lo que suman Tarjetas y Préstamos", () => {
+    const d = conTodo();
+    const r = deudas(d, MES);
+    const tarjetas = [...(d.tarjetas ?? []).map((t) => t.id), null];
+    cerca(r.delMes.tarjetas, suma(tarjetas.map((t) => resumenTarjeta(d, t, MES).delMes)));
+    cerca(r.delMes.prestamos, suma(pagosDelMes(d, MES).filter((p) => p.pagoFijo.prestamo).map((p) => p.monto)));
+    expect(r.porMes[0]).toMatchObject({ mes: MES, tarjetas: r.delMes.tarjetas, prestamos: r.delMes.prestamos });
+  });
+
+  it("lo que resta es lo que dicen las tarjetas y los préstamos, y en dólares cierra con lo que deben", () => {
+    const d = conTodo();
+    const r = deudas(d, MES);
+    const tarjetas = [...(d.tarjetas ?? []).map((t) => t.id), null];
+    cerca(r.resta.tarjetas, suma(tarjetas.map((t) => resumenTarjeta(d, t, MES).resta)));
+    cerca(r.resta.prestamos, suma(d.pagosFijos.filter((p) => p.prestamo).map((p) => restaDeCompra(d, p, MES).monto)));
+    expect(r.usd).toBe(6_000);
+    cerca(restaDeCompra(d, d.pagosFijos.find((p) => p.id === "usd")!, MES).monto, 6_000 * 1_400);
+  });
+
+  it("mes por mes: sin pagar nada, lo que falta de los meses suma lo que resta", () => {
+    const d = conTodo();
+    const r = deudas(d, MES, 60);
+    cerca(suma(r.porMes.map((m) => m.tarjetas + m.prestamos)) - suma(pagosDelMes(d, MES).filter((p) => p.pagado && (p.pagoFijo.prestamo || esCompraEnCuotas(p.pagoFijo))).map((p) => p.monto)), r.resta.tarjetas + r.resta.prestamos);
   });
 });

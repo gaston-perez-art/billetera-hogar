@@ -73,6 +73,13 @@ export interface PagoFijo {
   prestamo?: boolean;
   /** Préstamo que se ajusta por UVA: la cuota en pesos sube cada mes. */
   uva?: boolean;
+  /**
+   * Préstamo en dólares: lo que se debía al empezar y la cuota mínima por mes, en USD.
+   * Se paga en pesos al dólar del día; `monto` es la cuota mínima en pesos al último dólar usado.
+   * Si un mes se pone más, se descuenta de lo que deben y termina antes (`cuotas` se recalcula).
+   */
+  usdTotal?: number | null;
+  usdCuota?: number | null;
 }
 
 /** Tarjeta de crédito, para agrupar las compras en cuotas. Solo banco y últimos 4 números. */
@@ -92,6 +99,8 @@ export interface PagoMes {
   monto: number;
   pagado: boolean;
   movimientoId?: string;
+  /** Préstamo en dólares: cuántos USD se pagaron ese mes (`monto` son los pesos). */
+  usd?: number | null;
 }
 
 export interface Datos {
