@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { CambiosPagoFijo, NuevoMovimiento, NuevoPagoFijo } from "./operaciones";
+import type { CambiosMovimiento, CambiosPagoFijo, NuevoMovimiento, NuevoPagoFijo } from "./operaciones";
 import type { Datos, Mes } from "./tipos";
 
 export interface Billetera {
@@ -14,6 +14,8 @@ export interface Billetera {
   mes: Mes;
   setMes: (mes: Mes) => void;
   agregarMovimiento: (m: NuevoMovimiento) => void;
+  /** Corregir monto o detalle de un gasto cargado. Si venía de un pago fijo, el pago toma el monto nuevo. */
+  editarMovimiento: (id: string, cambios: CambiosMovimiento) => void;
   borrarMovimiento: (id: string) => void;
   marcarPagado: (pagoFijoId: string, mes: Mes) => void;
   desmarcarPagado: (pagoFijoId: string, mes: Mes) => void;

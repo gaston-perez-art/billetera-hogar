@@ -27,6 +27,25 @@ export function agregarMovimiento(d: Datos, m: Movimiento): Datos {
   return { ...d, movimientos: [...d.movimientos, m] };
 }
 
+export type CambiosMovimiento = Partial<Pick<Movimiento, "monto" | "detalle">>;
+
+/**
+ * Corregir un gasto (o plata que entra) ya cargado: monto y detalle. No cambia el signo:
+ * lo que entraba sigue entrando. Si venía de un pago fijo, el pago guarda el monto nuevo
+ * (así Pagos y el saldo dicen lo mismo).
+ */
+export function editarMovimiento(d: Datos, id: string, cambios: CambiosMovimiento): Datos {
+  const actual = d.movimientos.find((m) => m.id === id);
+  if (!actual) return d;
+  const monto = cambios.monto === undefined ? actual.monto : Math.sign(actual.monto || 1) * Math.abs(cambios.monto);
+  const detalle = cambios.detalle === undefined ? actual.detalle : cambios.detalle.trim();
+  return {
+    ...d,
+    movimientos: d.movimientos.map((m) => (m.id === id ? { ...m, monto, detalle } : m)),
+    pagosMes: d.pagosMes.map((p) => (p.movimientoId === id ? { ...p, monto } : p)),
+  };
+}
+
 /** Si el gasto venía de un pago fijo, el pago vuelve a quedar pendiente. */
 export function borrarMovimiento(d: Datos, id: string): Datos {
   return {
