@@ -2,6 +2,7 @@
 // Funciones puras (salvo cargarHogar), para poder testearlas sin base.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ajustarCuotasEnDolares } from "./operaciones";
 import type { Datos, Mes, Miembro } from "./tipos";
 
 type FilaTarjeta = { id: string; banco: string; ultimos4: string; miembro_id: string };
@@ -44,6 +45,9 @@ export interface Filas {
     /** Sin valor si todavía no se corrió 0008_prestamos.sql. */
     prestamo?: boolean | null;
     uva?: boolean | null;
+    /** Sin valor si todavía no se corrió 0009_dolares.sql. */
+    usd_total?: number | string | null;
+    usd_cuota?: number | string | null;
   }[];
   /** Vacía si todavía no se corrió 0007_tarjetas.sql. */
   tarjetas?: FilaTarjeta[];
@@ -54,6 +58,7 @@ export interface Filas {
     monto: number | string;
     pagado: boolean;
     movimiento_id: string | null;
+    usd?: number | string | null;
   }[];
 }
 
@@ -73,7 +78,8 @@ export function techoVigente(techos: Filas["techos"], categoriaId: string, mes: 
 }
 
 export function filasADatos(f: Filas, mes: Mes): Datos {
-  return {
+  // Las cuotas de un préstamo en dólares salen de lo pagado.
+  return ajustarCuotasEnDolares({
     miembros: f.miembros.map((m) => ({ id: m.id, nombre: m.nombre, foto: m.foto ?? null })),
     categorias: f.categorias.map((c) => ({
       id: c.id,
@@ -113,6 +119,7 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       cuotas: p.cuotas ?? null,
       tarjetaId: p.tarjeta_id ?? null,
       ...(p.prestamo ? { prestamo: true, uva: !!p.uva } : {}),
+      ...(p.prestamo && p.usd_total != null && p.usd_cuota != null ? { usdTotal: num(p.usd_total), usdCuota: num(p.usd_cuota) } : {}),
     })),
     tarjetas: (f.tarjetas ?? []).map((t) => ({ id: t.id, banco: t.banco, ultimos4: t.ultimos4, miembroId: t.miembro_id })),
     pagosMes: f.pagos_mes.map((p) => ({
@@ -122,8 +129,9 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       monto: num(p.monto),
       pagado: p.pagado,
       movimientoId: p.movimiento_id ?? undefined,
+      ...(p.usd != null ? { usd: num(p.usd) } : {}),
     })),
-  };
+  });
 }
 
 /** Supabase devuelve como mucho 1000 filas por pedido: se piden de a páginas. */

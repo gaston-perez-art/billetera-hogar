@@ -21,6 +21,14 @@ export function pesos(monto: number, { ceroComoGuion = true } = {}): string {
   return `${signo}$${numero.format(Math.abs(redondeado))}`;
 }
 
+/** Dólares: "US$ 6.000", con centavos solo si los hay ("US$ 412,50"). Respeta el ojito. */
+export function dolares(monto: number): string {
+  if (montosOcultos) return `US${MONTO_OCULTO}`;
+  const r = Math.round(monto * 100) / 100;
+  const texto = Math.abs(r).toLocaleString("es-AR", { minimumFractionDigits: Number.isInteger(r) ? 0 : 2, maximumFractionDigits: 2 });
+  return `${r < 0 ? "-" : ""}US$ ${texto}`;
+}
+
 /** Monto corto para lugares chicos (barras): "$950", "$150 mil", "$1,2 M". Respeta el ojito. */
 export function pesosCortos(monto: number): string {
   if (montosOcultos) return MONTO_OCULTO;
