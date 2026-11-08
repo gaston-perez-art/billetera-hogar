@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda, Resumen } from "@/components/ui";
-import { categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes } from "@/lib/calculos";
+import { categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
 import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import { useVista } from "@/lib/vista";
@@ -193,7 +193,9 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
                   <div key={p.pagoFijo.id} className="flex items-center justify-between gap-3 py-2 text-[15px]">
                     <span className="min-w-0 truncate">
                       {p.pagoFijo.concepto}
-                      <span className="text-tenue">, vence el {p.pagoFijo.dia}</span>
+                      <span className="text-tenue">
+                        {textoCuota(p.pagoFijo, p.mes) && `, ${textoCuota(p.pagoFijo, p.mes)?.toLowerCase()}`}, vence el {p.pagoFijo.dia}
+                      </span>
                     </span>
                     <span className="shrink-0 font-semibold tabular-nums">{pesos(p.monto)}</span>
                   </div>

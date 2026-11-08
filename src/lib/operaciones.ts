@@ -2,12 +2,17 @@
 // El modo demo los usa para guardar en el navegador; el modo nube, para mostrar el
 // cambio al instante mientras se guarda en Supabase (y la base confirma después).
 
+import { cuotaDelMes } from "./calculos";
 import { fechaEnMes, hoy, mesDe, sumarMeses } from "./formato";
 import type { Datos, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
 export type CambiosPagoFijo = Partial<Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde">>;
-export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda">;
+export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda"> & {
+  /** Compra en cuotas: cuántas son y en qué mes cae la primera. */
+  cuotas?: number | null;
+  primeraCuota?: Mes;
+};
 
 export function nuevoId() {
   return crypto.randomUUID();
@@ -74,7 +79,7 @@ export function marcarPagado(
     fecha: fechaDePago(mes, pf.dia, fechaHoy),
     monto,
     categoriaId: pf.categoriaId,
-    detalle: pf.concepto,
+    detalle: detalleDePago(pf, mes),
     pagoPor,
     creadoEn: new Date().toISOString(),
   };
@@ -170,7 +175,23 @@ export function agregarPagoFijo(d: Datos, pf: PagoFijo): Datos {
 }
 
 export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): PagoFijo {
-  return { ...nuevo, concepto: nuevo.concepto.trim(), id, activo: true, bajaDesde: null, altaDesde: mes };
+  const { primeraCuota, cuotas, ...resto } = nuevo;
+  const enCuotas = cuotas != null && cuotas > 0;
+  return {
+    ...resto,
+    concepto: nuevo.concepto.trim(),
+    id,
+    activo: true,
+    bajaDesde: null,
+    altaDesde: enCuotas ? (primeraCuota ?? sumarMeses(mes, 1)) : mes,
+    cuotas: enCuotas ? cuotas : null,
+  };
+}
+
+/** Detalle del gasto que se crea al pagar: en cuotas lleva cuál ("Heladera, cuota 3 de 6"). Igual que marcar_pagado en SQL. */
+export function detalleDePago(pf: PagoFijo, mes: Mes): string {
+  const c = cuotaDelMes(pf, mes);
+  return c ? `${pf.concepto}, cuota ${c.numero} de ${c.total}` : pf.concepto;
 }
 
 export function actualizarPagoFijo(d: Datos, pagoFijoId: string, cambios: CambiosPagoFijo): Datos {

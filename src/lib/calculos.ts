@@ -5,7 +5,7 @@
 // (ver CLAUDE.md: los cálculos viven en SQL, no duplicados en el frontend).
 // Los tests de calculos.test.ts sirven como casos para validar esas vistas.
 
-import { fechaEnMes, mesDe } from "./formato";
+import { fechaEnMes, mesDe, sumarMeses } from "./formato";
 import type { Categoria, Datos, Fecha, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -36,9 +36,36 @@ export function deBajaEn(pf: PagoFijo, mes: Mes): boolean {
   return !pf.activo && (!pf.bajaDesde || pf.bajaDesde <= mes);
 }
 
-/** Vale en el mes: ya estaba dado de alta y todavía no se dio de baja. */
+/** Vale en el mes: ya estaba dado de alta, todavía no se dio de baja y, si es en cuotas, no terminó. */
 export function pagoFijoVigente(pf: PagoFijo, mes: Mes): boolean {
-  return !deBajaEn(pf, mes) && (!pf.altaDesde || pf.altaDesde <= mes);
+  if (deBajaEn(pf, mes) || (pf.altaDesde && pf.altaDesde > mes)) return false;
+  const cuota = cuotaDelMes(pf, mes);
+  return !cuota || cuota.numero <= cuota.total;
+}
+
+/** Meses entre dos meses (b − a). */
+function mesesEntre(a: Mes, b: Mes): number {
+  const [aa, am] = a.split("-").map(Number);
+  const [ba, bm] = b.split("-").map(Number);
+  return (ba - aa) * 12 + (bm - am);
+}
+
+/** Compra en cuotas: qué cuota cae en el mes ("cuota 3 de 6"). null si no es en cuotas. */
+export function cuotaDelMes(pf: PagoFijo, mes: Mes): { numero: number; total: number } | null {
+  if (!pf.cuotas || !pf.altaDesde) return null;
+  return { numero: mesesEntre(pf.altaDesde, mes) + 1, total: pf.cuotas };
+}
+
+/** "Cuota 3 de 6", o null si no es en cuotas. */
+export function textoCuota(pf: PagoFijo, mes: Mes): string | null {
+  const c = cuotaDelMes(pf, mes);
+  return c ? `Cuota ${c.numero} de ${c.total}` : null;
+}
+
+/** Última cuota de una compra (el mes en que termina). */
+export function mesUltimaCuota(pf: PagoFijo): Mes | null {
+  if (!pf.cuotas || !pf.altaDesde) return null;
+  return sumarMeses(pf.altaDesde, pf.cuotas - 1);
 }
 
 export interface PagoDelMes {

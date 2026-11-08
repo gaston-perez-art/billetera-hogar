@@ -1,13 +1,13 @@
 "use client";
 
-// Ajustes: lo que se toca cada tanto (sueldos, techos, pagos fijos).
-// Tres secciones cerradas con su total a la vista; tocar una fila abre una hoja
+// Ajustes: lo que se toca cada tanto (sueldos, techos, pagos fijos, compras en cuotas).
+// Secciones cerradas con su total a la vista; tocar una fila abre una hoja
 // desde abajo con el monto grande y formato mientras se escribe.
 
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, CampoNombre, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
-import { ingresoVigente } from "@/lib/calculos";
+import { ingresoVigente, mesUltimaCuota, pagoFijoVigente, textoCuota } from "@/lib/calculos";
 import { diasDelMes, fechaCorta, fechaEnMes, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
 import { leerDatosImportados } from "@/lib/importar";
@@ -20,9 +20,11 @@ type Edicion =
   | { tipo: "ingreso"; id: string }
   | { tipo: "techo"; id: string }
   | { tipo: "pago"; id: string }
-  | { tipo: "nuevoPago" };
+  | { tipo: "nuevoPago" }
+  | { tipo: "compra"; id: string }
+  | { tipo: "nuevaCompra" };
 
-type Abierta = "ingresos" | "techos" | "pagos" | null;
+type Abierta = "ingresos" | "techos" | "pagos" | "tarjetas" | null;
 
 export default function Ajustes() {
   const b = useBilletera();
@@ -39,8 +41,13 @@ export default function Ajustes() {
   // Los sueldos que valen en el mes elegido (al cambiar uno, el anterior queda para los meses previos).
   const ingresos = datos.ingresos.filter((i) => i.mes === null && ingresoVigente(i, mes));
   const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
-  const pagos = [...datos.pagosFijos].sort((a, b) => Number(b.activo) - Number(a.activo) || a.dia - b.dia);
+  // Las compras en cuotas van en su propia sección (Tarjetas), no entre los pagos fijos.
+  const pagos = datos.pagosFijos.filter((p) => !p.cuotas).sort((a, b) => Number(b.activo) - Number(a.activo) || a.dia - b.dia);
   const activos = pagos.filter((p) => p.activo);
+  // Primero las que tienen cuota en el mes elegido, después las que empiezan más adelante y al final las terminadas.
+  const estadoCompra = (p: PagoFijo) => (pagoFijoVigente(p, mes) ? 0 : p.activo && p.altaDesde && p.altaDesde > mes ? 1 : 2);
+  const compras = datos.pagosFijos.filter((p) => p.cuotas).sort((a, b) => estadoCompra(a) - estadoCompra(b) || a.dia - b.dia);
+  const comprasDelMes = compras.filter((p) => pagoFijoVigente(p, mes));
   const suma = (xs: number[]) => xs.reduce((a, x) => a + x, 0);
 
   async function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -124,6 +131,33 @@ export default function Ajustes() {
           </button>
         </Seccion>
 
+        <Seccion
+          titulo="Tarjetas"
+          resumen={`${comprasDelMes.length} ${comprasDelMes.length === 1 ? "cuota" : "cuotas"} en ${nombreMes(mes)}, ${pesos(suma(comprasDelMes.map((p) => p.monto)), { ceroComoGuion: false })}`}
+          abierta={abierta === "tarjetas"}
+          alTocar={() => alternar("tarjetas")}
+        >
+          <p className="px-5 pb-1 pt-2 text-[13px] leading-5 text-tenue">
+            Compras en cuotas. Cada cuota aparece en Pagos fijos como deuda y deja de aparecer sola después de la última.
+          </p>
+          {compras.map((p) => (
+            <Fila
+              key={p.id}
+              titulo={p.concepto}
+              bajada={bajadaCompra(p, mes)}
+              valor={pesos(p.monto)}
+              tenue={estadoCompra(p) === 2}
+              onClick={() => setEdicion({ tipo: "compra", id: p.id })}
+            />
+          ))}
+          <button onClick={() => setEdicion({ tipo: "nuevaCompra" })} className="fila flex min-h-14 w-full items-center gap-3 px-5 py-2.5 text-left">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full border border-linea text-marca">
+              <Icono trazo={ICONOS.mas} className="size-4" />
+            </span>
+            <span className="text-[15px] font-medium text-marca">Agregar compra en cuotas</span>
+          </button>
+        </Seccion>
+
         <section className="px-5 pt-5">
           <h2 className="text-[16px] font-semibold">Apariencia</h2>
           <div className="mt-3 grid grid-cols-3 rounded-full bg-relleno p-1" role="radiogroup" aria-label="Apariencia">
@@ -184,6 +218,16 @@ export default function Ajustes() {
   );
 }
 
+/** Cómo va una compra en cuotas, mirando el mes elegido. */
+function bajadaCompra(p: PagoFijo, mes: string): string {
+  const ultima = mesUltimaCuota(p);
+  if (!p.activo && (!p.bajaDesde || p.bajaDesde <= mes)) return "Dada de baja";
+  const cuota = textoCuota(p, mes);
+  if (cuota && pagoFijoVigente(p, mes)) return `${cuota}, día ${p.dia}`;
+  if (p.altaDesde && p.altaDesde > mes) return `${p.cuotas} cuotas desde ${nombreMes(p.altaDesde)}`;
+  return ultima ? `Terminada, la última fue en ${nombreMes(ultima)}` : "Terminada";
+}
+
 function Fila({
   titulo,
   bajada,
@@ -220,7 +264,19 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
   const categoria = edicion?.tipo === "techo" ? datos.categorias.find((c) => c.id === edicion.id) : undefined;
   const pago = edicion?.tipo === "pago" ? datos.pagosFijos.find((p) => p.id === edicion.id) : undefined;
   const nuevoPago = edicion?.tipo === "nuevoPago";
-  const titulo = ingreso ? "Editar ingreso" : categoria ? "Editar techo" : nuevoPago ? "Nuevo pago fijo" : "Editar pago fijo";
+  const compra = edicion?.tipo === "compra" ? datos.pagosFijos.find((p) => p.id === edicion.id) : undefined;
+  const nuevaCompra = edicion?.tipo === "nuevaCompra";
+  const titulo = ingreso
+    ? "Editar ingreso"
+    : categoria
+      ? "Editar techo"
+      : nuevoPago
+        ? "Nuevo pago fijo"
+        : nuevaCompra
+          ? "Nueva compra en cuotas"
+          : compra
+            ? "Editar compra en cuotas"
+            : "Editar pago fijo";
 
   return (
     <Hoja abierta={edicion !== null} alCerrar={alCerrar} titulo={titulo} mostrarTitulo>
@@ -238,6 +294,25 @@ function HojaEdicion({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar:
               ? (activo) => {
                   // La baja vale desde el mes elegido: en los anteriores el pago sigue apareciendo.
                   actualizarPagoFijo(pago.id, { activo, bajaDesde: activo ? null : mes });
+                  alCerrar();
+                }
+              : undefined
+          }
+        />
+      )}
+      {(compra || nuevaCompra) && edicion && (
+        <FormularioCompra
+          key={compra ? `compra-${compra.id}` : "nueva-compra"}
+          compra={compra}
+          alGuardar={(cambios) => {
+            if (compra) actualizarPagoFijo(compra.id, { concepto: cambios.concepto, monto: cambios.monto, dia: cambios.dia });
+            else agregarPagoFijo(cambios);
+            alCerrar();
+          }}
+          alDarDeBaja={
+            compra
+              ? () => {
+                  actualizarPagoFijo(compra.id, { activo: false, bajaDesde: mes });
                   alCerrar();
                 }
               : undefined
@@ -438,6 +513,155 @@ function FormularioPago({
               Volver a activar
             </Boton>
           )}
+        </div>
+      )}
+    </form>
+  );
+}
+
+/** Botones − y + con el número en el medio (día de vencimiento, cantidad de cuotas). */
+function Contador({
+  valor,
+  min,
+  max,
+  onCambio,
+  menos,
+  mas,
+}: {
+  valor: number;
+  min: number;
+  max: number;
+  onCambio: (n: number) => void;
+  menos: string;
+  mas: string;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      <button type="button" onClick={() => onCambio(Math.max(min, valor - 1))} aria-label={menos} className="grid size-10 place-items-center rounded-full bg-tarjeta text-[20px] font-semibold">
+        -
+      </button>
+      <span className="w-8 text-center text-[20px] font-semibold tabular-nums" aria-live="polite">
+        {valor}
+      </span>
+      <button type="button" onClick={() => onCambio(Math.min(max, valor + 1))} aria-label={mas} className="grid size-10 place-items-center rounded-full bg-tarjeta">
+        <Icono trazo={ICONOS.mas} className="size-5" />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Compra en cuotas con tarjeta. Nueva: qué es, valor total, cuántas cuotas, día y en qué mes cae
+ * la primera (por defecto el siguiente, como llega en el resumen). Va siempre a Deuda.
+ * Una que ya existe: se cambia el nombre, el valor de la cuota y el día; las cuotas no (cambiarían
+ * los meses pasados). Darla de baja sirve si se canceló antes.
+ */
+function FormularioCompra({
+  compra,
+  alGuardar,
+  alDarDeBaja,
+}: {
+  compra?: PagoFijo;
+  alGuardar: (pago: NuevoPagoFijo) => void;
+  alDarDeBaja?: () => void;
+}) {
+  const { datos, mes } = useBilletera();
+  const deuda = datos.categorias.find((c) => c.nombre === "Deuda");
+  const siguiente = sumarMeses(mes, 1);
+  const [concepto, setConcepto] = useState(compra?.concepto ?? "");
+  // Nueva: el valor total. Existente: el valor de cada cuota.
+  const [monto, setMonto] = useState(compra?.monto ?? 0);
+  const [cuotas, setCuotas] = useState(compra?.cuotas ?? 6);
+  const [dia, setDia] = useState(compra?.dia ?? 10);
+  const [primera, setPrimera] = useState(siguiente);
+  const porCuota = compra ? monto : Math.round((monto / cuotas) * 100) / 100;
+  const valido = concepto.trim() !== "" && monto > 0 && !!deuda;
+  const guardar = () =>
+    valido &&
+    deuda &&
+    alGuardar({ concepto: concepto.trim(), monto: porCuota, dia, categoriaId: deuda.id, esDeuda: true, cuotas, primeraCuota: primera });
+  const ultima = compra ? mesUltimaCuota(compra) : sumarMeses(primera, cuotas - 1);
+  const dadaDeBaja = compra && !compra.activo;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        guardar();
+      }}
+    >
+      <CampoNombre etiqueta="Qué compraste" valor={concepto} onCambio={setConcepto} placeholder="Por ejemplo, Heladera" autoFocus={!compra} />
+      <p className="mt-4 text-[14px] leading-5 text-tenue">
+        {compra
+          ? `${textoCuota(compra, mes) && pagoFijoVigente(compra, mes) ? `${textoCuota(compra, mes)} en ${nombreMes(mes)}. ` : ""}${compra.cuotas} cuotas${ultima ? `, la última en ${nombreMes(ultima)}` : ""}. Acá va el valor de cada cuota; las ya pagadas no cambian.`
+          : "El valor total de la compra. Se divide en las cuotas."}
+      </p>
+      <div className="py-8">
+        <CampoMonto valor={monto} onCambio={setMonto} onEnter={guardar} lapiz />
+        {!compra && monto > 0 && (
+          <p className="mt-2 text-center text-[14px] text-tenue">
+            {cuotas} {cuotas === 1 ? "cuota" : "cuotas"} de {pesos(porCuota, { ceroComoGuion: false })}
+          </p>
+        )}
+      </div>
+
+      <div className="mb-6 divide-y divide-linea rounded-2xl bg-relleno">
+        {!compra && (
+          <div className="flex min-h-14 items-center justify-between px-4 py-3">
+            <span className="text-[15px] font-medium">Cuotas</span>
+            <Contador valor={cuotas} min={1} max={120} onCambio={setCuotas} menos="Una cuota menos" mas="Una cuota más" />
+          </div>
+        )}
+        <div className="flex min-h-14 items-center justify-between px-4 py-3">
+          <span>
+            <span className="block text-[15px] font-medium">Vence el día</span>
+            <span className="block text-[13px] text-tenue">Del resumen de la tarjeta</span>
+          </span>
+          <Contador valor={dia} min={1} max={31} onCambio={setDia} menos="Un día antes" mas="Un día después" />
+        </div>
+        {!compra && (
+          <div className="px-4 py-3">
+            <span className="block text-[15px] font-medium">Primera cuota</span>
+            <div className="mt-2 grid grid-cols-2 rounded-full bg-tarjeta p-1" role="radiogroup" aria-label="Primera cuota">
+              {[mes, siguiente].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={primera === m}
+                  onClick={() => setPrimera(m)}
+                  className="h-10 rounded-full text-[14px] font-semibold text-tenue first-letter:uppercase aria-checked:bg-marca aria-checked:text-sobre-marca"
+                >
+                  {nombreMes(m)}
+                </button>
+              ))}
+            </div>
+            {ultima && <span className="mt-2 block text-[13px] text-tenue">La última, en {nombreMes(ultima)}.</span>}
+          </div>
+        )}
+        <div className="flex min-h-14 items-center justify-between gap-3 px-4">
+          <span>
+            <span className="block text-[15px] font-medium">Categoría</span>
+            <span className="block text-[13px] text-tenue">Se suma sola al techo de Deuda</span>
+          </span>
+          <span className="text-[15px] text-tenue">{deuda?.nombre ?? "Falta la categoría Deuda"}</span>
+        </div>
+      </div>
+
+      <Boton type="submit" disabled={!valido}>
+        {compra ? "Guardar" : "Agregar"}
+      </Boton>
+
+      {compra && alDarDeBaja && !dadaDeBaja && pagoFijoVigente(compra, mes) && (
+        <div className="mt-3">
+          <Boton
+            type="button"
+            variante="peligro"
+            onClick={() => confirm(`¿Dar de baja esta compra desde ${nombreMes(mes)}? Deja de aparecer en Pagos fijos. Los meses anteriores no cambian.`) && alDarDeBaja()}
+          >
+            Dar de baja
+          </Boton>
+          <p className="mt-2 text-center text-[13px] text-tenue">Por ejemplo, si la cancelaste antes. Cuando termina, se va sola.</p>
         </div>
       )}
     </form>
