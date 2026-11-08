@@ -61,15 +61,15 @@ export function Icono({ trazo, className = "size-5" }: { trazo: Trazo; className
  * Círculo con borde fino y el ícono en línea, sin relleno (como MP): liviano a la vista.
  * Lo que entra lleva el ícono en verde. Si no conoce la categoría, muestra la inicial.
  */
-export function IconoCategoria({ nombre, tamano = "md", entra = false }: { nombre: string; tamano?: "md" | "lg"; entra?: boolean }) {
+export function IconoCategoria({ nombre, tamano = "md", entra = false }: { nombre: string; tamano?: "sm" | "md" | "lg"; entra?: boolean }) {
   const clave = entra ? "entra" : CATEGORIAS[normalizar(nombre)];
-  const caja = tamano === "lg" ? "size-14" : "size-11";
+  const caja = tamano === "lg" ? "size-14" : tamano === "sm" ? "size-8" : "size-11";
   return (
     <span className={`grid shrink-0 place-items-center rounded-full border-[1.5px] border-linea ${entra ? "text-queda" : "text-texto"} ${caja}`}>
       {clave ? (
-        <Icono trazo={TRAZOS[clave]} className={tamano === "lg" ? "size-6" : "size-5"} />
+        <Icono trazo={TRAZOS[clave]} className={tamano === "lg" ? "size-6" : tamano === "sm" ? "size-4" : "size-5"} />
       ) : (
-        <span className="text-[15px] font-semibold">{nombre.charAt(0).toUpperCase()}</span>
+        <span className={`${tamano === "sm" ? "text-[13px]" : "text-[15px]"} font-semibold`}>{nombre.charAt(0).toUpperCase()}</span>
       )}
     </span>
   );
