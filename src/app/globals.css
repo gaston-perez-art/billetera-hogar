@@ -9,7 +9,6 @@
  * - marca: verde de la casa (botones, pestaña activa, barras). marca-suave: su fondo claro
  *   (íconos de categoría, botones secundarios, chip seleccionado).
  * - queda / pasaste: semáforo de montos.
- * - plastico / sobre-plastico: la tarjeta de crédito oscura del carrusel (mismos valores que texto/fondo o relleno).
  * No agregar colores fuera de estos tokens.
  */
 @theme {
@@ -23,9 +22,6 @@
   --color-marca: #0f7a50;
   --color-marca-suave: #e4f3eb;
   --color-sobre-marca: #ffffff;
-  /* Plástico oscuro de las tarjetas (Pagos → Tarjetas): en claro, la tinta del texto; en oscuro, el relleno. */
-  --color-plastico: #141917;
-  --color-sobre-plastico: #f3f5f4;
   --color-queda: #0f7a50;
   --color-pasaste: #d0402f;
   --shadow-tarjeta: 0 1px 2px rgba(20, 30, 25, 0.04), 0 6px 20px rgba(20, 30, 25, 0.045);
@@ -54,8 +50,6 @@
     --color-marca: #4cc993;
     --color-marca-suave: #12281e;
     --color-sobre-marca: #04190f;
-    --color-plastico: #1b201e;
-    --color-sobre-plastico: #f1f4f2;
     --color-queda: #55d09b;
     --color-pasaste: #ff8270;
     --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -75,8 +69,6 @@
   --color-marca: #4cc993;
   --color-marca-suave: #12281e;
   --color-sobre-marca: #04190f;
-  --color-plastico: #1b201e;
-  --color-sobre-plastico: #f1f4f2;
   --color-queda: #55d09b;
   --color-pasaste: #ff8270;
   --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -304,5 +296,55 @@ label:has(input[type="file"], input[type="checkbox"]):active {
   label:has(input[type="file"], input[type="checkbox"]):active {
     transform: none;
   }
+}
+
+/*
+ * Plásticos de Pagos → Tarjetas: tarjetas de crédito que flotan sobre la pantalla.
+ * Son objetos, no pantalla: no cambian con el modo oscuro (salvo la sombra, más profunda).
+ * Verde = el de la marca, más hondo; negro = grafito. Degradé con luz arriba a la izquierda,
+ * una trama muy fina, un reflejo en diagonal y un filo de luz en el borde.
+ */
+.plastico {
+  --sombra-plastico: 0 1px 2px rgba(10, 30, 20, 0.10), 0 10px 20px -6px rgba(10, 30, 20, 0.22), 0 26px 44px -18px rgba(10, 30, 20, 0.38);
+  position: relative;
+  isolation: isolate;
+  color: #f4f8f6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.07), var(--sombra-plastico);
+}
+.plastico::before {
+  /* trama fina, como el fondo impreso de una tarjeta */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px);
+}
+.plastico::after {
+  /* reflejo en diagonal */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.10) 46%, rgba(255, 255, 255, 0.02) 54%, transparent 64%);
+}
+.plastico-verde {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(80, 220, 160, 0.30) 0%, transparent 55%),
+    linear-gradient(140deg, #13885b 0%, #0d6a46 55%, #08452e 100%);
+}
+.plastico-grafito {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%),
+    linear-gradient(140deg, #3a413d 0%, #232825 55%, #121513 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .plastico {
+    --sombra-plastico: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 24px -6px rgba(0, 0, 0, 0.6), 0 30px 50px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+:root[data-tema="oscuro"] .plastico {
+  --sombra-plastico: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 24px -6px rgba(0, 0, 0, 0.6), 0 30px 50px -16px rgba(0, 0, 0, 0.7);
 }
 

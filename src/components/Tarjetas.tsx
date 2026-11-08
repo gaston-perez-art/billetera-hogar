@@ -102,7 +102,7 @@ export function VistaTarjetas() {
       <div
         ref={carrusel}
         onScroll={alDeslizar}
-        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[8%] pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[8%] pb-14 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Tus tarjetas"
       >
         {lugares.map((l, i) => (
@@ -117,7 +117,7 @@ export function VistaTarjetas() {
       </div>
 
       {lugares.length > 1 && (
-        <div className="flex justify-center">
+        <div className="-mt-9 flex justify-center">
           <div className="flex items-center gap-1.5 rounded-full superficie px-3 py-2 ring-1 ring-linea">
             {lugares.map((l, i) => (
               <button
@@ -180,17 +180,17 @@ export function VistaTarjetas() {
 }
 
 /**
- * La tarjeta como plástico, al estilo de las billeteras: banco y de quién es arriba, lo del mes
- * en grande y abajo los últimos 4 y lo que resta. Se alternan verde de marca y oscuro para
- * distinguirlas (el oscuro es el token plastico, que en modo oscuro es el relleno). Los círculos de fondo toman el color del texto.
+ * La tarjeta como plástico, al estilo de las billeteras: banco y de quién es arriba, chip y
+ * contactless, lo del mes en grande y abajo los últimos 4 y lo que resta. Flota con sombra
+ * (clases `plastico` en globals.css). Se alternan verde y grafito para distinguirlas.
  */
 function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; orden: number; elegida: boolean; onClick: () => void }) {
   const { datos, mes } = useBilletera();
-  const base = `relative aspect-[1.586] w-[84%] shrink-0 snap-center overflow-hidden rounded-[22px] px-5 pb-4 pt-5 text-left transition-[opacity,transform] duration-200 motion-reduce:transition-none ${elegida ? "" : "scale-[0.94] opacity-60"}`;
+  const base = `aspect-[1.586] w-[84%] shrink-0 snap-center overflow-hidden rounded-[20px] px-[18px] pb-4 pt-[18px] text-left transition-[opacity,transform] duration-200 motion-reduce:transition-none ${elegida ? "" : "scale-[0.94] opacity-70"}`;
 
   if (lugar.tipo === "agregar") {
     return (
-      <button onClick={onClick} className={`${base} flex flex-col items-center justify-center gap-2 border-2 border-dashed border-linea text-marca`}>
+      <button onClick={onClick} className={`${base} flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed border-sutil text-marca`}>
         <span className="grid size-11 place-items-center rounded-full bg-marca-suave">
           <Icono trazo={ICONOS.mas} className="size-5" />
         </span>
@@ -202,28 +202,56 @@ function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; ord
   const tarjeta = lugar.tipo === "tarjeta" ? lugar.tarjeta : null;
   const r = resumenTarjeta(datos, tarjeta?.id ?? null, mes);
   const duenio = tarjeta ? datos.miembros.find((m) => m.id === tarjeta.miembroId)?.nombre : null;
-  const estilo = !tarjeta ? "bg-relleno text-texto" : orden % 2 === 0 ? "bg-marca text-sobre-marca shadow-tarjeta" : "bg-plastico text-sobre-plastico shadow-tarjeta ring-1 ring-linea";
+  const estilo = !tarjeta ? "superficie text-texto shadow-tarjeta ring-1 ring-linea" : `plastico ${orden % 2 === 0 ? "plastico-verde" : "plastico-grafito"}`;
 
   return (
     <button onClick={onClick} aria-label={tarjeta ? `${nombreTarjeta(tarjeta)}, de ${duenio}` : "Compras sin tarjeta"} className={`${base} flex flex-col ${estilo}`}>
-      <span aria-hidden className="pointer-events-none absolute -right-14 -top-20 size-56 rounded-full bg-current opacity-[0.07]" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-24 -left-10 size-52 rounded-full bg-current opacity-[0.05]" />
-      <span className="relative flex items-start justify-between gap-2">
-        <span className="truncate text-[19px] font-bold tracking-[-0.01em]">{tarjeta ? tarjeta.banco : "Sin tarjeta"}</span>
-        {duenio && <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ring-1 ring-current/40">{duenio}</span>}
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-[17px] font-bold tracking-[-0.01em]">{tarjeta ? tarjeta.banco : "Sin tarjeta"}</span>
+        {duenio && (
+          <span className="shrink-0 rounded-full bg-current/15 px-2.5 py-[3px] text-[12px] font-semibold ring-1 ring-current/20 backdrop-blur-sm">{duenio}</span>
+        )}
       </span>
-      <span className="relative mt-auto">
-        <span className="block text-[12px] opacity-75">Este mes</span>
-        <span className="block text-[28px] font-bold leading-tight tracking-[-0.02em] tabular-nums">{pesos(r.delMes, { ceroComoGuion: false })}</span>
-      </span>
-      <span className="relative mt-3 flex items-end justify-between gap-2 text-[13px]">
-        <span className="font-semibold tabular-nums tracking-wider">{tarjeta ? `•••• ${tarjeta.ultimos4}` : ""}</span>
-        <span className="text-right leading-tight">
-          <span className="block font-semibold tabular-nums">{r.resta > 0 ? `Resta ${pesos(r.resta)}` : "Nada pendiente"}</span>
-          {r.hasta && <span className="block opacity-75">hasta {mesCorto(r.hasta)} {r.hasta.slice(0, 4)}</span>}
+      {tarjeta && (
+        <span className="mt-3 flex items-center gap-2.5" aria-hidden>
+          <Chip />
+          <svg viewBox="0 0 24 24" className="size-[18px] rotate-90 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M8.5 16.5a6 6 0 0 1 7 0M6 13.5a10 10 0 0 1 12 0M3.5 10.5a14 14 0 0 1 17 0" />
+          </svg>
+        </span>
+      )}
+      <span className="mt-auto flex items-end justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-[11px] font-medium opacity-70">Este mes</span>
+          <span className="block text-[24px] font-bold leading-tight tracking-[-0.02em] tabular-nums">{pesos(r.delMes, { ceroComoGuion: false })}</span>
+        </span>
+        <span className="shrink-0 text-right leading-tight">
+          <span className="block text-[11px] font-medium opacity-70">Resta</span>
+          <span className="block text-[15px] font-semibold tabular-nums">{r.resta > 0 ? pesos(r.resta) : "Nada"}</span>
         </span>
       </span>
+      <span className="mt-2.5 flex items-center justify-between gap-2 text-[12px]">
+        <span className="font-medium tracking-[0.18em] opacity-85 tabular-nums">{tarjeta ? `•••• ${tarjeta.ultimos4}` : ""}</span>
+        {r.resta > 0 && r.hasta && <span className="opacity-70">hasta {nombreMes(r.hasta)}</span>}
+      </span>
     </button>
+  );
+}
+
+/** Chip de la tarjeta: metálico claro, hecho con el color del texto de la tarjeta. */
+function Chip() {
+  return (
+    <svg viewBox="0 0 34 26" className="h-[22px] w-[29px]" aria-hidden>
+      <defs>
+        <linearGradient id="chip-brillo" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.75" />
+          <stop offset="0.5" stopColor="currentColor" stopOpacity="0.45" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0.65" />
+        </linearGradient>
+      </defs>
+      <rect x="0.5" y="0.5" width="33" height="25" rx="5" fill="url(#chip-brillo)" />
+      <path d="M0.5 9h10M0.5 17h10M23.5 9h10M23.5 17h10M10.5 0.5v25M23.5 0.5v25M10.5 13h13" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" fill="none" />
+    </svg>
   );
 }
 
