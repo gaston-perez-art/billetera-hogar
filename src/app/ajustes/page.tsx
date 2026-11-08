@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, CampoNombre, Contador, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
-import { ingresoVigente } from "@/lib/calculos";
+import { deBajaEn, ingresoVigente } from "@/lib/calculos";
 import { diasDelMes, fechaCorta, fechaEnMes, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
 import { leerDatosImportados } from "@/lib/importar";
@@ -40,8 +40,10 @@ export default function Ajustes() {
   const ingresos = datos.ingresos.filter((i) => i.mes === null && ingresoVigente(i, mes));
   const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
   // Las compras en cuotas van en su propia sección (Tarjetas), no entre los pagos fijos.
-  const pagos = datos.pagosFijos.filter((p) => !p.cuotas).sort((a, b) => Number(b.activo) - Number(a.activo) || a.dia - b.dia);
-  const activos = pagos.filter((p) => p.activo);
+  // De baja o no, en el mes elegido (una baja desde un mes más adelante todavía no cuenta).
+  const vigente = (p: PagoFijo) => !deBajaEn(p, mes);
+  const pagos = datos.pagosFijos.filter((p) => !p.cuotas).sort((a, b) => Number(vigente(b)) - Number(vigente(a)) || a.dia - b.dia);
+  const activos = pagos.filter(vigente);
   const suma = (xs: number[]) => xs.reduce((a, x) => a + x, 0);
 
   async function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,9 +113,15 @@ export default function Ajustes() {
             <Fila
               key={p.id}
               titulo={p.concepto}
-              bajada={p.activo ? `Día ${p.dia}, ${nombreCategoria(p.categoriaId)}` : "Dado de baja"}
+              bajada={
+                !vigente(p)
+                  ? "Dado de baja"
+                  : !p.activo && p.bajaDesde
+                    ? `Día ${p.dia}, hasta ${nombreMes(sumarMeses(p.bajaDesde, -1))}`
+                    : `Día ${p.dia}, ${nombreCategoria(p.categoriaId)}`
+              }
               valor={pesos(p.monto)}
-              tenue={!p.activo}
+              tenue={!vigente(p)}
               onClick={() => setEdicion({ tipo: "pago", id: p.id })}
             />
           ))}
@@ -413,7 +421,7 @@ function FormularioPago({
 
       {pago && alCambiarActivo && (
         <div className="mt-3">
-          {pago.activo ? (
+          {!deBajaEn(pago, mes) ? (
             <>
               <Boton
                 type="button"
@@ -422,7 +430,11 @@ function FormularioPago({
               >
                 Dar de baja este pago
               </Boton>
-              <p className="mt-2 text-center text-[13px] text-tenue">Por ejemplo, una deuda que ya terminaste de pagar.</p>
+              <p className="mt-2 text-center text-[13px] text-tenue">
+                {!pago.activo && pago.bajaDesde
+                  ? `Ya estaba dado de baja desde ${nombreMes(pago.bajaDesde)}. Así se adelanta a ${nombreMes(mes)}.`
+                  : "Por ejemplo, una deuda que ya terminaste de pagar."}
+              </p>
             </>
           ) : (
             <Boton type="button" variante="secundario" onClick={() => alCambiarActivo(true)}>

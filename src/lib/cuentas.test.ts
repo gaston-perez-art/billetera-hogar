@@ -135,6 +135,26 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     expect(planMes(dos, MES).entra).toBe(planMes(d, MES).entra - sueldo.monto + 2);
   });
 
+  it("adelantar una baja (de enero a diciembre) no toca los meses pagados ni sus gastos", () => {
+    const d = demo();
+    const pf = d.pagosFijos.find((p) => p.concepto === "Luz")!;
+    const anterior = sumarMeses(MES, -1);
+    const dic = sumarMeses(MES, 1);
+    // Pagado el mes pasado y este; baja programada para enero; después se adelanta a diciembre.
+    let x = op.marcarPagado(d, pf.id, anterior, "gaston", "mov-ant", "2026-10-05");
+    x = op.marcarPagado(x, pf.id, MES, "jime", "mov-act", FECHA);
+    x = op.actualizarPagoFijo(x, pf.id, { activo: false, bajaDesde: sumarMeses(MES, 2) });
+    expect(pagosDelMes(x, dic).some((p) => p.pagoFijo.id === pf.id)).toBe(true);
+    const adelantada = op.actualizarPagoFijo(x, pf.id, { activo: false, bajaDesde: dic });
+    expect(pagosDelMes(adelantada, dic).some((p) => p.pagoFijo.id === pf.id)).toBe(false);
+    for (const m of [anterior, MES]) {
+      expect(pagosDelMes(adelantada, m).find((p) => p.pagoFijo.id === pf.id)).toMatchObject({ pagado: true });
+      expect(planMes(adelantada, m)).toEqual(planMes(x, m));
+    }
+    expect(adelantada.movimientos).toEqual(x.movimientos);
+    expect(adelantada.pagosMes).toEqual(x.pagosMes);
+  });
+
   it("dar de baja un pago fijo desde un mes lo deja en los meses anteriores", () => {
     const d = demo();
     const pf = d.pagosFijos.find((p) => p.concepto === "Luz")!;
