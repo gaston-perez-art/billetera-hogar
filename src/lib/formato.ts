@@ -21,6 +21,18 @@ export function pesos(monto: number, { ceroComoGuion = true } = {}): string {
   return `${signo}$${numero.format(Math.abs(redondeado))}`;
 }
 
+/** Monto corto para lugares chicos (barras): "$950", "$150 mil", "$1,2 M". Respeta el ojito. */
+export function pesosCortos(monto: number): string {
+  if (montosOcultos) return MONTO_OCULTO;
+  const r = Math.round(monto);
+  const signo = r < 0 ? "-" : "";
+  const abs = Math.abs(r);
+  if (abs < 1000) return `${signo}$${abs}`;
+  if (abs < 999_500) return `${signo}$${numero.format(Math.round(abs / 1000))} mil`;
+  const millones = abs / 1_000_000;
+  return `${signo}$${millones.toLocaleString("es-AR", { maximumFractionDigits: millones < 10 ? 1 : 0 })} M`;
+}
+
 /** `DD/MM/AAAA` */
 export function fechaCorta(fecha: Fecha): string {
   const [a, m, d] = fecha.split("-");

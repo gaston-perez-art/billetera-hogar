@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, CampoNombre, Contador, FilaLista, Grupo, Hoja } from "@/components/ui";
 import { cuotaDelMes, mesesEntre, mesUltimaCuota, pagoFijoVigente, pagosDelMes, restaDeCompra, resumenTarjeta, textoCuota } from "@/lib/calculos";
-import { mesCorto, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { mesCorto, nombreMes, pesos, pesosCortos, sumarMeses } from "@/lib/formato";
 import type { NuevaTarjeta, NuevoPagoFijo } from "@/lib/operaciones";
 import { useBilletera } from "@/lib/store";
 import type { Mes, PagoFijo, Tarjeta } from "@/lib/tipos";
@@ -37,11 +37,14 @@ function bajadaCompra(p: PagoFijo, mes: Mes): string {
 
 /** Lo que se ve en el carrusel: una tarjeta, las compras sin tarjeta o el lugar para agregar una. */
 type Lugar = { tipo: "tarjeta"; tarjeta: Tarjeta } | { tipo: "sin" } | { tipo: "agregar" };
+const claveDe = (l: Lugar) => (l.tipo === "tarjeta" ? l.tarjeta.id : l.tipo);
 
 export function VistaTarjetas() {
   const { datos, mes } = useBilletera();
   const [edicion, setEdicion] = useState<Edicion | null>(null);
   const [elegida, setElegida] = useState(0);
+  // La tarjeta dada vuelta (solo la del centro; al pasar a otra, vuelve sola al frente).
+  const [volteada, setVolteada] = useState<string | null>(null);
   const carrusel = useRef<HTMLDivElement>(null);
   const tarjetas = datos.tarjetas ?? [];
   const compras = datos.pagosFijos.filter((p) => p.cuotas);
@@ -63,13 +66,16 @@ export function VistaTarjetas() {
     const primera = el?.firstElementChild as HTMLElement | null;
     if (!el || !primera) return;
     const paso = primera.offsetWidth + 12;
-    setElegida(Math.max(0, Math.min(lugares.length - 1, Math.round(el.scrollLeft / paso))));
+    const nuevo = Math.max(0, Math.min(lugares.length - 1, Math.round(el.scrollLeft / paso)));
+    if (nuevo !== indice) setVolteada(null);
+    setElegida(nuevo);
   };
   const irA = (i: number) => {
     const el = carrusel.current;
     const destino = el?.children[i] as HTMLElement | undefined;
     if (!el || !destino) return;
     el.scrollTo({ left: destino.offsetLeft - (el.clientWidth - destino.offsetWidth) / 2, behavior: "smooth" });
+    if (i !== indice) setVolteada(null);
     setElegida(i);
   };
 
@@ -107,11 +113,14 @@ export function VistaTarjetas() {
       >
         {lugares.map((l, i) => (
           <PlasticoTarjeta
-            key={l.tipo === "tarjeta" ? l.tarjeta.id : l.tipo}
+            key={claveDe(l)}
             lugar={l}
             orden={i}
             elegida={i === indice}
-            onClick={() => (l.tipo === "agregar" && i === indice ? setEdicion({ tipo: "nuevaTarjeta" }) : irA(i))}
+            vuelta={i === indice && volteada === claveDe(l)}
+            onClick={() =>
+              i !== indice ? irA(i) : l.tipo === "agregar" ? setEdicion({ tipo: "nuevaTarjeta" }) : setVolteada((v) => (v === claveDe(l) ? null : claveDe(l)))
+            }
           />
         ))}
       </div>
@@ -183,8 +192,10 @@ export function VistaTarjetas() {
  * La tarjeta como plástico, al estilo de las billeteras: banco y de quién es arriba, chip y
  * contactless, lo del mes en grande y abajo los últimos 4 y lo que resta. Flota con sombra
  * (clases `plastico` en globals.css). Se alternan verde y grafito para distinguirlas.
+ * La del centro, al tocarla, se da vuelta con el mismo giro que Reparto (`.giro`) y muestra
+ * lo de cada mes en barras.
  */
-function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; orden: number; elegida: boolean; onClick: () => void }) {
+function PlasticoTarjeta({ lugar, orden, elegida, vuelta, onClick }: { lugar: Lugar; orden: number; elegida: boolean; vuelta: boolean; onClick: () => void }) {
   const { datos, mes } = useBilletera();
   const base = `aspect-[1.586] w-[84%] shrink-0 snap-center overflow-hidden rounded-[20px] px-[18px] pb-4 pt-[18px] text-left transition-[opacity,transform] duration-200 motion-reduce:transition-none ${elegida ? "" : "scale-[0.94] opacity-70"}`;
 
@@ -203,23 +214,51 @@ function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; ord
   const r = resumenTarjeta(datos, tarjeta?.id ?? null, mes);
   const duenio = tarjeta ? datos.miembros.find((m) => m.id === tarjeta.miembroId)?.nombre : null;
   const estilo = !tarjeta ? "superficie text-texto shadow-tarjeta ring-1 ring-linea" : `plastico ${orden % 2 === 0 ? "plastico-verde" : "plastico-grafito"}`;
+  const cara = `absolute inset-0 flex flex-col overflow-hidden rounded-[20px] px-[18px] pb-4 pt-[18px] ${estilo}`;
+  const nombre = tarjeta ? `${nombreTarjeta(tarjeta)}, de ${duenio}` : "Compras sin tarjeta";
 
   return (
-    <button onClick={onClick} aria-label={tarjeta ? `${nombreTarjeta(tarjeta)}, de ${duenio}` : "Compras sin tarjeta"} className={`${base} flex flex-col ${estilo}`}>
+    <button
+      onClick={onClick}
+      aria-pressed={elegida ? vuelta : undefined}
+      aria-label={elegida ? (vuelta ? `${nombre}: lo de cada mes. Tocá para volver` : `${nombre}. Tocá para ver lo de cada mes`) : nombre}
+      className={`giro block aspect-[1.586] w-[84%] shrink-0 snap-center text-left transition-[opacity,transform] duration-200 motion-reduce:transition-none ${elegida ? "" : "scale-[0.94] opacity-70"}`}
+    >
+      <span className="giro-interior relative block size-full" data-dada-vuelta={vuelta}>
+        <span className={cara} aria-hidden={vuelta}>
+          <FrenteTarjeta tarjeta={tarjeta} duenio={duenio} r={r} />
+        </span>
+        <span className={cara} aria-hidden={!vuelta}>
+          <DorsoTarjeta tarjeta={tarjeta} />
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function FrenteTarjeta({ tarjeta, duenio, r }: { tarjeta: Tarjeta | null; duenio?: string | null; r: ReturnType<typeof resumenTarjeta> }) {
+  return (
+    <>
       <span className="flex items-center justify-between gap-2">
         <span className="truncate text-[17px] font-bold tracking-[-0.01em]">{tarjeta ? tarjeta.banco : "Sin tarjeta"}</span>
         {duenio && (
           <span className="shrink-0 rounded-full bg-current/15 px-2.5 py-[3px] text-[12px] font-semibold ring-1 ring-current/20 backdrop-blur-sm">{duenio}</span>
         )}
       </span>
-      {tarjeta && (
-        <span className="mt-3 flex items-center gap-2.5" aria-hidden>
-          <Chip />
-          <svg viewBox="0 0 24 24" className="size-[18px] rotate-90 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <path d="M8.5 16.5a6 6 0 0 1 7 0M6 13.5a10 10 0 0 1 12 0M3.5 10.5a14 14 0 0 1 17 0" />
-          </svg>
+      <span className="mt-3 flex items-center gap-2.5" aria-hidden>
+        {tarjeta && (
+          <>
+            <Chip />
+            <svg viewBox="0 0 24 24" className="size-[18px] rotate-90 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M8.5 16.5a6 6 0 0 1 7 0M6 13.5a10 10 0 0 1 12 0M3.5 10.5a14 14 0 0 1 17 0" />
+            </svg>
+          </>
+        )}
+        {/* Pista: al tocarla se da vuelta y muestra las barras por mes. */}
+        <span className="ml-auto grid size-7 place-items-center rounded-full bg-current/15">
+          <Icono trazo={ICONOS.categorias} className="size-[14px]" />
         </span>
-      )}
+      </span>
       <span className="mt-auto flex items-end justify-between gap-3">
         <span className="min-w-0">
           <span className="block text-[11px] font-medium opacity-70">Este mes</span>
@@ -234,7 +273,43 @@ function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; ord
         <span className="font-medium tracking-[0.18em] opacity-85 tabular-nums">{tarjeta ? `•••• ${tarjeta.ultimos4}` : ""}</span>
         {r.resta > 0 && r.hasta && <span className="opacity-70">hasta {nombreMes(r.hasta)}</span>}
       </span>
-    </button>
+    </>
+  );
+}
+
+const MESES_DORSO = 6;
+
+/**
+ * Dorso: lo que se paga con la tarjeta en cada uno de los próximos meses (desde el elegido),
+ * en barras. Así se ve cuándo baja la cuota. Usa lo mismo que el frente (`resumenTarjeta`).
+ */
+function DorsoTarjeta({ tarjeta }: { tarjeta: Tarjeta | null }) {
+  const { datos, mes } = useBilletera();
+  const meses = Array.from({ length: MESES_DORSO }, (_, i) => sumarMeses(mes, i));
+  const montos = meses.map((m) => resumenTarjeta(datos, tarjeta?.id ?? null, m).delMes);
+  const maximo = Math.max(...montos, 1);
+  return (
+    <>
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-[15px] font-bold">{tarjeta ? nombreTarjeta(tarjeta) : "Sin tarjeta"}</span>
+        <span className="shrink-0 text-[11px] font-medium opacity-70">Por mes</span>
+      </span>
+      <span className="mt-2 flex min-h-0 flex-1 items-end gap-2">
+        {meses.map((m, i) => {
+          const monto = montos[i];
+          return (
+            <span key={m} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
+              <span className={`mb-1 whitespace-nowrap text-[10px] font-semibold tabular-nums ${i === 0 ? "" : "opacity-75"}`}>{monto > 0 ? pesosCortos(monto) : "–"}</span>
+              <span
+                className={`w-full max-w-[24px] rounded-[6px] bg-current ${i === 0 ? "opacity-95" : monto > 0 ? "opacity-45" : "opacity-20"}`}
+                style={{ height: monto > 0 ? `${Math.max((monto / maximo) * 72, 6)}%` : "3px" }}
+              />
+              <span className={`mt-1.5 text-[11px] ${i === 0 ? "font-semibold" : "opacity-70"}`}>{mesCorto(m)}</span>
+            </span>
+          );
+        })}
+      </span>
+    </>
   );
 }
 

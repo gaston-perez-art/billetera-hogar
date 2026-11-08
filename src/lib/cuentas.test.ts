@@ -250,6 +250,19 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     cerca(suma(porTarjeta), cuotasEnPagos);
   });
 
+  it("Tarjetas: las barras por mes suman lo que resta y bajan a cero después de la última cuota", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const t = op.armarTarjeta({ banco: "Banco", ultimos4: "1111", miembroId: "gaston" }, "tj-b");
+    const con = op.agregarPagoFijo(
+      op.agregarTarjeta(d, t),
+      op.armarPagoFijo({ concepto: "Tele", categoriaId: deuda.id, dia: 28, monto: 100, esDeuda: true, cuotas: 3, primeraCuota: MES, tarjetaId: "tj-b" }, MES, "tele"),
+    );
+    const barras = [0, 1, 2, 3, 4, 5].map((i) => resumenTarjeta(con, "tj-b", sumarMeses(MES, i)).delMes);
+    expect(barras).toEqual([100, 100, 100, 0, 0, 0]);
+    expect(suma(barras)).toBe(resumenTarjeta(con, "tj-b", MES).resta);
+  });
+
   it("Tarjetas: lo que resta cuenta desde este mes, sin las cuotas ya pagadas", () => {
     const d = demo();
     const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
