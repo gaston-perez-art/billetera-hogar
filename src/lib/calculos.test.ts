@@ -2,7 +2,7 @@
 // las vistas v_categorias_mes / v_reparto_mes con los mismos números.
 
 import { describe, expect, it } from "vitest";
-import { categoriasDelMes, estadisticasPersona, gastoPrevisto, pagosDelMes, previstoPorTipo, repartoMes, resumenMes, totalSantino } from "./calculos";
+import { categoriasDelMes, estadisticasPersona, gastoPrevisto, gastosDeCategoria, logroPagos, pagosDelMes, previstoPorTipo, repartoMes, resumenMes, totalSantino } from "./calculos";
 import { datosDemo } from "./demo";
 import { fechaEnMes, pesos, sumarMeses } from "./formato";
 import { leerDatosImportados } from "./importar";
@@ -212,5 +212,60 @@ describe("datos de demo", () => {
     for (const p of d.pagosMes.filter((p) => p.pagado)) {
       expect(d.movimientos.some((m) => m.id === p.movimientoId)).toBe(true);
     }
+  });
+});
+
+describe("logro de pagos fijos", () => {
+  const pagar = (d: Datos, id: string, fecha: string, pagoPor: string, monto: number) => {
+    d.movimientos.push({ id: `m-${id}`, fecha, monto, categoriaId: "super", detalle: id, pagoPor, creadoEn: fecha });
+    d.pagosMes.push({ id: `pm-${id}`, pagoFijoId: id, mes: MES, monto, pagado: true, movimientoId: `m-${id}` });
+  };
+
+  it("no está completo si falta alguno", () => {
+    const d = base();
+    pagar(d, "cuota", "2026-03-05", "g", 80);
+    expect(logroPagos(d, MES).completo).toBe(false);
+  });
+
+  it("completo: total, a tiempo y quién puso cuánto", () => {
+    const d = base();
+    pagar(d, "cuota", "2026-03-05", "g", 80); // vence el 10: a tiempo
+    pagar(d, "luz", "2026-03-12", "j", 30); // vence el 10: tarde
+    pagar(d, "alq", "2026-03-01", "g", 20); // vence el 1: a tiempo
+    const l = logroPagos(d, MES);
+    expect(l.completo).toBe(true);
+    expect(l.cantidad).toBe(3);
+    expect(l.total).toBe(130);
+    expect(l.aTiempo).toBe(2);
+    expect(l.conFecha).toBe(3);
+    expect(l.porPersona).toEqual([
+      { miembroId: "g", monto: 100, cantidad: 2 },
+      { miembroId: "j", monto: 30, cantidad: 1 },
+    ]);
+    // Lo que puso cada uno suma el total pagado.
+    expect(l.porPersona.reduce((a, p) => a + p.monto, 0)).toBe(l.total);
+  });
+
+  it("sin pagos fijos no hay logro", () => {
+    const d = base();
+    d.pagosFijos = [];
+    expect(logroPagos(d, MES).completo).toBe(false);
+  });
+});
+
+describe("gastos de una categoría", () => {
+  it("filtra por categoría, mes y persona, y suma lo gastado de la categoría", () => {
+    const d = base();
+    d.movimientos.push(
+      { id: "a", fecha: "2026-03-02", monto: 10, categoriaId: "super", detalle: "", pagoPor: "g", creadoEn: "1" },
+      { id: "b", fecha: "2026-03-03", monto: 15, categoriaId: "super", detalle: "", pagoPor: "j", creadoEn: "2" },
+      { id: "c", fecha: "2026-03-03", monto: 99, categoriaId: "chicos", detalle: "", pagoPor: "g", creadoEn: "3" },
+      { id: "d", fecha: "2026-04-01", monto: 7, categoriaId: "super", detalle: "", pagoPor: "g", creadoEn: "4" },
+    );
+    const todos = gastosDeCategoria(d, MES, "super");
+    expect(todos.map((m) => m.id)).toEqual(["b", "a"]);
+    const gastado = categoriasDelMes(d, MES).find((c) => c.categoria.id === "super")!.gastado;
+    expect(todos.reduce((a, m) => a + m.monto, 0)).toBe(gastado);
+    expect(gastosDeCategoria(d, MES, "super", "g").map((m) => m.id)).toEqual(["a"]);
   });
 });

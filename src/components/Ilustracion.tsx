@@ -83,3 +83,29 @@ export function IlustracionRecordatorio() {
     </div>
   );
 }
+
+/**
+ * Sello de logro (todos los pagos fijos del mes hechos): círculo verde con el check,
+ * un aro suave alrededor y destellos. Solo tokens: se adapta a claro y oscuro.
+ */
+export function SelloLogro() {
+  return (
+    <svg viewBox="0 0 120 120" className="sello-entra mx-auto size-28" aria-hidden>
+      <defs>
+        <linearGradient id="sello-brillo" x1="0" y1="0" x2="0.3" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.3" />
+          <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.18" />
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="60" r="54" style={{ fill: "var(--color-marca-suave)" }} />
+      <circle cx="60" cy="60" r="38" style={{ fill: "var(--color-marca)" }} />
+      <circle cx="60" cy="60" r="38" fill="url(#sello-brillo)" />
+      <path d="M44 61l11 11 21-23" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: "var(--color-sobre-marca)" }} />
+      <path d="M100 14l2.5 6.5 6.5 2.5-6.5 2.5-2.5 6.5-2.5-6.5-6.5-2.5 6.5-2.5z" style={{ fill: "var(--color-marca)" }} opacity="0.7" />
+      <path d="M16 86l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" style={{ fill: "var(--color-marca)" }} opacity="0.5" />
+      <circle cx="18" cy="26" r="3" style={{ fill: "var(--color-marca)" }} opacity="0.35" />
+      <circle cx="104" cy="96" r="2.5" style={{ fill: "var(--color-marca)" }} opacity="0.4" />
+    </svg>
+  );
+}

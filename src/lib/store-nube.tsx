@@ -7,6 +7,7 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Acceso } from "@/components/Acceso";
+import { PantallaCargando } from "@/components/Esqueleto";
 import { ContextoBilletera, PantallaCentrada, type Billetera } from "./contexto";
 import { hoy, mesDe } from "./formato";
 import { fotosLocales, olvidarFotoLocal } from "./fotos";
@@ -40,9 +41,9 @@ export function ProveedorNube({ sb, children }: { sb: SupabaseClient; children: 
       .then(({ data }) => setMiembro(data ?? null));
   }, [sb, userId]);
 
-  if (sesion === undefined) return <PantallaCentrada>Cargando…</PantallaCentrada>;
+  if (sesion === undefined) return <PantallaCargando />;
   if (!sesion) return <Acceso sb={sb} />;
-  if (miembro === undefined) return <PantallaCentrada>Cargando…</PantallaCentrada>;
+  if (miembro === undefined) return <PantallaCargando />;
   if (!miembro) {
     return (
       <PantallaCentrada>
@@ -318,7 +319,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
   }, [datos, miembro.id, email, mes, sb, hogarId, ejecutar, recargar, privacidad.ocultos, privacidad.alternar]);
 
   if (!valor) {
-    return <PantallaCentrada>{error ?? "Cargando…"}</PantallaCentrada>;
+    return error ? <PantallaCentrada>{error}</PantallaCentrada> : <PantallaCargando />;
   }
   return (
     <ContextoBilletera.Provider value={valor}>
