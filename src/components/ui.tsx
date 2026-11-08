@@ -366,6 +366,77 @@ export function FilaLista({
   );
 }
 
+/**
+ * Fila que se desliza a la izquierda y deja ver una acción roja (como en iPhone y MP).
+ * El scroll vertical sigue siendo del navegador (`touch-action: pan-y`). Abierta, tocar la
+ * fila la cierra en vez de abrirla.
+ */
+export function FilaDeslizable({ accion, alAccionar, children }: { accion: string; alAccionar: () => void; children: React.ReactNode }) {
+  const ANCHO = 88;
+  const [x, setX] = useState(0);
+  const [arrastrando, setArrastrando] = useState(false);
+  const gesto = useRef<{ x: number; y: number; base: number; horizontal: boolean | null } | null>(null);
+  const movio = useRef(false);
+
+  return (
+    <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
+      {x < 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setX(0);
+            alAccionar();
+          }}
+          className="absolute inset-y-0 right-0 bg-pasaste text-[14px] font-semibold text-sobre-marca"
+          style={{ width: Math.max(ANCHO, -x) }}
+        >
+          {accion}
+        </button>
+      )}
+      <div
+        className={`relative bg-tarjeta ${arrastrando ? "" : "transition-transform duration-200 ease-out motion-reduce:transition-none"}`}
+        style={{ transform: `translateX(${x}px)` }}
+        onPointerDown={(e) => {
+          gesto.current = { x: e.clientX, y: e.clientY, base: x, horizontal: null };
+          movio.current = false;
+        }}
+        onPointerMove={(e) => {
+          const g = gesto.current;
+          if (!g) return;
+          const dx = e.clientX - g.x;
+          const dy = e.clientY - g.y;
+          if (g.horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) g.horizontal = Math.abs(dx) > Math.abs(dy);
+          if (!g.horizontal) return;
+          movio.current = true;
+          setArrastrando(true);
+          setX(Math.min(0, Math.max(g.base + dx, -ANCHO * 1.4)));
+        }}
+        onPointerUp={() => {
+          if (gesto.current?.horizontal) setX((v) => (v < -ANCHO / 2 ? -ANCHO : 0));
+          gesto.current = null;
+          setArrastrando(false);
+        }}
+        onPointerCancel={() => {
+          gesto.current = null;
+          setArrastrando(false);
+          setX((v) => (v < -ANCHO / 2 ? -ANCHO : 0));
+        }}
+        onClickCapture={(e) => {
+          // Después de deslizar no se abre la fila; abierta, tocarla la cierra.
+          if (movio.current || x !== 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            movio.current = false;
+            setX(0);
+          }
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** Monto de un movimiento como en MP: "- $14.900" en el color del texto; "+ $900.000" en verde si entra. */
 export function MontoMovimiento({ monto }: { monto: number }) {
   const entra = monto < 0;
