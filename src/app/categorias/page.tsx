@@ -7,14 +7,14 @@ import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda
 import { categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
 import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
-import { useVista } from "@/lib/vista";
+import { usePersonaVista } from "@/lib/vista";
 
 export default function Categorias() {
-  const [vista] = useVista();
+  const persona = usePersonaVista();
   const [abierta, setAbierta] = useState<string | null>(null);
   return (
     <>
-      {vista === "mio" ? <CategoriasMias alAbrir={setAbierta} /> : <CategoriasDeLosDos alAbrir={setAbierta} />}
+      {persona ? <CategoriasDeUno alAbrir={setAbierta} /> : <CategoriasDeLosDos alAbrir={setAbierta} />}
       <DetalleCategoria categoriaId={abierta} alCerrar={() => setAbierta(null)} />
     </>
   );
@@ -25,7 +25,10 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
   const categorias = categoriasDelMes(datos, mes);
   const plan = planMes(datos, mes);
   const total = categorias.reduce((a, c) => ({ gastado: a.gastado + c.gastado, techo: a.techo + c.techo }), { gastado: 0, techo: 0 });
-  const activas = categorias.filter((c) => c.techo !== 0 || c.gastado !== 0);
+  // De mayor a menor gasto, como en la vista de cada uno; las que no tienen gastos, por techo.
+  const activas = categorias
+    .filter((c) => c.techo !== 0 || c.gastado !== 0)
+    .sort((a, b) => b.gastado - a.gastado || b.techo - a.techo);
   const vacias = categorias.filter((c) => c.techo === 0 && c.gastado === 0);
 
   return (
@@ -83,20 +86,24 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
 }
 
 /**
- * "Solo yo": en qué gastaste vos este mes. Los techos son de los dos, así que acá no se comparan:
- * se dice cuánto fue a cada categoría y qué parte de lo tuyo es.
+ * Vista de una persona: en qué gastó este mes. Los techos son de los dos, así que acá no se comparan:
+ * se dice cuánto fue a cada categoría y qué parte de lo suyo es.
  */
-function CategoriasMias({ alAbrir }: { alAbrir: (id: string) => void }) {
-  const { datos, mes, usuarioId } = useBilletera();
-  const g = gastosDe(datos, mes, usuarioId);
+function CategoriasDeUno({ alAbrir }: { alAbrir: (id: string) => void }) {
+  const { datos, mes } = useBilletera();
+  const persona = usePersonaVista()!;
+  const g = gastosDe(datos, mes, persona.id);
+  const t = persona.vos
+    ? { gasto: "Gastaste este mes", suyo: "de lo tuyo", aclaracion: "Solo lo que cargaste vos, pagos fijos incluidos.", ninguno: "Todavía no cargaste gastos este mes." }
+    : { gasto: `Gastó ${persona.nombre} este mes`, suyo: "de lo suyo", aclaracion: `Solo lo que cargó ${persona.nombre}, pagos fijos incluidos.`, ninguno: `${persona.nombre} todavía no cargó gastos este mes.` };
   const top = g.categorias.slice(0, 4);
   return (
     <>
       <Encabezado titulo="Categorías" conVista />
-      <SaldoFijo monto={g.gastado} etiqueta="Gastaste este mes">
-        <Resumen etiqueta="Gastaste este mes" monto={g.gastado}>
+      <SaldoFijo monto={g.gastado} etiqueta={t.gasto}>
+        <Resumen etiqueta={t.gasto} monto={g.gastado}>
           {g.gastado > 0 && (
-            <div className="mb-4 flex h-2 gap-0.5 overflow-hidden rounded-full" role="img" aria-label="En qué se fue lo tuyo">
+            <div className="mb-4 flex h-2 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`En qué se fue lo ${persona.vos ? "tuyo" : "suyo"}`}>
               {top.map((c, i) => (
                 <span key={c.categoria.id} className={i === 0 ? "bg-marca" : i === 1 ? "bg-marca/60" : i === 2 ? "bg-marca/35" : "bg-sutil"} style={{ flexGrow: c.monto }} />
               ))}
@@ -111,11 +118,11 @@ function CategoriasMias({ alAbrir }: { alAbrir: (id: string) => void }) {
           />
         </Resumen>
       </SaldoFijo>
-      <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">Solo lo que cargaste vos, pagos fijos incluidos. Los techos son de los dos: se ven en la vista de la pareja.</p>
+      <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">{t.aclaracion} Los techos son de los dos: se ven en la vista de la pareja.</p>
 
       <main className="mt-6">
         {g.categorias.length === 0 ? (
-          <p className="px-9 py-10 text-center text-[15px] text-tenue">Todavía no cargaste gastos este mes.</p>
+          <p className="px-9 py-10 text-center text-[15px] text-tenue">{t.ninguno}</p>
         ) : (
           <Grupo titulo="Por categoría">
             {g.categorias.map((c) => (
@@ -124,7 +131,7 @@ function CategoriasMias({ alAbrir }: { alAbrir: (id: string) => void }) {
                 onClick={() => alAbrir(c.categoria.id)}
                 icono={<IconoCategoria nombre={c.categoria.nombre} />}
                 titulo={c.categoria.nombre}
-                bajada={`${c.cantidad === 1 ? "1 gasto" : `${c.cantidad} gastos`}, ${Math.round(c.parte * 100)}% de lo tuyo`}
+                bajada={`${c.cantidad === 1 ? "1 gasto" : `${c.cantidad} gastos`}, ${Math.round(c.parte * 100)}% ${t.suyo}`}
                 valor={pesos(c.monto)}
               />
             ))}
@@ -139,15 +146,15 @@ type Orden = "recientes" | "grandes";
 
 /**
  * Revisión de una categoría: sus gastos del mes, ordenados por fecha o por monto, y los pagos
- * fijos que todavía tiene reservados. En "Solo yo", solo lo que cargaste vos (no se mira lo ajeno).
+ * fijos que todavía tiene reservados. En la vista de una persona, solo lo que cargó esa persona.
  */
 function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | null; alCerrar: () => void }) {
   const { datos, mes, usuarioId } = useBilletera();
-  const [vista] = useVista();
+  const persona = usePersonaVista();
   const [orden, setOrden] = useState<Orden>("recientes");
-  const soloYo = vista === "mio";
+  const soloYo = persona !== null;
   const c = categoriasDelMes(datos, mes).find((x) => x.categoria.id === categoriaId);
-  const gastos = categoriaId ? gastosDeCategoria(datos, mes, categoriaId, soloYo ? usuarioId : undefined) : [];
+  const gastos = categoriaId ? gastosDeCategoria(datos, mes, categoriaId, persona?.id) : [];
   const lista = orden === "grandes" ? [...gastos].sort((a, b) => b.monto - a.monto) : gastos;
   const total = gastos.reduce((a, m) => a + m.monto, 0);
   const fijos = pagosDelMes(datos, mes).filter((p) => !p.pagado && p.pagoFijo.categoriaId === categoriaId);
@@ -163,7 +170,7 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
             <div className="min-w-0">
               <p className="truncate text-[20px] font-bold tracking-[-0.01em]">{c.categoria.nombre}</p>
               <p className={`text-[14px] ${!soloYo && estado?.alerta ? "font-semibold text-pasaste" : "text-tenue"}`}>
-                {soloYo ? "Solo lo que cargaste vos" : estado?.texto}
+                {persona ? (persona.vos ? "Solo lo que cargaste vos" : `Solo lo que cargó ${persona.nombre}`) : estado?.texto}
               </p>
             </div>
           </div>
@@ -173,7 +180,7 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
               items={
                 soloYo
                   ? [
-                      { etiqueta: "Gastaste", valor: pesos(total, { ceroComoGuion: false }) },
+                      { etiqueta: persona?.vos ? "Gastaste" : "Gastó", valor: pesos(total, { ceroComoGuion: false }) },
                       { etiqueta: "Gastos", valor: gastos.length },
                     ]
                   : [
@@ -229,7 +236,7 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
               )}
             </div>
             {gastos.length === 0 ? (
-              <p className="py-6 text-center text-[15px] text-tenue">{soloYo ? "No cargaste gastos en esta categoría este mes." : "Sin gastos este mes."}</p>
+              <p className="py-6 text-center text-[15px] text-tenue">{persona ? (persona.vos ? "No cargaste gastos en esta categoría este mes." : `${persona.nombre} no cargó gastos en esta categoría este mes.`) : "Sin gastos este mes."}</p>
             ) : (
               <div className="-mx-4 mt-1">
                 {lista.map((m) => (

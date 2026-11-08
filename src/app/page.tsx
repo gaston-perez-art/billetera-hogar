@@ -45,22 +45,28 @@ import {
 } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import type { Movimiento } from "@/lib/tipos";
-import { useVista } from "@/lib/vista";
+import { usePersonaVista } from "@/lib/vista";
 
 export default function Inicio() {
   const { datos, mes, usuarioId } = useBilletera();
   const [abierto, setAbierto] = useState<Movimiento | null>(null);
-  const [vista] = useVista();
-  const soloYo = vista === "mio";
+  // Vista de una persona: la actividad y la tarjeta muestran solo lo que cargó ella.
+  const persona = usePersonaVista();
+  const soloYo = persona !== null;
+  const quien = persona?.id ?? usuarioId;
+  // Cómo se le habla: "Gastaste" si es quien usa la app, "Gastó Jime" si no.
+  const t = persona && !persona.vos
+    ? { gasto: `Gastó ${persona.nombre}`, queda: "Le queda", cargo: "Cargó", ninguno: `${persona.nombre} no cargó gastos este mes`, aclaracion: `Solo lo que cargó ${persona.nombre}. Le queda: lo que le entró menos lo que puso.`, grupo: `Lo de ${persona.nombre}` }
+    : { gasto: "Gastaste", queda: "Te queda", cargo: "Cargaste", ninguno: "No cargaste gastos este mes", aclaracion: "Solo lo que cargaste vos. Te queda: lo que te entró menos lo que pusiste.", grupo: "Lo tuyo" };
   const plan = planMes(datos, mes);
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
   const fechaHoy = hoy();
   const pendientes = pagosDelMes(datos, mes).filter((p) => !p.pagado);
   // "Solo yo": la actividad muestra solo lo que cargó quien usa la app.
-  const movimientos = movimientosDelMes(datos, mes).filter((m) => !soloYo || m.pagoPor === usuarioId);
-  const mios = gastosDe(datos, mes, usuarioId);
-  const yo = personas.find((p) => p.miembroId === usuarioId);
+  const movimientos = movimientosDelMes(datos, mes).filter((m) => !soloYo || m.pagoPor === quien);
+  const mios = gastosDe(datos, mes, quien);
+  const yo = personas.find((p) => p.miembroId === quien);
   const categoria = (id: string) =>
     datos.categorias.find((c) => c.id === id)?.nombre ?? "";
   const miembro = (id: string) =>
@@ -77,26 +83,26 @@ export default function Inicio() {
     <>
       <Encabezado conVista />
       {soloYo ? (
-        <SaldoFijo monto={mios.gastado} etiqueta="Gastaste este mes">
+        <SaldoFijo monto={mios.gastado} etiqueta={`${t.gasto} este mes`}>
           <section className="mx-5 mt-4 rounded-3xl superficie px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
             <MontoGrande monto={mios.gastado} className="text-[40px]" />
-            <p className="mt-2 text-[14px] text-tenue">Gastaste este mes</p>
+            <p className="mt-2 text-[14px] text-tenue">{t.gasto} este mes</p>
             <dl className="mt-5 grid grid-cols-2 divide-x divide-linea border-t border-linea pt-4">
               <div className="px-2">
-                <dt className="text-[12px] text-tenue">Te queda</dt>
+                <dt className="text-[12px] text-tenue">{t.queda}</dt>
                 <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${yo && Math.round(yo.saldo) < 0 ? "text-pasaste" : ""}`}>
                   {pesos(yo?.saldo ?? 0, { ceroComoGuion: false })}
                 </dd>
               </div>
               <div className="px-2">
-                <dt className="text-[12px] text-tenue">Cargaste</dt>
+                <dt className="text-[12px] text-tenue">{t.cargo}</dt>
                 <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
                   {mios.cantidad === 1 ? "1 gasto" : `${mios.cantidad} gastos`}
                 </dd>
               </div>
             </dl>
             <p className="mt-4 text-[13px] leading-5 text-tenue">
-              Solo lo que cargaste vos. Te queda: lo que te entró menos lo que pusiste.
+              {t.aclaracion}
             </p>
           </section>
         </SaldoFijo>
@@ -124,13 +130,13 @@ export default function Inicio() {
 
         {movimientos.length === 0 ? (
           <div className="px-9 py-10 text-center">
-            <p className="text-[15px] font-semibold">{soloYo ? "No cargaste gastos este mes" : "Sin gastos este mes"}</p>
+            <p className="text-[15px] font-semibold">{soloYo ? t.ninguno : "Sin gastos este mes"}</p>
             <p className="mt-1 text-[15px] text-tenue">
               Lo que cargues va a aparecer acá.
             </p>
           </div>
         ) : (
-          <Grupo titulo={soloYo ? "Lo tuyo" : "Tu actividad"} sinTarjeta>
+          <Grupo titulo={soloYo ? t.grupo : "Tu actividad"} sinTarjeta>
             {[...porDia].map(([fecha, lista]) => {
               // Saldo al cierre de ese día: el de hoy es el número grande de la tarjeta.
               // En "Solo yo" el saldo es de los dos: se muestra lo que gastaste ese día.
@@ -142,7 +148,7 @@ export default function Inicio() {
                     <span className="font-semibold">{etiquetaDia(fecha)}</span>
                     {soloYo ? (
                       <span className="text-[13px] text-tenue tabular-nums">
-                        Gastaste {pesos(delDia, { ceroComoGuion: false })}
+                        {t.gasto} {pesos(delDia, { ceroComoGuion: false })}
                       </span>
                     ) : (
                       saldo !== undefined && (
@@ -166,7 +172,7 @@ export default function Inicio() {
                       }
                       titulo={m.detalle || categoria(m.categoriaId)}
                       bajada={
-                        m.pagoPor === usuarioId
+                        soloYo || m.pagoPor === usuarioId
                           ? categoria(m.categoriaId)
                           : `${categoria(m.categoriaId)}, pagó ${miembro(m.pagoPor)}`
                       }

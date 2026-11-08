@@ -78,6 +78,7 @@ export function IconoCategoria({ nombre, tamano = "md", entra = false }: { nombr
 export const ICONOS = {
   atras: "M15 6l-6 6 6 6",
   adelante: "M9 6l6 6-6 6",
+  abajo: "M6 9l6 6 6-6",
   mas: "M12 5v14M5 12h14",
   cerrar: "M6 6l12 12M18 6L6 18",
   // Engranaje, por convención (las barras con perillas se leían como filtros).
