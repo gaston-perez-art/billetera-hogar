@@ -278,7 +278,8 @@ label:has(input[type="file"], input[type="checkbox"]) {
     background-color 180ms ease-out,
     opacity 180ms ease-out;
 }
-button:not(.fila):not(:disabled):active,
+/* El velo detrás de hojas y modales no se hunde: si no, se le ven los bordes. */
+button:not(.fila):not(.velo):not(:disabled):active,
 a:not(.fila):active,
 [role="radio"]:active,
 label:has(input[type="file"], input[type="checkbox"]):active {

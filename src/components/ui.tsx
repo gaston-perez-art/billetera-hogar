@@ -432,7 +432,7 @@ export function Hoja({
   if (!montada) return null;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
-      <button className={`absolute inset-0 bg-black/40 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" onClick={alCerrar} />
+      <button className={`velo absolute inset-0 bg-black/40 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" onClick={alCerrar} />
       <div
         className={`relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] superficie px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2.5 shadow-hoja ${
           saliendo ? "hoja-sale" : "hoja-entra"
@@ -493,7 +493,7 @@ export function Modal({
   if (!montada) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center px-5" role="dialog" aria-modal="true" aria-label={titulo}>
-      <button className={`absolute inset-0 bg-black/45 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" tabIndex={-1} onClick={alCerrar} />
+      <button className={`velo absolute inset-0 bg-black/45 ${saliendo ? "velo-sale" : "velo-entra"}`} aria-label="Cerrar" tabIndex={-1} onClick={alCerrar} />
       <div className={`relative w-full max-w-[360px] overflow-hidden rounded-[28px] superficie shadow-hoja ring-1 ring-linea ${saliendo ? "modal-sale" : "modal-entra"}`}>
         {imagen}
         <button
