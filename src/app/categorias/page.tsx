@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda, Resumen } from "@/components/ui";
-import { categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
+import { CATEGORIA_AHORRO, categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
 import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import { usePersonaVista } from "@/lib/vista";
@@ -52,7 +52,10 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
       <main className="mt-6 space-y-6">
         <Grupo titulo="Por categoría">
           {activas.map(({ categoria, gastado, techo, pendiente, libre }) => {
-            const estado = estadoCategoria(gastado, techo, pendiente);
+            const estado =
+              categoria.nombre === CATEGORIA_AHORRO
+                ? { texto: gastado >= 0 ? `Apartaron ${pesos(gastado, { ceroComoGuion: false })}` : `Retiraron ${pesos(-gastado)}`, alerta: false }
+                : estadoCategoria(gastado, techo, pendiente);
             return (
               <button
                 key={categoria.id}

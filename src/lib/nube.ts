@@ -41,6 +41,9 @@ export interface Filas {
     alta_desde?: string | null;
     cuotas?: number | null;
     tarjeta_id?: string | null;
+    /** Sin valor si todavía no se corrió 0008_prestamos.sql. */
+    prestamo?: boolean | null;
+    uva?: boolean | null;
   }[];
   /** Vacía si todavía no se corrió 0007_tarjetas.sql. */
   tarjetas?: FilaTarjeta[];
@@ -109,6 +112,7 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       altaDesde: p.alta_desde ?? null,
       cuotas: p.cuotas ?? null,
       tarjetaId: p.tarjeta_id ?? null,
+      ...(p.prestamo ? { prestamo: true, uva: !!p.uva } : {}),
     })),
     tarjetas: (f.tarjetas ?? []).map((t) => ({ id: t.id, banco: t.banco, ultimos4: t.ultimos4, miembroId: t.miembro_id })),
     pagosMes: f.pagos_mes.map((p) => ({

@@ -3,7 +3,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  ahorro,
   categoriasDelMes,
+  esCompraEnCuotas,
   cuotaDelMes,
   gastosDe,
   restaDeCompra,
@@ -245,7 +247,7 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
       d,
       op.armarPagoFijo({ concepto: "Silla", categoriaId: deuda.id, dia: 28, monto: 300, esDeuda: true, cuotas: 3, primeraCuota: MES }, MES, "silla"),
     );
-    const cuotasEnPagos = suma(pagosDelMes(con, MES).filter((p) => p.pagoFijo.cuotas).map((p) => p.monto));
+    const cuotasEnPagos = suma(pagosDelMes(con, MES).filter((p) => esCompraEnCuotas(p.pagoFijo)).map((p) => p.monto));
     const porTarjeta = [...con.tarjetas!.map((t) => t.id), null].map((id) => resumenTarjeta(con, id, MES).delMes);
     cerca(suma(porTarjeta), cuotasEnPagos);
   });
@@ -279,3 +281,64 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
   });
 });
 
+
+describe("ahorro y préstamos", () => {
+  const conAhorro = (d: Datos, monto: number, quien = "gaston", id = "ap") => {
+    const conCat = d.categorias.some((c) => c.nombre === "Ahorro") ? d : op.agregarCategoria(d, "cat-ahorro", "Ahorro");
+    const cat = conCat.categorias.find((c) => c.nombre === "Ahorro")!;
+    return op.agregarMovimiento(conCat, { id, fecha: FECHA, monto, categoriaId: cat.id, detalle: "", pagoPor: quien, creadoEn: id });
+  };
+
+  it("apartar baja lo que tienen y lo de quien apartó; las cuentas siguen cerrando", () => {
+    const antes = demo();
+    const d = conAhorro(antes, 50_000);
+    expect(ahorro(d, MES)).toMatchObject({ saldo: 50_000, delMes: 50_000 });
+    cerca(planMes(antes, MES).saldo - planMes(d, MES).saldo, 50_000);
+    const gaston = (x: Datos) => paraGastarPorPersona(x, MES).find((p) => p.miembroId === "gaston")!.saldo;
+    cerca(gaston(antes) - gaston(d), 50_000);
+    // No toca lo de la casa: sale de lo que le queda a cada uno.
+    cerca(planMes(d, MES).paraGastar, planMes(antes, MES).paraGastar);
+    cerca(suma(categoriasDelMes(d, MES).map((c) => c.libre)), planMes(d, MES).paraGastar);
+    cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.paraGastar)), planMes(d, MES).paraGastar);
+  });
+
+  it("retirar baja lo apartado y la plata vuelve", () => {
+    const d = conAhorro(conAhorro(demo(), 50_000, "gaston", "ap1"), -20_000, "jime", "ap2");
+    const a = ahorro(d, MES);
+    expect(a.saldo).toBe(30_000);
+    expect(a.porPersona).toEqual([
+      { miembroId: "gaston", monto: 50_000 },
+      { miembroId: "jime", monto: -20_000 },
+    ]);
+    cerca(suma(categoriasDelMes(d, MES).map((c) => c.libre)), planMes(d, MES).paraGastar);
+  });
+
+  it("un préstamo va en Fijos con su cuota, no en Tarjetas, y se paga con el monto que manda el banco", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const pf = op.armarPagoFijo(
+      { concepto: "Personal", categoriaId: deuda.id, dia: 11, monto: 300_000, esDeuda: true, cuotas: 36, primeraCuota: sumarMeses(MES, -4), prestamo: true, uva: true, tarjetaId: "tj-galicia" },
+      MES,
+      "prestamo",
+    );
+    expect(pf).toMatchObject({ prestamo: true, uva: true, tarjetaId: null });
+    const con = op.agregarPagoFijo(d, pf);
+    expect(cuotaDelMes(pf, MES)).toEqual({ numero: 5, total: 36 });
+    expect(resumenTarjeta(con, null, MES).delMes).toBe(resumenTarjeta(d, null, MES).delMes);
+    cerca(planMes(con, MES).faltan - planMes(d, MES).faltan, 300_000);
+
+    const pagado = op.marcarPagado(con, "prestamo", MES, "gaston", "mov-p", FECHA, 310_578.56);
+    expect(pagado.movimientos.find((m) => m.id === "mov-p")).toMatchObject({ monto: 310_578.56, detalle: "Personal, cuota 5 de 36" });
+    expect(pagosDelMes(pagado, MES).find((p) => p.pagoFijo.id === "prestamo")).toMatchObject({ pagado: true, monto: 310_578.56 });
+    cerca(suma(categoriasDelMes(pagado, MES).map((c) => c.libre)), planMes(pagado, MES).paraGastar);
+  });
+
+  it("convertir un pago fijo en préstamo mantiene los meses ya pagados", () => {
+    const d = demo();
+    const anterior = sumarMeses(MES, -1);
+    const pagadoAntes = op.marcarPagado(d, "pf-prestamo", anterior, "gaston", "mov-ant", "2026-10-05");
+    const convertido = op.actualizarPagoFijo(pagadoAntes, "pf-prestamo", { cuotas: 36, altaDesde: MES, prestamo: true, uva: true });
+    expect(pagosDelMes(convertido, anterior).find((p) => p.pagoFijo.id === "pf-prestamo")).toMatchObject({ pagado: true, monto: 180_000 });
+    expect(cuotaDelMes(convertido.pagosFijos.find((p) => p.id === "pf-prestamo")!, MES)).toEqual({ numero: 1, total: 36 });
+  });
+});

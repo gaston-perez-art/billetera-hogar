@@ -4,26 +4,29 @@
 // - Fijos: agenda del mes (vencidos, hoy, esta semana, más adelante y pagados). El tiempo se
 //   lee de arriba hacia abajo, sin descifrar un gráfico. Incluye las cuotas de las tarjetas.
 // - Tarjetas: las compras en cuotas agrupadas por tarjeta (components/Tarjetas.tsx).
+// - Préstamos: cuotas de préstamos, con el monto del banco de cada mes (components/Prestamos.tsx).
 
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { SelloLogro } from "@/components/Ilustracion";
+import { VistaPrestamos } from "@/components/Prestamos";
 import { VistaTarjetas } from "@/components/Tarjetas";
 import { Cifras, Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
 import { logroPagos, pagosDelMes, textoCuota, type PagoDelMes } from "@/lib/calculos";
 import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
-type Pestana = "fijos" | "tarjetas";
+type Pestana = "fijos" | "tarjetas" | "prestamos";
 const CLAVE_PESTANA = "billetera-hogar:pagos-pestana";
 
-/** Fijos o Tarjetas. Se acuerda en este celular de la última que abriste. */
+/** Fijos, Tarjetas o Préstamos. Se acuerda en este celular de la última que abriste. */
 function usePestana(): [Pestana, (p: Pestana) => void] {
   const [pestana, setPestana] = useState<Pestana>("fijos");
   useEffect(() => {
     try {
-      if (localStorage.getItem(CLAVE_PESTANA) === "tarjetas") setPestana("tarjetas");
+      const guardada = localStorage.getItem(CLAVE_PESTANA);
+      if (guardada === "tarjetas" || guardada === "prestamos") setPestana(guardada);
     } catch {}
   }, []);
   const cambiar = (p: Pestana) => {
@@ -40,11 +43,12 @@ export default function Pagos() {
   return (
     <>
       <Encabezado titulo="Pagos" />
-      <div className="mx-5 mt-3 grid grid-cols-2 rounded-full bg-relleno p-1" role="tablist" aria-label="Pagos">
+      <div className="mx-5 mt-3 grid grid-cols-3 rounded-full bg-relleno p-1" role="tablist" aria-label="Pagos">
         {(
           [
             ["fijos", "Fijos"],
             ["tarjetas", "Tarjetas"],
+            ["prestamos", "Préstamos"],
           ] as [Pestana, string][]
         ).map(([valor, texto]) => (
           <button
@@ -58,7 +62,7 @@ export default function Pagos() {
           </button>
         ))}
       </div>
-      {pestana === "fijos" ? <PagosFijos /> : <VistaTarjetas />}
+      {pestana === "fijos" ? <PagosFijos /> : pestana === "tarjetas" ? <VistaTarjetas /> : <VistaPrestamos />}
     </>
   );
 }

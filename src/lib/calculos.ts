@@ -50,6 +50,11 @@ export function mesesEntre(a: Mes, b: Mes): number {
   return (ba - aa) * 12 + (bm - am);
 }
 
+/** Compra en cuotas con tarjeta (pestaña Tarjetas). Los préstamos también tienen cuotas, pero van aparte. */
+export function esCompraEnCuotas(pf: PagoFijo): boolean {
+  return !!pf.cuotas && !pf.prestamo;
+}
+
 /** Compra en cuotas: qué cuota cae en el mes ("cuota 3 de 6"). null si no es en cuotas. */
 export function cuotaDelMes(pf: PagoFijo, mes: Mes): { numero: number; total: number } | null {
   if (!pf.cuotas || !pf.altaDesde) return null;
@@ -95,7 +100,7 @@ export interface ResumenTarjeta {
 
 /** Cuánto va en una tarjeta en el mes (`null` = las compras sin tarjeta). */
 export function resumenTarjeta(d: Datos, tarjetaId: string | null, mes: Mes): ResumenTarjeta {
-  const deEsta = (pf: PagoFijo) => !!pf.cuotas && (pf.tarjetaId ?? null) === tarjetaId;
+  const deEsta = (pf: PagoFijo) => esCompraEnCuotas(pf) && (pf.tarjetaId ?? null) === tarjetaId;
   const pagos = pagosDelMes(d, mes).filter((p) => deEsta(p.pagoFijo));
   const restas = d.pagosFijos.filter(deEsta).map((pf) => ({ pf, r: restaDeCompra(d, pf, mes) }));
   const pendientes = restas.filter((x) => x.r.cuotas > 0);
@@ -474,4 +479,37 @@ export function logroPagos(d: Datos, mes: Mes): LogroPagos {
 /** Los gastos de una categoría en el mes, para revisarlos. Con `miembroId`, solo los que cargó esa persona. */
 export function gastosDeCategoria(d: Datos, mes: Mes, categoriaId: string, miembroId?: string): Movimiento[] {
   return movimientosDelMes(d, mes).filter((m) => m.categoriaId === categoriaId && (!miembroId || m.pagoPor === miembroId));
+}
+
+/** Nombre de la categoría donde va la plata apartada (la reserva de ahorro). */
+export const CATEGORIA_AHORRO = "Ahorro";
+
+export interface Ahorro {
+  /** Lo que hay apartado hoy: todo lo que se apartó menos lo que se retiró, de todos los meses. */
+  saldo: number;
+  /** Lo apartado neto de cada uno (apartó − retiró). */
+  porPersona: { miembroId: string; monto: number }[];
+  /** Neto del mes elegido (positivo = apartaron, negativo = retiraron). */
+  delMes: number;
+  /** Movimientos de la reserva, del más nuevo al más viejo. */
+  movimientos: Movimiento[];
+}
+
+/**
+ * La reserva de ahorro. Apartar es un movimiento positivo en la categoría Ahorro (sale de lo
+ * que tienen, como un gasto); retirar, uno negativo (vuelve, como la plata que entra).
+ */
+export function ahorro(d: Datos, mes?: Mes): Ahorro {
+  const cat = d.categorias.find((c) => c.nombre === CATEGORIA_AHORRO);
+  const movs = cat
+    ? d.movimientos
+        .filter((m) => m.categoriaId === cat.id)
+        .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn))
+    : [];
+  return {
+    saldo: suma(movs.map((m) => m.monto)),
+    porPersona: d.miembros.map((m) => ({ miembroId: m.id, monto: suma(movs.filter((x) => x.pagoPor === m.id).map((x) => x.monto)) })),
+    delMes: mes ? suma(movs.filter((m) => mesDe(m.fecha) === mes).map((m) => m.monto)) : 0,
+    movimientos: movs,
+  };
 }

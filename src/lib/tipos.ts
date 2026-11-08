@@ -66,6 +66,13 @@ export interface PagoFijo {
   cuotas?: number | null;
   /** Compra en cuotas: con qué tarjeta se pagó (null = sin decir). */
   tarjetaId?: string | null;
+  /**
+   * Préstamo (pestaña Préstamos en Pagos): en cuotas como una compra, pero sin tarjeta y
+   * con el monto que manda el banco cada mes. `monto` es la última cuota conocida.
+   */
+  prestamo?: boolean;
+  /** Préstamo que se ajusta por UVA: la cuota en pesos sube cada mes. */
+  uva?: boolean;
 }
 
 /** Tarjeta de crédito, para agrupar las compras en cuotas. Solo banco y últimos 4 números. */

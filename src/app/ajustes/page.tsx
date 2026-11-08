@@ -106,7 +106,7 @@ export default function Ajustes() {
           abierta={abierta === "pagos"}
           alTocar={() => alternar("pagos")}
         >
-          <p className="px-5 pb-1 pt-2 text-[13px] leading-5 text-tenue">Lo que se paga todos los meses. Aparecen en Pagos y cuentan en lo que falta pagar. Las compras en cuotas se cargan en Pagos → Tarjetas.</p>
+          <p className="px-5 pb-1 pt-2 text-[13px] leading-5 text-tenue">Lo que se paga todos los meses. Aparecen en Pagos y cuentan en lo que falta pagar. Las compras en cuotas se cargan en Pagos → Tarjetas, y los préstamos en Pagos → Préstamos.</p>
           {pagos.map((p) => (
             <Fila
               key={p.id}

@@ -18,6 +18,7 @@ En **SQL Editor**, correr en orden:
 5. `supabase/migrations/0005_alta_pagos.sql` (agregar pagos fijos desde Ajustes)
 6. `supabase/migrations/0006_cuotas.sql` (compras en cuotas con tarjeta)
 7. `supabase/migrations/0007_tarjetas.sql` (tarjetas de crédito para las compras en cuotas)
+8. `supabase/migrations/0008_prestamos.sql` (préstamos en la pestaña Préstamos de Pagos)
 
 ## 3. Cuentas
 

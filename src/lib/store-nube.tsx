@@ -73,6 +73,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
   const pendientes = useRef(0);
   // Una compra con tarjeta nueva: el pago espera a que la tarjeta esté guardada (si no, la base lo rechaza).
   const tarjetaGuardandose = useRef<PromiseLike<unknown>>(Promise.resolve());
+  // Ídem con una categoría nueva (la de Ahorro se crea al apartar por primera vez).
+  const categoriaGuardandose = useRef<PromiseLike<unknown>>(Promise.resolve());
   const ultimaCarga = useRef(0);
 
   const base = useMemo(() => (filas ? filasADatos(filas, mes) : null), [filas, mes]);
@@ -178,8 +180,9 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         const id = op.nuevoId();
         ejecutar(
           (d) => op.agregarMovimiento(d, { ...m, id, creadoEn: new Date().toISOString() }),
-          () =>
-            sb.from("movimientos").insert({
+          async () => {
+            await categoriaGuardandose.current;
+            return sb.from("movimientos").insert({
               id,
               hogar_id: hogarId,
               fecha: m.fecha,
@@ -188,7 +191,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               detalle: m.detalle || null,
               medio: m.medio ?? null,
               pago_por: m.pagoPor,
-            }),
+            });
+          },
         );
       },
 
@@ -209,20 +213,28 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
       borrarMovimiento: (id) =>
         ejecutar((d) => op.borrarMovimiento(d, id), () => sb.from("movimientos").delete().eq("id", id)),
 
-      marcarPagado: (pagoFijoId, mesPago) => {
+      marcarPagado: (pagoFijoId, mesPago, monto) => {
         const pf = datos.pagosFijos.find((p) => p.id === pagoFijoId);
-        if (!pf) return;
+        if (!pf || datos.pagosMes.some((p) => p.pagoFijoId === pagoFijoId && p.mes === mesPago && p.pagado)) return;
         const movimientoId = op.nuevoId();
         ejecutar(
-          (d) => op.marcarPagado(d, pagoFijoId, mesPago, usuarioId, movimientoId),
-          () =>
-            sb.rpc("marcar_pagado", {
+          (d) => op.marcarPagado(d, pagoFijoId, mesPago, usuarioId, movimientoId, undefined, monto),
+          async () => {
+            // Monto de este mes primero (marcar_pagado usa el del mes si hay), después el pago.
+            if (monto !== undefined) {
+              const r = await sb
+                .from("pagos_mes")
+                .upsert({ hogar_id: hogarId, pago_fijo_id: pagoFijoId, mes: mesPago, monto, pagado: false }, { onConflict: "pago_fijo_id,mes" });
+              if (r.error) return r;
+            }
+            return await sb.rpc("marcar_pagado", {
               p_pago_fijo: pagoFijoId,
               p_mes: mesPago,
               p_pago_por: usuarioId,
               p_fecha: op.fechaDePago(mesPago, pf.dia),
               p_movimiento: movimientoId,
-            }),
+            });
+          },
         );
       },
 
@@ -237,7 +249,11 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         const orden = Math.max(-1, ...datos.categorias.map((c) => c.orden)) + 1;
         ejecutar(
           (d) => op.agregarCategoria(d, id, nombre),
-          () => sb.from("categorias").insert({ id, hogar_id: hogarId, nombre, orden }),
+          () => {
+            const guardado = sb.from("categorias").insert({ id, hogar_id: hogarId, nombre, orden }).then((r) => r);
+            categoriaGuardandose.current = guardado;
+            return guardado;
+          },
         );
         return id;
       },
@@ -281,7 +297,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         ejecutar(
           (d) => op.actualizarPagoFijo(d, pagoFijoId, cambios),
           async () => {
-            const { bajaDesde, altaDesde, tarjetaId, ...resto } = cambios;
+            const { bajaDesde, altaDesde, tarjetaId, categoriaId, esDeuda, ...resto } = cambios;
             if (tarjetaId) await tarjetaGuardandose.current;
             return sb
               .from("pagos_fijos")
@@ -290,6 +306,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
                 ...(bajaDesde !== undefined ? { baja_desde: bajaDesde } : {}),
                 ...(altaDesde !== undefined ? { alta_desde: altaDesde } : {}),
                 ...(tarjetaId !== undefined ? { tarjeta_id: tarjetaId } : {}),
+                ...(categoriaId !== undefined ? { categoria_id: categoriaId } : {}),
+                ...(esDeuda !== undefined ? { es_deuda: esDeuda } : {}),
               })
               .eq("id", pagoFijoId);
           },
@@ -328,6 +346,8 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               cuotas: pf.cuotas,
               // Solo si hay: así anda aunque todavía no se haya corrido 0007_tarjetas.sql.
               ...(pf.tarjetaId ? { tarjeta_id: pf.tarjetaId } : {}),
+              // Ídem con 0008_prestamos.sql.
+              ...(pf.prestamo ? { prestamo: true, uva: !!pf.uva } : {}),
             });
           },
         );
