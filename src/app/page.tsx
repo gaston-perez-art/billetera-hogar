@@ -6,6 +6,8 @@ import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import {
   Avatar,
   Boton,
+  CampoMonto,
+  CampoNombre,
   Dato,
   Encabezado,
   estiloBoton,
@@ -45,7 +47,7 @@ import type { Movimiento } from "@/lib/tipos";
 import { useVista } from "@/lib/vista";
 
 export default function Inicio() {
-  const { datos, mes, usuarioId, borrarMovimiento } = useBilletera();
+  const { datos, mes, usuarioId } = useBilletera();
   const [abierto, setAbierto] = useState<Movimiento | null>(null);
   const [vista] = useVista();
   const soloYo = vista === "mio";
@@ -183,55 +185,77 @@ export default function Inicio() {
       <Hoja
         abierta={abierto !== null}
         alCerrar={() => setAbierto(null)}
-        titulo="Detalle del gasto"
+        titulo={abierto && abierto.monto < 0 ? "Detalle de la plata que entra" : "Detalle del gasto"}
       >
-        {abierto && (
-          <>
-            <div className="flex items-center gap-3">
-              <IconoCategoria
-                nombre={categoria(abierto.categoriaId)}
-                tamano="lg"
-                entra={abierto.monto < 0}
-              />
-              <div className="min-w-0">
-                <p className="truncate text-[17px] font-semibold">
-                  {abierto.detalle || categoria(abierto.categoriaId)}
-                </p>
-                <p className="text-[15px] text-tenue">
-                  {categoria(abierto.categoriaId)}
-                </p>
-              </div>
-            </div>
-            <MontoGrande
-              monto={Math.abs(abierto.monto)}
-              className={`mt-5 text-[36px] leading-none ${abierto.monto < 0 ? "text-queda" : ""}`}
-            />
-            <dl className="mt-4 divide-y divide-linea border-y border-linea">
-              <Dato etiqueta="Fecha" valor={fechaCorta(abierto.fecha)} />
-              <Dato etiqueta="Pagó" valor={miembro(abierto.pagoPor)} />
-              {abierto.medio && (
-                <Dato etiqueta="Medio de pago" valor={abierto.medio} />
-              )}
-              {abierto.monto < 0 && (
-                <Dato etiqueta="Tipo" valor="Plata que entra" />
-              )}
-            </dl>
-            <Boton
-              variante="peligro"
-              className="mt-6"
-              onClick={() => {
-                if (confirm(`¿Borrar "${abierto.detalle || "este gasto"}"?`)) {
-                  borrarMovimiento(abierto.id);
-                  setAbierto(null);
-                }
-              }}
-            >
-              Borrar gasto
-            </Boton>
-          </>
-        )}
+        {abierto && <DetalleMovimiento key={abierto.id} movimiento={abierto} alCerrar={() => setAbierto(null)} />}
       </Hoja>
     </>
+  );
+}
+
+/**
+ * Detalle de un movimiento de la actividad: el detalle y el monto se corrigen ahí mismo
+ * (con lápiz, como en Ajustes). "Guardar cambios" aparece activo solo si algo cambió.
+ */
+function DetalleMovimiento({ movimiento: m, alCerrar }: { movimiento: Movimiento; alCerrar: () => void }) {
+  const { datos, editarMovimiento, borrarMovimiento } = useBilletera();
+  const categoria = datos.categorias.find((c) => c.id === m.categoriaId)?.nombre ?? "";
+  const pagador = datos.miembros.find((x) => x.id === m.pagoPor)?.nombre ?? "";
+  const entra = m.monto < 0;
+  const dePagoFijo = datos.pagosMes.some((p) => p.movimientoId === m.id);
+  const [detalle, setDetalle] = useState(m.detalle);
+  const [monto, setMonto] = useState(Math.abs(m.monto));
+  const cambio = detalle.trim() !== m.detalle || monto !== Math.abs(m.monto);
+  const valido = monto > 0;
+  const guardar = () => {
+    if (!cambio || !valido) return;
+    editarMovimiento(m.id, { detalle, monto });
+    alCerrar();
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        guardar();
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <IconoCategoria nombre={categoria} tamano="lg" entra={entra} />
+        <div className="min-w-0">
+          <p className="truncate text-[17px] font-semibold">{categoria}</p>
+          <p className="text-[15px] text-tenue">{entra ? "Plata que entra" : dePagoFijo ? "Pago fijo" : "Gasto"}</p>
+        </div>
+      </div>
+      <div className="mt-5">
+        <CampoNombre etiqueta="Detalle" valor={detalle} onCambio={setDetalle} placeholder={categoria} />
+      </div>
+      <div className="py-7">
+        <CampoMonto valor={monto} onCambio={setMonto} onEnter={guardar} lapiz entra={entra} />
+      </div>
+      <dl className="divide-y divide-linea border-y border-linea">
+        <Dato etiqueta="Fecha" valor={fechaCorta(m.fecha)} />
+        <Dato etiqueta={entra ? "La recibió" : "Pagó"} valor={pagador} />
+        {m.medio && <Dato etiqueta="Medio de pago" valor={m.medio} />}
+      </dl>
+      {dePagoFijo && <p className="mt-3 text-[13px] leading-5 text-tenue">Viene de un pago fijo: el monto nuevo queda como lo pagado este mes.</p>}
+      <Boton type="submit" className="mt-6" disabled={!cambio || !valido}>
+        Guardar cambios
+      </Boton>
+      <Boton
+        type="button"
+        variante="peligro"
+        className="mt-3"
+        onClick={() => {
+          if (confirm(`¿Borrar "${m.detalle || categoria}"?`)) {
+            borrarMovimiento(m.id);
+            alCerrar();
+          }
+        }}
+      >
+        {entra ? "Borrar" : "Borrar gasto"}
+      </Boton>
+    </form>
   );
 }
 

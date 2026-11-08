@@ -184,6 +184,20 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
         );
       },
 
+      editarMovimiento: (id, cambios) => {
+        const nuevo = op.editarMovimiento(datos, id, cambios).movimientos.find((m) => m.id === id);
+        if (!nuevo) return;
+        const deUnPago = datos.pagosMes.some((p) => p.movimientoId === id);
+        ejecutar(
+          (d) => op.editarMovimiento(d, id, cambios),
+          async () => {
+            const r = await sb.from("movimientos").update({ monto: nuevo.monto, detalle: nuevo.detalle || null }).eq("id", id);
+            if (r.error || !deUnPago) return r;
+            return await sb.from("pagos_mes").update({ monto: nuevo.monto }).eq("movimiento_id", id);
+          },
+        );
+      },
+
       borrarMovimiento: (id) =>
         ejecutar((d) => op.borrarMovimiento(d, id), () => sb.from("movimientos").delete().eq("id", id)),
 

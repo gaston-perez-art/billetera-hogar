@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
+import { Boton, CampoMonto, CampoNombre, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
 import { ingresoVigente } from "@/lib/calculos";
 import { diasDelMes, fechaCorta, fechaEnMes, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
@@ -321,43 +321,6 @@ function Formulario({
         Guardar
       </Boton>
     </form>
-  );
-}
-
-/** Nombre editable arriba de la hoja, con lápiz. Con `fijo`, se muestra sin poder tocarlo y con el motivo. */
-function CampoNombre({
-  etiqueta,
-  valor,
-  onCambio,
-  fijo,
-  placeholder,
-  autoFocus = false,
-}: {
-  etiqueta: string;
-  valor: string;
-  onCambio: (v: string) => void;
-  fijo?: string;
-  placeholder?: string;
-  autoFocus?: boolean;
-}) {
-  return (
-    <div>
-      <label className="flex min-h-14 items-center gap-3 rounded-2xl bg-relleno px-4">
-        <span className="shrink-0 text-[15px] font-medium">{etiqueta}</span>
-        <input
-          value={valor}
-          onChange={(e) => onCambio(e.target.value)}
-          readOnly={!!fijo}
-          placeholder={placeholder}
-          maxLength={40}
-          autoFocus={autoFocus}
-          enterKeyHint="done"
-          className={`min-w-0 flex-1 truncate bg-transparent text-right text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-sutil ${fijo ? "text-tenue" : ""}`}
-        />
-        {!fijo && <Icono trazo={ICONOS.lapiz} className="size-4 shrink-0 text-sutil" />}
-      </label>
-      {fijo && <p className="mt-1.5 px-1 text-[13px] text-tenue">{fijo}</p>}
-    </div>
   );
 }
 
