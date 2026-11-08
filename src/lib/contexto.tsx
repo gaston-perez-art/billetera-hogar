@@ -17,7 +17,8 @@ export interface Billetera {
   /** Corregir monto o detalle de un gasto cargado. Si venía de un pago fijo, el pago toma el monto nuevo. */
   editarMovimiento: (id: string, cambios: CambiosMovimiento) => void;
   borrarMovimiento: (id: string) => void;
-  marcarPagado: (pagoFijoId: string, mes: Mes) => void;
+  /** Con `monto`, ese mes se paga con ese monto (la cuota que mandó el banco). */
+  marcarPagado: (pagoFijoId: string, mes: Mes, monto?: number) => void;
   desmarcarPagado: (pagoFijoId: string, mes: Mes) => void;
   /** Crea una categoría para los dos y devuelve su id (para elegirla al toque). */
   agregarCategoria: (nombre: string) => string;

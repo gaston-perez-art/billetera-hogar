@@ -8,7 +8,7 @@ import type { Datos, Ingreso, Mes, Movimiento, PagoFijo, Tarjeta } from "./tipos
 
 export type NuevoMovimiento = Omit<Movimiento, "id" | "creadoEn">;
 export type CambiosPagoFijo = Partial<
-  Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde" | "altaDesde" | "cuotas" | "tarjetaId">
+  Pick<PagoFijo, "concepto" | "monto" | "dia" | "activo" | "bajaDesde" | "altaDesde" | "cuotas" | "tarjetaId" | "categoriaId" | "esDeuda" | "prestamo" | "uva">
 >;
 export type NuevaTarjeta = Omit<Tarjeta, "id">;
 export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | "monto" | "esDeuda"> & {
@@ -16,6 +16,9 @@ export type NuevoPagoFijo = Pick<PagoFijo, "concepto" | "categoriaId" | "dia" | 
   cuotas?: number | null;
   primeraCuota?: Mes;
   tarjetaId?: string | null;
+  /** Préstamo: sin tarjeta, en la pestaña Préstamos. */
+  prestamo?: boolean;
+  uva?: boolean;
 };
 
 export function nuevoId() {
@@ -72,12 +75,14 @@ export function marcarPagado(
   pagoPor: string,
   movimientoId: string,
   fechaHoy = hoy(),
+  /** Monto real de este mes, si no es el de siempre (la cuota de un préstamo UVA). */
+  montoReal?: number,
 ): Datos {
   const pf = d.pagosFijos.find((p) => p.id === pagoFijoId);
   if (!pf) return d;
   const existente = d.pagosMes.find((p) => p.pagoFijoId === pagoFijoId && p.mes === mes);
   if (existente?.pagado) return d;
-  const monto = existente?.monto ?? pf.monto;
+  const monto = montoReal ?? existente?.monto ?? pf.monto;
   const movimiento: Movimiento = {
     id: movimientoId,
     fecha: fechaDePago(mes, pf.dia, fechaHoy),
@@ -116,7 +121,7 @@ export function actualizarTecho(d: Datos, categoriaId: string, techo: number): D
  * Categorías con lógica atada al nombre (techo de Deuda, total de Santino, meses viejos de Chicos):
  * no se renombran o se rompen esas cuentas.
  */
-export const CATEGORIAS_FIJAS = ["Deuda", "Santino", "Chicos"];
+export const CATEGORIAS_FIJAS = ["Deuda", "Santino", "Chicos", "Ahorro"];
 
 /** Cambiar el nombre de una categoría. Los gastos la siguen por id: no cambia nada del pasado. */
 export function renombrarCategoria(d: Datos, categoriaId: string, nombre: string): Datos {
@@ -179,17 +184,18 @@ export function agregarPagoFijo(d: Datos, pf: PagoFijo): Datos {
 }
 
 export function armarPagoFijo(nuevo: NuevoPagoFijo, mes: Mes, id = nuevoId()): PagoFijo {
-  const { primeraCuota, cuotas, tarjetaId, ...resto } = nuevo;
+  const { primeraCuota, cuotas, tarjetaId, prestamo, uva, ...resto } = nuevo;
   const enCuotas = cuotas != null && cuotas > 0;
   return {
     ...resto,
+    ...(prestamo ? { prestamo: true, uva: !!uva } : {}),
     concepto: nuevo.concepto.trim(),
     id,
     activo: true,
     bajaDesde: null,
     altaDesde: enCuotas ? (primeraCuota ?? sumarMeses(mes, 1)) : mes,
     cuotas: enCuotas ? cuotas : null,
-    tarjetaId: enCuotas ? (tarjetaId ?? null) : null,
+    tarjetaId: enCuotas && !prestamo ? (tarjetaId ?? null) : null,
   };
 }
 

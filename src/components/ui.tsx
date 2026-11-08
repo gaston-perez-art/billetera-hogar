@@ -7,7 +7,7 @@ import { alTocar } from "@/components/Tactil";
 import { mesDe, hoy, montoATexto, montoEnVivo, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
-import { useVista } from "@/lib/vista";
+import { personaDeVista, useVista } from "@/lib/vista";
 
 /*
  * Piezas compartidas. Reglas:
@@ -124,31 +124,84 @@ function SelectorMes() {
 }
 
 /**
- * "Los dos" o "Solo yo": un interruptor de dos lados, con el ícono de la pareja y la foto propia.
- * Toda la pastilla es tocable: cualquier toque pasa al otro lado. Cambia Inicio y Categorías en este celular.
+ * De quién se ve: la pareja, Gastón o Jime. Un desplegable chico junto al mes; la elección
+ * cambia Inicio y Categorías en este celular. Se cierra al elegir o tocando afuera.
  */
 function SelectorVista() {
   const [vista, setVista] = useVista();
-  const { actual } = useUsuarios();
-  if (!actual) return null;
-  const mio = vista === "mio";
-  const lado = "grid size-9 place-items-center rounded-full transition-colors";
-  // Un solo botón (se toca con alTocar: en iPhone el click a veces no llegaba). 44 px de alto con el borde.
+  const { datos, usuarioId } = useBilletera();
+  const [abierto, setAbierto] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  const persona = personaDeVista(vista, usuarioId, datos.miembros);
+  const elegida = datos.miembros.find((m) => m.id === persona);
+
+  useEffect(() => {
+    if (!abierto) return;
+    const afuera = (e: Event) => {
+      if (!caja.current?.contains(e.target as Node)) setAbierto(false);
+    };
+    document.addEventListener("pointerdown", afuera);
+    return () => document.removeEventListener("pointerdown", afuera);
+  }, [abierto]);
+
+  if (datos.miembros.length === 0) return null;
+  const opciones: { valor: string; nombre: string; icono: React.ReactNode }[] = [
+    { valor: "pareja", nombre: "La pareja", icono: <IconoPareja /> },
+    ...datos.miembros.map((m) => ({
+      valor: m.id,
+      nombre: m.id === usuarioId ? `${m.nombre} (vos)` : m.nombre,
+      icono: <Avatar id={m.id} nombre={m.nombre} tamano={28} />,
+    })),
+  ];
+  const elegir = (v: string) => {
+    setVista(v);
+    setAbierto(false);
+  };
+
+  // Se toca con alTocar: en iPhone el click a veces no llegaba. 44 px de alto con el borde.
   return (
-    <button
-      role="switch"
-      aria-checked={mio}
-      aria-label={mio ? `Viendo solo lo de ${actual.nombre}. Tocá para ver lo de los dos.` : `Viendo lo de los dos. Tocá para ver solo lo de ${actual.nombre}.`}
-      {...alTocar(() => setVista(mio ? "pareja" : "mio"))}
-      className="ml-auto flex items-center gap-0.5 rounded-full superficie p-1 shadow-tarjeta ring-1 ring-linea"
-    >
-      <span className={`${lado} ${mio ? "text-tenue" : "bg-marca text-sobre-marca"}`}>
-        <Icono trazo={ICONOS.reparto} className="size-[18px]" />
-      </span>
-      <span className={`${lado} ${mio ? "ring-2 ring-marca" : ""}`}>
-        <Avatar id={actual.id} nombre={actual.nombre} tamano={mio ? 28 : 24} />
-      </span>
-    </button>
+    <div ref={caja} className="relative ml-auto">
+      <button
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        aria-label={`Viendo lo de ${elegida ? elegida.nombre : "la pareja"}. Tocá para cambiar.`}
+        {...alTocar(() => setAbierto((a) => !a))}
+        className="flex h-11 items-center gap-2 rounded-full superficie pl-1 pr-3 shadow-tarjeta ring-1 ring-linea"
+      >
+        {elegida ? <Avatar id={elegida.id} nombre={elegida.nombre} tamano={36} /> : <IconoPareja />}
+        <span className="max-w-24 truncate text-[14px] font-semibold">{elegida ? elegida.nombre : "Pareja"}</span>
+        <Icono trazo={ICONOS.abajo} className={`size-4 text-tenue transition-transform ${abierto ? "rotate-180" : ""}`} />
+      </button>
+      {abierto && (
+        <ul role="listbox" aria-label="Ver lo de" className="absolute right-0 top-full z-30 mt-2 w-56 rounded-2xl superficie p-1.5 shadow-tarjeta ring-1 ring-linea">
+          {opciones.map((o) => {
+            const activa = (persona ?? "pareja") === o.valor;
+            return (
+              <li key={o.valor}>
+                <button
+                  role="option"
+                  aria-selected={activa}
+                  {...alTocar(() => elegir(o.valor))}
+                  className="fila flex min-h-12 w-full items-center gap-3 rounded-xl px-2.5 text-left"
+                >
+                  {o.icono}
+                  <span className="flex-1 truncate text-[15px] font-medium">{o.nombre}</span>
+                  {activa && <Icono trazo={ICONOS.check} className="size-5 text-marca" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function IconoPareja() {
+  return (
+    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-marca text-sobre-marca">
+      <Icono trazo={ICONOS.reparto} className="size-[18px]" />
+    </span>
   );
 }
 

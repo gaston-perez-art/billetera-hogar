@@ -7,7 +7,7 @@
 import { useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, CampoNombre, Contador, FilaLista, Grupo, Hoja } from "@/components/ui";
-import { cuotaDelMes, mesesEntre, mesUltimaCuota, pagoFijoVigente, pagosDelMes, restaDeCompra, resumenTarjeta, textoCuota } from "@/lib/calculos";
+import { cuotaDelMes, esCompraEnCuotas, mesesEntre, mesUltimaCuota, pagoFijoVigente, pagosDelMes, restaDeCompra, resumenTarjeta, textoCuota } from "@/lib/calculos";
 import { mesCorto, nombreMes, pesos, pesosCortos, sumarMeses } from "@/lib/formato";
 import type { NuevaTarjeta, NuevoPagoFijo } from "@/lib/operaciones";
 import { useBilletera } from "@/lib/store";
@@ -47,7 +47,7 @@ export function VistaTarjetas() {
   const [volteada, setVolteada] = useState<string | null>(null);
   const carrusel = useRef<HTMLDivElement>(null);
   const tarjetas = datos.tarjetas ?? [];
-  const compras = datos.pagosFijos.filter((p) => p.cuotas);
+  const compras = datos.pagosFijos.filter(esCompraEnCuotas);
   const haySinTarjeta = compras.some((p) => !tarjetas.some((t) => t.id === p.tarjetaId) && estadoCompra(p, mes) < 2);
   const lugares: Lugar[] = [
     ...tarjetas.map((tarjeta) => ({ tipo: "tarjeta" as const, tarjeta })),
@@ -57,7 +57,7 @@ export function VistaTarjetas() {
   const indice = Math.min(elegida, lugares.length - 1);
   const lugar = lugares[indice];
   const totalMes = pagosDelMes(datos, mes)
-    .filter((p) => p.pagoFijo.cuotas)
+    .filter((p) => esCompraEnCuotas(p.pagoFijo))
     .reduce((a, p) => a + p.monto, 0);
 
   // La elegida es la que quedó en el centro al deslizar.
