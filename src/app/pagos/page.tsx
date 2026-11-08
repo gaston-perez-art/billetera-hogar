@@ -5,9 +5,10 @@
 
 import { Icono, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
-import { Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
-import { pagosDelMes, type PagoDelMes } from "@/lib/calculos";
-import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, pesos } from "@/lib/formato";
+import { SelloLogro } from "@/components/Ilustracion";
+import { Cifras, Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
+import { logroPagos, pagosDelMes, type PagoDelMes } from "@/lib/calculos";
+import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
 export default function PagosFijos() {
@@ -19,6 +20,7 @@ export default function PagosFijos() {
   const pagados = pagos.filter((p) => p.pagado);
   const faltan = pendientes.reduce((a, p) => a + p.monto, 0);
   const total = pagos.reduce((a, p) => a + p.monto, 0);
+  const logro = logroPagos(datos, mes);
   const quien = datos.miembros.find((m) => m.id === usuarioId)?.nombre;
   const pagadorDe = (movimientoId?: string) => {
     const mov = datos.movimientos.find((m) => m.id === movimientoId);
@@ -77,20 +79,30 @@ export default function PagosFijos() {
   return (
     <>
       <Encabezado titulo="Pagos fijos" />
-      <SaldoFijo monto={faltan} etiqueta="Falta pagar este mes">
-        <Resumen etiqueta="Falta pagar este mes" monto={faltan}>
-          <div className="h-2 overflow-hidden rounded-full bg-relleno" role="img" aria-label={`Pagado ${pesos(total - faltan)} de ${pesos(total)}`}>
-            <div className="h-full rounded-full bg-marca transition-[width] duration-500" style={{ width: `${total > 0 ? ((total - faltan) / total) * 100 : 0}%` }} />
-          </div>
-          <div className="mt-2 flex justify-between text-[14px] text-tenue tabular-nums">
-            <span>
-              Pagaron {pagados.length} de {pagos.length}
-            </span>
-            <span>{pesos(total - faltan, { ceroComoGuion: false })} de {pesos(total, { ceroComoGuion: false })}</span>
-          </div>
-        </Resumen>
-      </SaldoFijo>
-      <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">Al tocar Pagar se carga el gasto a nombre de {quien}. Lo ven los dos al instante.</p>
+      {logro.completo ? (
+        <SaldoFijo monto={logro.total} etiqueta="Pagaron todo el mes">
+          <TodoPagado />
+        </SaldoFijo>
+      ) : (
+        <>
+          <SaldoFijo monto={faltan} etiqueta="Falta pagar este mes">
+            <Resumen etiqueta="Falta pagar este mes" monto={faltan}>
+              <div className="h-2 overflow-hidden rounded-full bg-relleno" role="img" aria-label={`Pagado ${pesos(total - faltan)} de ${pesos(total)}`}>
+                <div className="h-full rounded-full bg-marca transition-[width] duration-500" style={{ width: `${total > 0 ? ((total - faltan) / total) * 100 : 0}%` }} />
+              </div>
+              <div className="mt-2 flex justify-between text-[14px] text-tenue tabular-nums">
+                <span>
+                  Pagaron {pagados.length} de {pagos.length}
+                </span>
+                <span>{pesos(total - faltan, { ceroComoGuion: false })} de {pesos(total, { ceroComoGuion: false })}</span>
+              </div>
+            </Resumen>
+          </SaldoFijo>
+          {pagos.length > 0 && (
+            <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">Al tocar Pagar se carga el gasto a nombre de {quien}. Lo ven los dos al instante.</p>
+          )}
+        </>
+      )}
 
       <main className="mt-5 space-y-5">
         {grupos
@@ -100,17 +112,58 @@ export default function PagosFijos() {
               {g.pagos.map(fila)}
             </Grupo>
           ))}
-        {pagados.length > 0 && <Grupo titulo="Pagados">{pagados.map(fila)}</Grupo>}
+        {pagados.length > 0 && (
+          <Grupo titulo="Pagados" detalle={logro.completo ? undefined : pesos(total - faltan)}>
+            {pagados.map(fila)}
+          </Grupo>
+        )}
         {pagos.length === 0 && (
           <div className="px-9 py-10 text-center">
             <p className="text-[15px] font-semibold">No hay pagos fijos este mes</p>
             <p className="mt-1 text-[15px] text-tenue">Se agregan desde Ajustes.</p>
           </div>
         )}
-        {mes === mesActual && pendientes.length === 0 && pagos.length > 0 && (
-          <p className="px-5 text-center text-[15px] font-semibold text-queda">Están al día con todos los pagos del mes.</p>
-        )}
       </main>
     </>
+  );
+}
+
+/**
+ * Todos los pagos fijos del mes hechos: es un logro y se festeja. Sello, cuántos y cuánto,
+ * quién puso cuánto, cuántos a tiempo y cuál es el próximo (si es el mes actual).
+ */
+function TodoPagado() {
+  const { datos, mes } = useBilletera();
+  const logro = logroPagos(datos, mes);
+  const nombre = nombreMes(mes).split(" ")[0];
+  const esMesActual = mes === mesDe(hoy());
+  const siguiente = sumarMeses(mes, 1);
+  const proximo = esMesActual ? pagosDelMes(datos, siguiente)[0] : undefined;
+  const cifras = [
+    ...logro.porPersona.map((p) => ({
+      etiqueta: `${datos.miembros.find((m) => m.id === p.miembroId)?.nombre ?? ""} pagó`,
+      valor: pesos(p.monto, { ceroComoGuion: false }),
+    })),
+    ...(logro.conFecha > 0 ? [{ etiqueta: "A tiempo", valor: `${logro.aTiempo} de ${logro.conFecha}` }] : []),
+  ];
+  return (
+    <section className="mx-5 mt-4 rounded-3xl superficie px-5 pb-5 pt-6 text-center shadow-tarjeta ring-1 ring-linea">
+      <SelloLogro />
+      <h2 className="mt-3 text-[24px] font-bold leading-tight tracking-[-0.02em]">{esMesActual ? "¡Están al día!" : "¡Pagaron todo!"}</h2>
+      <p className="mt-1.5 text-[15px] leading-6 text-tenue">
+        {logro.cantidad === 1 ? "El pago fijo" : `Los ${logro.cantidad} pagos fijos`} de {nombre},{" "}
+        <span className="font-semibold text-texto tabular-nums">{pesos(logro.total, { ceroComoGuion: false })}</span>.
+      </p>
+      {cifras.length > 0 && (
+        <div className="mt-5 border-t border-linea pt-4">
+          <Cifras items={cifras} />
+        </div>
+      )}
+      {proximo && (
+        <p className="mt-4 rounded-2xl bg-relleno px-4 py-2.5 text-[13px] leading-5 text-tenue">
+          El próximo es {proximo.pagoFijo.concepto}, el {proximo.pagoFijo.dia} de {nombreMes(siguiente).split(" ")[0]}.
+        </p>
+      )}
+    </section>
   );
 }

@@ -5,7 +5,7 @@
 // (ver CLAUDE.md: los cálculos viven en SQL, no duplicados en el frontend).
 // Los tests de calculos.test.ts sirven como casos para validar esas vistas.
 
-import { mesDe } from "./formato";
+import { fechaEnMes, mesDe } from "./formato";
 import type { Categoria, Datos, Fecha, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -354,4 +354,49 @@ export function gastosDe(d: Datos, mes: Mes, miembroId: string): GastosDe {
       })
       .sort((a, b) => b.monto - a.monto),
   };
+}
+
+export interface LogroPagos {
+  /** Hay pagos fijos en el mes y están todos pagados. */
+  completo: boolean;
+  cantidad: number;
+  total: number;
+  /** Cuántos se pagaron el día del vencimiento o antes, entre los que tienen el gasto cargado. */
+  aTiempo: number;
+  conFecha: number;
+  /** Quién puso cuánto, según quién figura como "pagó" en el gasto que se creó al marcarlo. */
+  porPersona: { miembroId: string; monto: number; cantidad: number }[];
+}
+
+/** El mes de pagos fijos cerrado: cuántos, cuánto, cuántos a tiempo y quién los pagó. */
+export function logroPagos(d: Datos, mes: Mes): LogroPagos {
+  const pagos = pagosDelMes(d, mes);
+  const pagados = pagos.filter((p) => p.pagado);
+  let aTiempo = 0;
+  let conFecha = 0;
+  const porPersona = new Map<string, { monto: number; cantidad: number }>();
+  for (const p of pagados) {
+    const mov = d.movimientos.find((m) => m.id === p.movimientoId);
+    if (!mov) continue;
+    conFecha++;
+    if (mov.fecha <= fechaEnMes(mes, p.pagoFijo.dia)) aTiempo++;
+    const actual = porPersona.get(mov.pagoPor) ?? { monto: 0, cantidad: 0 };
+    porPersona.set(mov.pagoPor, { monto: actual.monto + p.monto, cantidad: actual.cantidad + 1 });
+  }
+  return {
+    completo: pagos.length > 0 && pagados.length === pagos.length,
+    cantidad: pagos.length,
+    total: suma(pagos.map((p) => p.monto)),
+    aTiempo,
+    conFecha,
+    porPersona: d.miembros.flatMap((m) => {
+      const x = porPersona.get(m.id);
+      return x ? [{ miembroId: m.id, ...x }] : [];
+    }),
+  };
+}
+
+/** Los gastos de una categoría en el mes, para revisarlos. Con `miembroId`, solo los que cargó esa persona. */
+export function gastosDeCategoria(d: Datos, mes: Mes, categoriaId: string, miembroId?: string): Movimiento[] {
+  return movimientosDelMes(d, mes).filter((m) => m.categoriaId === categoriaId && (!miembroId || m.pagoPor === miembroId));
 }

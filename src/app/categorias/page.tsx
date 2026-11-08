@@ -1,17 +1,27 @@
 "use client";
 
-import { IconoCategoria } from "@/components/Iconos";
+import { useState } from "react";
+import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
-import { Cifras, Encabezado, Grupo, MontoQueda, Resumen } from "@/components/ui";
-import { categoriasDelMes, gastosDe, planMes } from "@/lib/calculos";
-import { pesos } from "@/lib/formato";
+import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda, Resumen } from "@/components/ui";
+import { categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes } from "@/lib/calculos";
+import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import { useVista } from "@/lib/vista";
 
 export default function Categorias() {
-  const { datos, mes } = useBilletera();
   const [vista] = useVista();
-  if (vista === "mio") return <CategoriasMias />;
+  const [abierta, setAbierta] = useState<string | null>(null);
+  return (
+    <>
+      {vista === "mio" ? <CategoriasMias alAbrir={setAbierta} /> : <CategoriasDeLosDos alAbrir={setAbierta} />}
+      <DetalleCategoria categoriaId={abierta} alCerrar={() => setAbierta(null)} />
+    </>
+  );
+}
+
+function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
+  const { datos, mes } = useBilletera();
   const categorias = categoriasDelMes(datos, mes);
   const plan = planMes(datos, mes);
   const total = categorias.reduce((a, c) => ({ gastado: a.gastado + c.gastado, techo: a.techo + c.techo }), { gastado: 0, techo: 0 });
@@ -33,7 +43,7 @@ export default function Categorias() {
         </Resumen>
       </SaldoFijo>
       <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">
-        Lo libre de cada categoría ya descuenta los pagos fijos que faltan. Sumado da lo mismo que Inicio.
+        Lo libre de cada categoría ya descuenta los pagos fijos que faltan. Sumado da lo mismo que Inicio. Tocá una para ver sus gastos.
       </p>
 
       <main className="mt-6 space-y-6">
@@ -41,17 +51,23 @@ export default function Categorias() {
           {activas.map(({ categoria, gastado, techo, pendiente, libre }) => {
             const estado = estadoCategoria(gastado, techo, pendiente);
             return (
-              <div key={categoria.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
+              <button
+                key={categoria.id}
+                onClick={() => alAbrir(categoria.id)}
+                aria-label={`Ver los gastos de ${categoria.nombre}`}
+                className="fila flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left"
+              >
                 <IconoCategoria nombre={categoria.nombre} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium">{categoria.nombre}</p>
-                  <p className={`mt-0.5 text-[13px] leading-[18px] ${estado.alerta ? "font-semibold text-pasaste" : "text-tenue"}`}>{estado.texto}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className={`text-[15px] font-semibold tabular-nums ${libre < 0 ? "text-pasaste" : ""}`}>{pesos(Math.abs(libre), { ceroComoGuion: false })}</p>
-                  <p className="mt-0.5 text-[13px] text-tenue">{libre < 0 ? "faltan" : "libres"}</p>
-                </div>
-              </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-medium">{categoria.nombre}</span>
+                  <span className={`mt-0.5 block text-[13px] leading-[18px] ${estado.alerta ? "font-semibold text-pasaste" : "text-tenue"}`}>{estado.texto}</span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className={`block text-[15px] font-semibold tabular-nums ${libre < 0 ? "text-pasaste" : ""}`}>{pesos(Math.abs(libre), { ceroComoGuion: false })}</span>
+                  <span className="mt-0.5 block text-[13px] text-tenue">{libre < 0 ? "faltan" : "libres"}</span>
+                </span>
+                <Icono trazo={ICONOS.adelante} className="-mr-1 size-4 shrink-0 text-sutil" />
+              </button>
             );
           })}
         </Grupo>
@@ -70,7 +86,7 @@ export default function Categorias() {
  * "Solo yo": en qué gastaste vos este mes. Los techos son de los dos, así que acá no se comparan:
  * se dice cuánto fue a cada categoría y qué parte de lo tuyo es.
  */
-function CategoriasMias() {
+function CategoriasMias({ alAbrir }: { alAbrir: (id: string) => void }) {
   const { datos, mes, usuarioId } = useBilletera();
   const g = gastosDe(datos, mes, usuarioId);
   const top = g.categorias.slice(0, 4);
@@ -103,21 +119,131 @@ function CategoriasMias() {
         ) : (
           <Grupo titulo="Por categoría">
             {g.categorias.map((c) => (
-              <div key={c.categoria.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
-                <IconoCategoria nombre={c.categoria.nombre} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium">{c.categoria.nombre}</p>
-                  <p className="mt-0.5 text-[13px] text-tenue">
-                    {c.cantidad === 1 ? "1 gasto" : `${c.cantidad} gastos`}, {Math.round(c.parte * 100)}% de lo tuyo
-                  </p>
-                </div>
-                <p className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</p>
-              </div>
+              <FilaLista
+                key={c.categoria.id}
+                onClick={() => alAbrir(c.categoria.id)}
+                icono={<IconoCategoria nombre={c.categoria.nombre} />}
+                titulo={c.categoria.nombre}
+                bajada={`${c.cantidad === 1 ? "1 gasto" : `${c.cantidad} gastos`}, ${Math.round(c.parte * 100)}% de lo tuyo`}
+                valor={pesos(c.monto)}
+              />
             ))}
           </Grupo>
         )}
       </main>
     </>
+  );
+}
+
+type Orden = "recientes" | "grandes";
+
+/**
+ * Revisión de una categoría: sus gastos del mes, ordenados por fecha o por monto, y los pagos
+ * fijos que todavía tiene reservados. En "Solo yo", solo lo que cargaste vos (no se mira lo ajeno).
+ */
+function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | null; alCerrar: () => void }) {
+  const { datos, mes, usuarioId } = useBilletera();
+  const [vista] = useVista();
+  const [orden, setOrden] = useState<Orden>("recientes");
+  const soloYo = vista === "mio";
+  const c = categoriasDelMes(datos, mes).find((x) => x.categoria.id === categoriaId);
+  const gastos = categoriaId ? gastosDeCategoria(datos, mes, categoriaId, soloYo ? usuarioId : undefined) : [];
+  const lista = orden === "grandes" ? [...gastos].sort((a, b) => b.monto - a.monto) : gastos;
+  const total = gastos.reduce((a, m) => a + m.monto, 0);
+  const fijos = pagosDelMes(datos, mes).filter((p) => !p.pagado && p.pagoFijo.categoriaId === categoriaId);
+  const miembro = (id: string) => datos.miembros.find((m) => m.id === id)?.nombre ?? "";
+  const estado = c && estadoCategoria(c.gastado, c.techo, c.pendiente);
+
+  return (
+    <Hoja abierta={categoriaId !== null} alCerrar={alCerrar} titulo={c ? `Gastos de ${c.categoria.nombre}` : "Gastos de la categoría"}>
+      {c && (
+        <>
+          <div className="flex items-center gap-3">
+            <IconoCategoria nombre={c.categoria.nombre} tamano="lg" />
+            <div className="min-w-0">
+              <p className="truncate text-[20px] font-bold tracking-[-0.01em]">{c.categoria.nombre}</p>
+              <p className={`text-[14px] ${!soloYo && estado?.alerta ? "font-semibold text-pasaste" : "text-tenue"}`}>
+                {soloYo ? "Solo lo que cargaste vos" : estado?.texto}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl bg-relleno px-4 py-3 text-center">
+            <Cifras
+              items={
+                soloYo
+                  ? [
+                      { etiqueta: "Gastaste", valor: pesos(total, { ceroComoGuion: false }) },
+                      { etiqueta: "Gastos", valor: gastos.length },
+                    ]
+                  : [
+                      { etiqueta: "Gastado", valor: pesos(c.gastado, { ceroComoGuion: false }) },
+                      { etiqueta: "Techo", valor: c.techo > 0 ? pesos(c.techo) : "Sin techo" },
+                      { etiqueta: c.libre < 0 ? "Faltan" : "Libres", valor: <span className={c.libre < 0 ? "text-pasaste" : ""}>{pesos(Math.abs(c.libre), { ceroComoGuion: false })}</span> },
+                    ]
+              }
+            />
+          </div>
+
+          {fijos.length > 0 && (
+            <section className="mt-5">
+              <h3 className="text-[15px] font-semibold">Pagos fijos que faltan</h3>
+              <div className="mt-1">
+                {fijos.map((p) => (
+                  <div key={p.pagoFijo.id} className="flex items-center justify-between gap-3 py-2 text-[15px]">
+                    <span className="min-w-0 truncate">
+                      {p.pagoFijo.concepto}
+                      <span className="text-tenue">, vence el {p.pagoFijo.dia}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums">{pesos(p.monto)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="mt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-[15px] font-semibold">{gastos.length === 1 ? "1 gasto" : `${gastos.length} gastos`}</h3>
+              {gastos.length > 1 && (
+                <div className="flex rounded-full bg-relleno p-0.5" role="radiogroup" aria-label="Ordenar">
+                  {(
+                    [
+                      ["recientes", "Recientes"],
+                      ["grandes", "Más grandes"],
+                    ] as [Orden, string][]
+                  ).map(([valor, texto]) => (
+                    <button
+                      key={valor}
+                      role="radio"
+                      aria-checked={orden === valor}
+                      onClick={() => setOrden(valor)}
+                      className="h-9 rounded-full px-3.5 text-[13px] font-semibold text-tenue aria-checked:bg-marca aria-checked:text-sobre-marca"
+                    >
+                      {texto}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {gastos.length === 0 ? (
+              <p className="py-6 text-center text-[15px] text-tenue">{soloYo ? "No cargaste gastos en esta categoría este mes." : "Sin gastos este mes."}</p>
+            ) : (
+              <div className="-mx-4 mt-1">
+                {lista.map((m) => (
+                  <FilaLista
+                    key={m.id}
+                    titulo={m.detalle || c.categoria.nombre}
+                    bajada={soloYo || m.pagoPor === usuarioId ? etiquetaDia(m.fecha) : `${etiquetaDia(m.fecha)}, pagó ${miembro(m.pagoPor)}`}
+                    valor={<MontoMovimiento monto={m.monto} />}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </Hoja>
   );
 }
 

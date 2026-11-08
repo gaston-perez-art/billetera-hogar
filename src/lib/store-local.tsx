@@ -3,7 +3,8 @@
 // Modo demo: todo vive en localStorage del navegador, con datos ficticios.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ContextoBilletera, PantallaCentrada, type Billetera } from "./contexto";
+import { PantallaCargando } from "@/components/Esqueleto";
+import { ContextoBilletera, type Billetera } from "./contexto";
 import { datosDemo } from "./demo";
 import { hoy, mesDe } from "./formato";
 import * as op from "./operaciones";
@@ -104,6 +105,6 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
     };
   }, [datos, usuarioId, mes, cambiar, privacidad.ocultos, privacidad.alternar]);
 
-  if (!valor) return <PantallaCentrada>Cargando…</PantallaCentrada>;
+  if (!valor) return <PantallaCargando />;
   return <ContextoBilletera.Provider value={valor}>{children}</ContextoBilletera.Provider>;
 }
