@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, CampoNombre, Contador, Encabezado, estiloBoton, Hoja, Interruptor, Seccion } from "@/components/ui";
+import { Boton, CampoMonto, CampoNombre, Contador, Encabezado, estiloBoton, FilaDeslizable, Hoja, Interruptor, Seccion } from "@/components/ui";
 import { deBajaEn, ingresoVigente } from "@/lib/calculos";
 import { diasDelMes, fechaCorta, fechaEnMes, hoy, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { csvParaPlanilla, gastosEntre, nombreArchivo } from "@/lib/exportar";
@@ -26,7 +26,7 @@ type Abierta = "ingresos" | "techos" | "pagos" | null;
 
 export default function Ajustes() {
   const b = useBilletera();
-  const { modo, email, datos, mes, importarDatos, reiniciarDemo, cerrarSesion } = b;
+  const { modo, email, datos, mes, importarDatos, reiniciarDemo, cerrarSesion, actualizarPagoFijo } = b;
   const [tema, setTema] = useTema();
   const [abierta, setAbierta] = useState<Abierta>(null);
   const [edicion, setEdicion] = useState<Edicion | null>(null);
@@ -42,8 +42,13 @@ export default function Ajustes() {
   // Las compras en cuotas van en su propia sección (Tarjetas), no entre los pagos fijos.
   // De baja o no, en el mes elegido (una baja desde un mes más adelante todavía no cuenta).
   const vigente = (p: PagoFijo) => !deBajaEn(p, mes);
-  const pagos = datos.pagosFijos.filter((p) => !p.cuotas).sort((a, b) => Number(vigente(b)) - Number(vigente(a)) || a.dia - b.dia);
-  const activos = pagos.filter(vigente);
+  // Los dados de baja en el mes elegido no se muestran (siguen en los meses en que valían o se pagaron).
+  const pagos = datos.pagosFijos.filter((p) => !p.cuotas && vigente(p)).sort((a, b) => a.dia - b.dia);
+  const activos = pagos;
+  // Eliminar = baja desde el mes elegido: borrarlo de la base se llevaría los meses ya pagados.
+  const eliminar = (p: PagoFijo) =>
+    confirm(`¿Eliminar "${p.concepto}"? Deja de aparecer desde ${nombreMes(mes)}. Los meses anteriores y los ya pagados no cambian.`) &&
+    actualizarPagoFijo(p.id, { activo: false, bajaDesde: mes });
   const suma = (xs: number[]) => xs.reduce((a, x) => a + x, 0);
 
   async function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -109,21 +114,20 @@ export default function Ajustes() {
           alTocar={() => alternar("pagos")}
         >
           <p className="px-5 pb-1 pt-2 text-[13px] leading-5 text-tenue">Lo que se paga todos los meses. Aparecen en Pagos y cuentan en lo que falta pagar. Las compras en cuotas se cargan en Pagos → Tarjetas, y los préstamos en Pagos → Préstamos.</p>
+          {pagos.length > 0 && <p className="px-5 pb-1 text-[13px] leading-5 text-tenue">Deslizá uno a la izquierda para eliminarlo.</p>}
           {pagos.map((p) => (
-            <Fila
-              key={p.id}
-              titulo={p.concepto}
-              bajada={
-                !vigente(p)
-                  ? "Dado de baja"
-                  : !p.activo && p.bajaDesde
+            <FilaDeslizable key={p.id} accion="Eliminar" alAccionar={() => eliminar(p)}>
+              <Fila
+                titulo={p.concepto}
+                bajada={
+                  !p.activo && p.bajaDesde
                     ? `Día ${p.dia}, hasta ${nombreMes(sumarMeses(p.bajaDesde, -1))}`
                     : `Día ${p.dia}, ${nombreCategoria(p.categoriaId)}`
-              }
-              valor={pesos(p.monto)}
-              tenue={!vigente(p)}
-              onClick={() => setEdicion({ tipo: "pago", id: p.id })}
-            />
+                }
+                valor={pesos(p.monto)}
+                onClick={() => setEdicion({ tipo: "pago", id: p.id })}
+              />
+            </FilaDeslizable>
           ))}
           <button onClick={() => setEdicion({ tipo: "nuevoPago" })} className="fila flex min-h-14 w-full items-center gap-3 px-5 py-2.5 text-left">
             <span className="grid size-8 shrink-0 place-items-center rounded-full border border-linea text-marca">
@@ -426,13 +430,13 @@ function FormularioPago({
               <Boton
                 type="button"
                 variante="peligro"
-                onClick={() => confirm(`¿Dar de baja este pago desde ${nombreMes(mes)}? Deja de aparecer en Pagos fijos y de contar en lo que falta pagar. Los meses anteriores no cambian.`) && alCambiarActivo(false)}
+                onClick={() => confirm(`¿Eliminar "${pago.concepto}"? Deja de aparecer desde ${nombreMes(mes)}. Los meses anteriores y los ya pagados no cambian.`) && alCambiarActivo(false)}
               >
-                Dar de baja este pago
+                Eliminar este pago
               </Boton>
               <p className="mt-2 text-center text-[13px] text-tenue">
                 {!pago.activo && pago.bajaDesde
-                  ? `Ya estaba dado de baja desde ${nombreMes(pago.bajaDesde)}. Así se adelanta a ${nombreMes(mes)}.`
+                  ? `Ya dejaba de aparecer desde ${nombreMes(pago.bajaDesde)}. Así deja de aparecer desde ${nombreMes(mes)}.`
                   : "Por ejemplo, una deuda que ya terminaste de pagar."}
               </p>
             </>
