@@ -59,6 +59,11 @@ export interface PagoFijo {
   bajaDesde?: Mes | null;
   /** Mes en que se dio de alta. Antes de ese mes no aparece (null = desde siempre). */
   altaDesde?: Mes | null;
+  /**
+   * Compra en cuotas con tarjeta: cuántas cuotas tiene. La primera es `altaDesde` y,
+   * pasada la última, deja de aparecer sola. Sin valor = pago fijo común, sin fin.
+   */
+  cuotas?: number | null;
 }
 
 export interface PagoMes {

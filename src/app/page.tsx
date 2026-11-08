@@ -28,6 +28,7 @@ import {
   paraGastarPorPersona,
   planMes,
   saldoPorDia,
+  textoCuota,
   type PagoDelMes,
   type ParaGastarPersona,
   type PlanMes,
@@ -343,7 +344,7 @@ function ProximosPagos({
                   <span
                     className={`mt-0.5 block text-[13px] ${d < 0 ? "text-pasaste" : "text-tenue"}`}
                   >
-                    {cuandoVence(d)}
+                    {textoCuota(p.pagoFijo, p.mes) ? `${textoCuota(p.pagoFijo, p.mes)}, ${cuandoVence(d).toLowerCase()}` : cuandoVence(d)}
                   </span>
                 </span>
                 <span className="shrink-0 text-[15px] font-semibold tabular-nums">

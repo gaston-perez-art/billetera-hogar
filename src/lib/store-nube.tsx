@@ -310,6 +310,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
               es_deuda: pf.esDeuda,
               activo: true,
               alta_desde: pf.altaDesde,
+              cuotas: pf.cuotas,
             }),
         );
       },

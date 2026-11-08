@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   categoriasDelMes,
+  cuotaDelMes,
   gastosDe,
   pagosDelMes,
   paraGastarPorPersona,
@@ -146,5 +147,50 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     expect(tiene(con, MES)).toBe(true);
     expect(planMes(con, sumarMeses(MES, -1))).toEqual(planMes(d, sumarMeses(MES, -1)));
     expect(planMes(con, MES).faltan).toBe(planMes(d, MES).faltan + 1000);
+  });
+
+  it("una compra en cuotas arranca el mes siguiente, dice qué cuota es y se va sola después de la última", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const pf = op.armarPagoFijo({ concepto: "Heladera", categoriaId: deuda.id, dia: 10, monto: 100, esDeuda: true, cuotas: 3 }, MES, "hel");
+    const con = op.agregarPagoFijo(d, pf);
+    const tiene = (m: string) => pagosDelMes(con, m).some((p) => p.pagoFijo.id === "hel");
+    expect(pf.altaDesde).toBe(sumarMeses(MES, 1));
+    expect(tiene(MES)).toBe(false);
+    expect(planMes(con, MES)).toEqual(planMes(d, MES));
+    expect(tiene(sumarMeses(MES, 1))).toBe(true);
+    expect(cuotaDelMes(pf, sumarMeses(MES, 1))).toEqual({ numero: 1, total: 3 });
+    expect(cuotaDelMes(pf, sumarMeses(MES, 3))).toEqual({ numero: 3, total: 3 });
+    expect(tiene(sumarMeses(MES, 3))).toBe(true);
+    expect(tiene(sumarMeses(MES, 4))).toBe(false);
+  });
+
+  it("una compra en cuotas suma al techo de Deuda y a lo que falta pagar, y las cuentas siguen cerrando", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const con = op.agregarPagoFijo(
+      d,
+      op.armarPagoFijo({ concepto: "Tele", categoriaId: deuda.id, dia: 28, monto: 500, esDeuda: true, cuotas: 6, primeraCuota: MES }, MES, "tele"),
+    );
+    const techo = (x: Datos) => categoriasDelMes(x, MES).find((c) => c.categoria.id === deuda.id)!.techo;
+    expect(techo(con)).toBe(techo(d) + 500);
+    expect(planMes(con, MES).faltan).toBe(planMes(d, MES).faltan + 500);
+    cerca(suma(categoriasDelMes(con, MES).map((c) => c.libre)), planMes(con, MES).paraGastar);
+    cerca(suma(paraGastarPorPersona(con, MES).map((x) => x.paraGastar)), planMes(con, MES).paraGastar);
+    cerca(suma(categoriasDelMes(con, MES).map((c) => c.pendiente)), planMes(con, MES).faltan);
+  });
+
+  it("pagar una cuota crea el gasto con qué cuota es, y pagada sigue apareciendo aunque la compra se dé de baja", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const con = op.agregarPagoFijo(
+      d,
+      op.armarPagoFijo({ concepto: "Tele", categoriaId: deuda.id, dia: 28, monto: 500, esDeuda: true, cuotas: 6, primeraCuota: sumarMeses(MES, -1) }, MES, "tele"),
+    );
+    const pagada = op.marcarPagado(con, "tele", MES, "gaston", "mov-tele", FECHA);
+    expect(pagada.movimientos.find((m) => m.id === "mov-tele")!.detalle).toBe("Tele, cuota 2 de 6");
+    const baja = op.actualizarPagoFijo(pagada, "tele", { activo: false, bajaDesde: MES });
+    expect(pagosDelMes(baja, MES).some((p) => p.pagoFijo.id === "tele" && p.pagado)).toBe(true);
+    expect(pagosDelMes(baja, sumarMeses(MES, 1)).some((p) => p.pagoFijo.id === "tele")).toBe(false);
   });
 });

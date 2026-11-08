@@ -7,7 +7,7 @@ import { Icono, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { SelloLogro } from "@/components/Ilustracion";
 import { Cifras, Encabezado, Fecha, Grupo, Resumen } from "@/components/ui";
-import { logroPagos, pagosDelMes, type PagoDelMes } from "@/lib/calculos";
+import { logroPagos, pagosDelMes, textoCuota, type PagoDelMes } from "@/lib/calculos";
 import { cuandoVence, diasEntre, fechaEnMes, hoy, mesCorto, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
@@ -44,11 +44,15 @@ export default function PagosFijos() {
   const fila = (p: PagoDelMes) => {
     const d = dias(p);
     const vencido = !p.pagado && mes <= mesActual && d < 0;
-    const bajada = p.pagado
-      ? [pesos(p.monto), pagadorDe(p.movimientoId) ? `pagó ${pagadorDe(p.movimientoId)}` : null].filter(Boolean).join(", ")
-      : mes === mesActual
-        ? `${pesos(p.monto)}, ${cuandoVence(d).toLowerCase()}`
-        : pesos(p.monto);
+    const cuota = textoCuota(p.pagoFijo, mes);
+    const bajada = [
+      cuota,
+      ...(p.pagado
+        ? [pesos(p.monto), pagadorDe(p.movimientoId) ? `pagó ${pagadorDe(p.movimientoId)}` : null]
+        : [pesos(p.monto), mes === mesActual ? cuandoVence(d).toLowerCase() : null]),
+    ]
+      .filter(Boolean)
+      .join(", ");
     return (
       <div key={p.pagoFijo.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
         <Fecha dia={p.pagoFijo.dia} mes={mesCorto(mes)} vencida={vencido} />

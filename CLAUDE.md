@@ -64,6 +64,7 @@ Leer antes de tocar lógica:
 - Queda para la casa (`paraGastar`) = entra − gastado − pagos que faltan − para cada uno. La tarjeta muestra esa resta renglón por renglón: un solo número arriba, nunca varios "te queda" que compitan. Pasarse en una categoría sale del ahorro.
 - La barra de abajo navega al levantar el dedo (`useToqueDirecto`): en iPhone, durante el impulso del scroll, el primer toque no dispara click.
 - Techo de Deuda del mes = suma de cuotas fijas marcadas `es_deuda`.
+- **Compras en cuotas** (Ajustes → Tarjetas): pago fijo con `cuotas`; la primera es `altaDesde` (por defecto el mes siguiente) y después de la última deja de aparecer sola (`pagoFijoVigente`, `cuotaDelMes`). Van siempre a Deuda con `esDeuda`. Se ven como "Cuota 3 de 6" en Pagos, Inicio y Categorías, y el gasto que se crea al pagar dice "Heladera, cuota 3 de 6" (`detalleDePago` y `marcar_pagado` en `0006_cuotas.sql`).
 - Alquiler + AySA + TM se muestran como un solo pago.
 - Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).
 - Reparto: proporción por ingreso. Plan (le toca, le debería quedar) vs. real (puso, le queda) y diferencia. Gasto previsto = Σ max(techo, gastado).

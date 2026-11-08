@@ -37,6 +37,7 @@ export interface Filas {
     activo: boolean;
     baja_desde?: string | null;
     alta_desde?: string | null;
+    cuotas?: number | null;
   }[];
   pagos_mes: {
     id: string;
@@ -101,6 +102,7 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       activo: p.activo,
       bajaDesde: p.baja_desde ?? null,
       altaDesde: p.alta_desde ?? null,
+      cuotas: p.cuotas ?? null,
     })),
     pagosMes: f.pagos_mes.map((p) => ({
       id: p.id,
