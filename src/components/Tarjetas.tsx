@@ -4,10 +4,10 @@
 // Cada cuota también aparece en Fijos para pagarla; acá se cargan, se editan y se ve
 // cuánto va en cada tarjeta. Una tarjeta es solo banco, últimos 4 números y de quién es.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Icono, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, CampoNombre, Cifras, Contador, FilaLista, Grupo, Hoja, Resumen } from "@/components/ui";
-import { cuotaDelMes, mesesEntre, mesUltimaCuota, pagoFijoVigente, textoCuota } from "@/lib/calculos";
+import { Boton, CampoMonto, CampoNombre, Contador, FilaLista, Grupo, Hoja } from "@/components/ui";
+import { cuotaDelMes, mesesEntre, mesUltimaCuota, pagoFijoVigente, pagosDelMes, restaDeCompra, resumenTarjeta, textoCuota } from "@/lib/calculos";
 import { mesCorto, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import type { NuevaTarjeta, NuevoPagoFijo } from "@/lib/operaciones";
 import { useBilletera } from "@/lib/store";
@@ -17,7 +17,7 @@ export function nombreTarjeta(t: Pick<Tarjeta, "banco" | "ultimos4">) {
   return `${t.banco} ${t.ultimos4}`;
 }
 
-type Edicion = { tipo: "compra"; id: string } | { tipo: "nuevaCompra" } | { tipo: "tarjeta"; id: string } | { tipo: "nuevaTarjeta" };
+type Edicion = { tipo: "compra"; id: string } | { tipo: "nuevaCompra"; tarjetaId?: string } | { tipo: "tarjeta"; id: string } | { tipo: "nuevaTarjeta" };
 
 const SIN_TARJETA = "";
 
@@ -35,40 +35,57 @@ function bajadaCompra(p: PagoFijo, mes: Mes): string {
   return ultima ? `Terminó en ${nombreMes(ultima)}` : "Terminada";
 }
 
+/** Lo que se ve en el carrusel: una tarjeta, las compras sin tarjeta o el lugar para agregar una. */
+type Lugar = { tipo: "tarjeta"; tarjeta: Tarjeta } | { tipo: "sin" } | { tipo: "agregar" };
+
 export function VistaTarjetas() {
   const { datos, mes } = useBilletera();
   const [edicion, setEdicion] = useState<Edicion | null>(null);
+  const [elegida, setElegida] = useState(0);
+  const carrusel = useRef<HTMLDivElement>(null);
   const tarjetas = datos.tarjetas ?? [];
   const compras = datos.pagosFijos.filter((p) => p.cuotas);
-  const delMes = compras.filter((p) => estadoCompra(p, mes) === 0);
-  const proximas = compras.filter((p) => estadoCompra(p, mes) === 1);
-  const terminadas = compras.filter((p) => estadoCompra(p, mes) === 2);
-  const total = delMes.reduce((a, p) => a + p.monto, 0);
-  const nombre = (id: string) => datos.miembros.find((m) => m.id === id)?.nombre ?? "";
-  const deTarjeta = (id: string | null | undefined) => tarjetas.find((t) => t.id === id);
+  const haySinTarjeta = compras.some((p) => !tarjetas.some((t) => t.id === p.tarjetaId) && estadoCompra(p, mes) < 2);
+  const lugares: Lugar[] = [
+    ...tarjetas.map((tarjeta) => ({ tipo: "tarjeta" as const, tarjeta })),
+    ...(haySinTarjeta ? [{ tipo: "sin" as const }] : []),
+    { tipo: "agregar" },
+  ];
+  const indice = Math.min(elegida, lugares.length - 1);
+  const lugar = lugares[indice];
+  const totalMes = pagosDelMes(datos, mes)
+    .filter((p) => p.pagoFijo.cuotas)
+    .reduce((a, p) => a + p.monto, 0);
 
-  // Lo del mes, por tarjeta (y "Sin tarjeta" al final si hay).
-  const grupos = [...tarjetas.map((t) => ({ clave: t.id, titulo: nombreTarjeta(t), tarjeta: t as Tarjeta | undefined })), { clave: SIN_TARJETA, titulo: "Sin tarjeta", tarjeta: undefined }]
-    .map((g) => ({ ...g, compras: delMes.filter((p) => (deTarjeta(p.tarjetaId)?.id ?? SIN_TARJETA) === g.clave).sort((a, b) => a.dia - b.dia) }))
-    .filter((g) => g.compras.length > 0);
+  // La elegida es la que quedó en el centro al deslizar.
+  const alDeslizar = () => {
+    const el = carrusel.current;
+    const primera = el?.firstElementChild as HTMLElement | null;
+    if (!el || !primera) return;
+    const paso = primera.offsetWidth + 12;
+    setElegida(Math.max(0, Math.min(lugares.length - 1, Math.round(el.scrollLeft / paso))));
+  };
+  const irA = (i: number) => {
+    const el = carrusel.current;
+    const destino = el?.children[i] as HTMLElement | undefined;
+    if (!el || !destino) return;
+    el.scrollTo({ left: destino.offsetLeft - (el.clientWidth - destino.offsetWidth) / 2, behavior: "smooth" });
+    setElegida(i);
+  };
 
-  // Cuánto va en tarjetas de cada uno (la cuota es de la casa; esto dice de qué resumen sale).
-  const porPersona = datos.miembros
-    .map((m) => ({ etiqueta: `De ${m.nombre}`, valor: delMes.filter((p) => deTarjeta(p.tarjetaId)?.miembroId === m.id).reduce((a, p) => a + p.monto, 0) }))
-    .filter((x) => x.valor > 0);
-  const termina = delMes
-    .map((p) => ({ p, ultima: mesUltimaCuota(p) }))
-    .filter((x) => x.ultima === mes)
-    .map((x) => x.p.concepto);
+  const tarjetaId = lugar.tipo === "tarjeta" ? lugar.tarjeta.id : null;
+  const deEsta = lugar.tipo === "agregar" ? [] : compras.filter((p) => (lugar.tipo === "sin" ? !tarjetas.some((t) => t.id === p.tarjetaId) : p.tarjetaId === tarjetaId));
+  const porEstado = (e: number) => deEsta.filter((p) => estadoCompra(p, mes) === e).sort((a, b) => a.dia - b.dia);
 
   const fila = (p: PagoFijo) => {
-    const t = deTarjeta(p.tarjetaId);
+    const resta = restaDeCompra(datos, p, mes);
     return (
       <FilaLista
         key={p.id}
         titulo={p.concepto}
-        bajada={bajadaCompra(p, mes) + (estadoCompra(p, mes) !== 0 && t ? `, ${nombreTarjeta(t)}` : "")}
+        bajada={bajadaCompra(p, mes)}
         valor={pesos(p.monto)}
+        valorBajada={resta.cuotas > 0 ? `Resta ${pesos(resta.monto)}` : undefined}
         apagada={estadoCompra(p, mes) === 2}
         onClick={() => setEdicion({ tipo: "compra", id: p.id })}
       />
@@ -77,55 +94,84 @@ export function VistaTarjetas() {
 
   return (
     <>
-      <Resumen etiqueta={`En cuotas en ${nombreMes(mes).split(" ")[0]}`} monto={total}>
-        {porPersona.length > 0 && <Cifras items={porPersona.map((x) => ({ etiqueta: x.etiqueta, valor: pesos(x.valor, { ceroComoGuion: false }) }))} />}
-        <p className={`text-[13px] leading-5 text-tenue ${porPersona.length > 0 ? "mt-3" : ""}`}>
-          {delMes.length === 0
-            ? "No hay cuotas este mes."
-            : termina.length > 0
-              ? `${delMes.length} ${delMes.length === 1 ? "compra" : "compras"}. ${termina.length === 1 ? `${termina[0]} termina` : `${termina.join(" y ")} terminan`} este mes.`
-              : `${delMes.length} ${delMes.length === 1 ? "compra" : "compras"}. Se pagan desde Fijos, junto con el resto.`}
-        </p>
-      </Resumen>
+      <div className="mx-5 mt-4 flex items-baseline justify-between gap-3">
+        <span className="text-[14px] text-tenue">En cuotas en {nombreMes(mes).split(" ")[0]}</span>
+        <span className="text-[15px] font-semibold tabular-nums">{pesos(totalMes, { ceroComoGuion: false })}</span>
+      </div>
 
-      <div className="mx-5 mt-4">
-        <Boton onClick={() => setEdicion({ tipo: "nuevaCompra" })}>
-          <Icono trazo={ICONOS.mas} className="size-5" />
-          Agregar compra en cuotas
-        </Boton>
+      <div
+        ref={carrusel}
+        onScroll={alDeslizar}
+        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[8%] pb-14 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Tus tarjetas"
+      >
+        {lugares.map((l, i) => (
+          <PlasticoTarjeta
+            key={l.tipo === "tarjeta" ? l.tarjeta.id : l.tipo}
+            lugar={l}
+            orden={i}
+            elegida={i === indice}
+            onClick={() => (l.tipo === "agregar" && i === indice ? setEdicion({ tipo: "nuevaTarjeta" }) : irA(i))}
+          />
+        ))}
+      </div>
+
+      {lugares.length > 1 && (
+        <div className="-mt-9 flex justify-center">
+          <div className="flex items-center gap-1.5 rounded-full superficie px-3 py-2 ring-1 ring-linea">
+            {lugares.map((l, i) => (
+              <button
+                key={i}
+                onClick={() => irA(i)}
+                aria-label={l.tipo === "tarjeta" ? nombreTarjeta(l.tarjeta) : l.tipo === "sin" ? "Sin tarjeta" : "Agregar tarjeta"}
+                aria-current={i === indice}
+                className={`h-2 rounded-full transition-[width] duration-200 motion-reduce:transition-none ${i === indice ? "w-6 bg-texto" : "w-2 bg-sutil"}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mx-5 mt-5 flex gap-2.5">
+        {lugar.tipo === "agregar" ? (
+          <Boton onClick={() => setEdicion({ tipo: "nuevaTarjeta" })}>
+            <Icono trazo={ICONOS.mas} className="size-5" />
+            Agregar tarjeta
+          </Boton>
+        ) : (
+          <>
+            <Boton onClick={() => setEdicion({ tipo: "nuevaCompra", tarjetaId: tarjetaId ?? undefined })}>
+              <Icono trazo={ICONOS.mas} className="size-5" />
+              Agregar compra
+            </Boton>
+            {lugar.tipo === "tarjeta" && (
+              <Boton variante="secundario" onClick={() => setEdicion({ tipo: "tarjeta", id: lugar.tarjeta.id })}>
+                <Icono trazo={ICONOS.lapiz} className="size-5" />
+                Editar
+              </Boton>
+            )}
+          </>
+        )}
       </div>
 
       <main className="mt-5 space-y-5">
-        {grupos.map((g) => (
-          <Grupo key={g.clave || "sin"} titulo={g.titulo} detalle={pesos(g.compras.reduce((a, p) => a + p.monto, 0))}>
-            {g.compras.map(fila)}
-          </Grupo>
-        ))}
-        {proximas.length > 0 && <Grupo titulo="Empiezan más adelante">{proximas.map(fila)}</Grupo>}
-        {terminadas.length > 0 && <Grupo titulo="Terminadas">{terminadas.map(fila)}</Grupo>}
-
-        <Grupo titulo="Tus tarjetas">
-          {tarjetas.map((t) => {
-            const cuantas = compras.filter((p) => p.tarjetaId === t.id && estadoCompra(p, mes) < 2).length;
-            return (
-              <FilaLista
-                key={t.id}
-                icono={<IconoTarjeta />}
-                titulo={nombreTarjeta(t)}
-                bajada={`De ${nombre(t.miembroId)}${cuantas > 0 ? `, ${cuantas} ${cuantas === 1 ? "compra" : "compras"} en curso` : ""}`}
-                valor={<Icono trazo={ICONOS.lapiz} className="size-4 text-sutil" />}
-                onClick={() => setEdicion({ tipo: "tarjeta", id: t.id })}
-              />
-            );
-          })}
-          <button onClick={() => setEdicion({ tipo: "nuevaTarjeta" })} className="fila flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full border border-linea text-marca">
-              <Icono trazo={ICONOS.mas} className="size-4" />
-            </span>
-            <span className="text-[15px] font-medium text-marca">Agregar tarjeta</span>
-          </button>
-        </Grupo>
-        <p className="mx-6 text-[13px] leading-5 text-tenue">Solo banco y últimos 4 números, para reconocerla. Nunca el número completo.</p>
+        {lugar.tipo === "agregar" ? (
+          <p className="mx-6 text-[14px] leading-5 text-tenue">
+            Solo banco, últimos 4 números y de quién es, para reconocerla. Nunca el número completo.
+          </p>
+        ) : deEsta.length === 0 ? (
+          <div className="px-9 py-6 text-center">
+            <p className="text-[15px] font-semibold">Sin compras en cuotas</p>
+            <p className="mt-1 text-[15px] text-tenue">Cargá la primera con Agregar compra.</p>
+          </div>
+        ) : (
+          <>
+            {porEstado(0).length > 0 && <Grupo titulo={`Cuotas de ${nombreMes(mes).split(" ")[0]}`}>{porEstado(0).map(fila)}</Grupo>}
+            {porEstado(1).length > 0 && <Grupo titulo="Empiezan más adelante">{porEstado(1).map(fila)}</Grupo>}
+            {porEstado(2).length > 0 && <Grupo titulo="Terminadas">{porEstado(2).map(fila)}</Grupo>}
+            <p className="mx-6 text-[13px] leading-5 text-tenue">Las cuotas se pagan desde Fijos, junto con el resto.</p>
+          </>
+        )}
       </main>
 
       <HojaTarjetas edicion={edicion} alCerrar={() => setEdicion(null)} />
@@ -133,11 +179,79 @@ export function VistaTarjetas() {
   );
 }
 
-function IconoTarjeta() {
+/**
+ * La tarjeta como plástico, al estilo de las billeteras: banco y de quién es arriba, chip y
+ * contactless, lo del mes en grande y abajo los últimos 4 y lo que resta. Flota con sombra
+ * (clases `plastico` en globals.css). Se alternan verde y grafito para distinguirlas.
+ */
+function PlasticoTarjeta({ lugar, orden, elegida, onClick }: { lugar: Lugar; orden: number; elegida: boolean; onClick: () => void }) {
+  const { datos, mes } = useBilletera();
+  const base = `aspect-[1.586] w-[84%] shrink-0 snap-center overflow-hidden rounded-[20px] px-[18px] pb-4 pt-[18px] text-left transition-[opacity,transform] duration-200 motion-reduce:transition-none ${elegida ? "" : "scale-[0.94] opacity-70"}`;
+
+  if (lugar.tipo === "agregar") {
+    return (
+      <button onClick={onClick} className={`${base} flex flex-col items-center justify-center gap-2 border-[1.5px] border-dashed border-sutil text-marca`}>
+        <span className="grid size-11 place-items-center rounded-full bg-marca-suave">
+          <Icono trazo={ICONOS.mas} className="size-5" />
+        </span>
+        <span className="text-[15px] font-semibold">Agregar tarjeta</span>
+      </button>
+    );
+  }
+
+  const tarjeta = lugar.tipo === "tarjeta" ? lugar.tarjeta : null;
+  const r = resumenTarjeta(datos, tarjeta?.id ?? null, mes);
+  const duenio = tarjeta ? datos.miembros.find((m) => m.id === tarjeta.miembroId)?.nombre : null;
+  const estilo = !tarjeta ? "superficie text-texto shadow-tarjeta ring-1 ring-linea" : `plastico ${orden % 2 === 0 ? "plastico-verde" : "plastico-grafito"}`;
+
   return (
-    <span className="grid size-10 shrink-0 place-items-center rounded-full border border-linea text-texto">
-      <Icono trazo={ICONOS.tarjeta} className="size-5" />
-    </span>
+    <button onClick={onClick} aria-label={tarjeta ? `${nombreTarjeta(tarjeta)}, de ${duenio}` : "Compras sin tarjeta"} className={`${base} flex flex-col ${estilo}`}>
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-[17px] font-bold tracking-[-0.01em]">{tarjeta ? tarjeta.banco : "Sin tarjeta"}</span>
+        {duenio && (
+          <span className="shrink-0 rounded-full bg-current/15 px-2.5 py-[3px] text-[12px] font-semibold ring-1 ring-current/20 backdrop-blur-sm">{duenio}</span>
+        )}
+      </span>
+      {tarjeta && (
+        <span className="mt-3 flex items-center gap-2.5" aria-hidden>
+          <Chip />
+          <svg viewBox="0 0 24 24" className="size-[18px] rotate-90 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M8.5 16.5a6 6 0 0 1 7 0M6 13.5a10 10 0 0 1 12 0M3.5 10.5a14 14 0 0 1 17 0" />
+          </svg>
+        </span>
+      )}
+      <span className="mt-auto flex items-end justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-[11px] font-medium opacity-70">Este mes</span>
+          <span className="block text-[24px] font-bold leading-tight tracking-[-0.02em] tabular-nums">{pesos(r.delMes, { ceroComoGuion: false })}</span>
+        </span>
+        <span className="shrink-0 text-right leading-tight">
+          <span className="block text-[11px] font-medium opacity-70">Resta</span>
+          <span className="block text-[15px] font-semibold tabular-nums">{r.resta > 0 ? pesos(r.resta) : "Nada"}</span>
+        </span>
+      </span>
+      <span className="mt-2.5 flex items-center justify-between gap-2 text-[12px]">
+        <span className="font-medium tracking-[0.18em] opacity-85 tabular-nums">{tarjeta ? `•••• ${tarjeta.ultimos4}` : ""}</span>
+        {r.resta > 0 && r.hasta && <span className="opacity-70">hasta {nombreMes(r.hasta)}</span>}
+      </span>
+    </button>
+  );
+}
+
+/** Chip de la tarjeta: metálico claro, hecho con el color del texto de la tarjeta. */
+function Chip() {
+  return (
+    <svg viewBox="0 0 34 26" className="h-[22px] w-[29px]" aria-hidden>
+      <defs>
+        <linearGradient id="chip-brillo" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.75" />
+          <stop offset="0.5" stopColor="currentColor" stopOpacity="0.45" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0.65" />
+        </linearGradient>
+      </defs>
+      <rect x="0.5" y="0.5" width="33" height="25" rx="5" fill="url(#chip-brillo)" />
+      <path d="M0.5 9h10M0.5 17h10M23.5 9h10M23.5 17h10M10.5 0.5v25M23.5 0.5v25M10.5 13h13" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" fill="none" />
+    </svg>
   );
 }
 
@@ -158,8 +272,9 @@ function HojaTarjetas({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar
     <Hoja abierta={edicion !== null} alCerrar={alCerrar} titulo={titulo} mostrarTitulo>
       {(edicion?.tipo === "nuevaCompra" || compra) && (
         <FormularioCompra
-          key={compra ? `compra-${compra.id}` : "nueva"}
+          key={compra ? `compra-${compra.id}` : `nueva-${edicion?.tipo === "nuevaCompra" ? (edicion.tarjetaId ?? "") : ""}`}
           compra={compra}
+          tarjetaInicial={edicion?.tipo === "nuevaCompra" ? edicion.tarjetaId : undefined}
           alGuardar={(nueva, tarjetaNueva) => {
             const tarjetaId = tarjetaNueva ? agregarTarjeta(tarjetaNueva) : nueva.tarjetaId ?? null;
             if (compra) {
@@ -308,10 +423,13 @@ const NUEVA = "__nueva__";
  */
 function FormularioCompra({
   compra,
+  tarjetaInicial,
   alGuardar,
   alDarDeBaja,
 }: {
   compra?: PagoFijo;
+  /** Compra nueva desde una tarjeta del carrusel: ya viene elegida. */
+  tarjetaInicial?: string;
   alGuardar: (pago: NuevoPagoFijo & { primeraCuota: Mes }, tarjetaNueva?: NuevaTarjeta) => void;
   alDarDeBaja?: () => void;
 }) {
@@ -325,7 +443,7 @@ function FormularioCompra({
   const [cuotas, setCuotas] = useState(compra?.cuotas ?? 6);
   const [dia, setDia] = useState(compra?.dia ?? 10);
   const [primera, setPrimera] = useState<Mes>(compra?.altaDesde ?? siguiente);
-  const [tarjetaId, setTarjetaId] = useState<string>(compra ? (compra.tarjetaId ?? SIN_TARJETA) : (tarjetas.find((t) => t.miembroId === usuarioId)?.id ?? tarjetas[0]?.id ?? NUEVA));
+  const [tarjetaId, setTarjetaId] = useState<string>(compra ? (compra.tarjetaId ?? SIN_TARJETA) : (tarjetaInicial ?? tarjetas.find((t) => t.miembroId === usuarioId)?.id ?? tarjetas[0]?.id ?? NUEVA));
   const [nueva, setNueva] = useState<NuevaTarjeta>({ banco: "", ultimos4: "", miembroId: usuarioId });
 
   const porCuota = compra ? monto : Math.round((monto / cuotas) * 100) / 100;

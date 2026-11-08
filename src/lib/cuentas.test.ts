@@ -6,6 +6,8 @@ import {
   categoriasDelMes,
   cuotaDelMes,
   gastosDe,
+  restaDeCompra,
+  resumenTarjeta,
   pagosDelMes,
   paraGastarPorPersona,
   planMes,
@@ -234,6 +236,33 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     const pf = op.armarPagoFijo({ concepto: "Gas", categoriaId: d.categorias[0].id, dia: 5, monto: 10, esDeuda: false, tarjetaId: "tj" }, MES, "gas");
     expect(pf.tarjetaId).toBeNull();
     expect(pf.cuotas).toBeNull();
+  });
+
+  it("Tarjetas: lo del mes de cada tarjeta (y sin tarjeta) suma las cuotas que hay en Pagos", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const con = op.agregarPagoFijo(
+      d,
+      op.armarPagoFijo({ concepto: "Silla", categoriaId: deuda.id, dia: 28, monto: 300, esDeuda: true, cuotas: 3, primeraCuota: MES }, MES, "silla"),
+    );
+    const cuotasEnPagos = suma(pagosDelMes(con, MES).filter((p) => p.pagoFijo.cuotas).map((p) => p.monto));
+    const porTarjeta = [...con.tarjetas!.map((t) => t.id), null].map((id) => resumenTarjeta(con, id, MES).delMes);
+    cerca(suma(porTarjeta), cuotasEnPagos);
+  });
+
+  it("Tarjetas: lo que resta cuenta desde este mes, sin las cuotas ya pagadas", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const pf = op.armarPagoFijo({ concepto: "Tele", categoriaId: deuda.id, dia: 28, monto: 100, esDeuda: true, cuotas: 6, primeraCuota: sumarMeses(MES, -2) }, MES, "tele");
+    const con = op.agregarPagoFijo(d, pf);
+    // Cuotas 3 a 6 desde este mes: 4 × 100.
+    expect(restaDeCompra(con, pf, MES)).toEqual({ monto: 400, cuotas: 4 });
+    const pagada = op.marcarPagado(con, "tele", MES, "gaston", "mov-tele", FECHA);
+    expect(restaDeCompra(pagada, pf, MES)).toEqual({ monto: 300, cuotas: 3 });
+    expect(restaDeCompra(pagada, pf, sumarMeses(MES, 4))).toEqual({ monto: 0, cuotas: 0 });
+    // Dada de baja desde el mes que viene: resta solo la de este mes.
+    const baja = op.actualizarPagoFijo(con, "tele", { activo: false, bajaDesde: sumarMeses(MES, 1) });
+    expect(restaDeCompra(baja, baja.pagosFijos.find((p) => p.id === "tele")!, MES)).toEqual({ monto: 100, cuotas: 1 });
   });
 });
 
