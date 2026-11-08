@@ -175,7 +175,7 @@ function TarjetaPersona({
   );
 }
 
-/** La otra cara de la tarjeta de cada uno: en qué gasta este mes, con palabras y sin barras. */
+/** La otra cara de la tarjeta de cada uno: en qué categorías gastó este mes (todas), con palabras y sin barras. */
 function EnQueGasta({
   nombre,
   id,
@@ -195,12 +195,14 @@ function EnQueGasta({
         ? `Igual que en ${mesAnterior}`
         : `${Math.abs(cambio)}% ${cambio > 0 ? "más" : "menos"} que en ${mesAnterior}`;
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3">
         <Avatar id={id} nombre={nombre} tamano={40} />
         <div className="min-w-0 flex-1">
           <h2 className="text-[17px] font-bold leading-tight">En qué gasta {nombre}</h2>
-          <p className="mt-0.5 text-[13px] text-tenue">Este mes, sin contar pagos fijos</p>
+          <p className="mt-0.5 text-[13px] text-tenue">
+            Este mes, sin contar pagos fijos
+          </p>
         </div>
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-relleno text-texto" aria-hidden>
           <Icono trazo={ICONOS.cerrar} className="size-[18px]" />
@@ -214,27 +216,23 @@ function EnQueGasta({
           <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-linea pt-4">
             <span>
               <span className="block text-[15px] text-tenue">
-                Gastó en {e.cantidad === 1 ? "1 compra" : `${e.cantidad} compras`}
+                En {e.categorias.length === 1 ? "1 categoría" : `${e.categorias.length} categorías`}
               </span>
-              {comparacion && <span className="mt-0.5 block text-[13px] text-tenue">{comparacion}</span>}
+              <span className="mt-0.5 block text-[13px] text-tenue">
+                {[e.cantidad === 1 ? "1 compra" : `${e.cantidad} compras`, comparacion?.toLowerCase()].filter(Boolean).join(", ")}
+              </span>
             </span>
             <span className="text-[20px] font-bold tabular-nums">{pesos(e.total, { ceroComoGuion: false })}</span>
           </div>
 
-          <ul className="mt-3 space-y-1">
-            {e.categorias.slice(0, 3).map((c) => (
-              <li key={c.categoria.id} className="flex items-center gap-3 py-1">
-                <IconoCategoria nombre={c.categoria.nombre} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium">{c.categoria.nombre}</span>
-                  <span className="block text-[13px] text-tenue">{Math.round(c.parte * 100)}% de lo suyo</span>
-                </span>
-                <span className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</span>
-              </li>
-            ))}
-          </ul>
+          {/*
+            Todas las categorías en las que gastó, de mayor a menor. La tarjeta no cambia de alto:
+            si no entran, la lista se desliza adentro (con un desvanecido abajo que avisa que hay más).
+            Deslizar no da vuelta la tarjeta; solo un toque.
+          */}
+          <ListaCategorias categorias={e.categorias} />
 
-          <div className="mt-auto border-t border-linea pt-3">
+          <div className="mt-3 border-t border-linea pt-3">
             {e.mayor && (
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0">
@@ -249,6 +247,44 @@ function EnQueGasta({
             {e.fijos > 0 && <p className="mt-2 text-[13px] text-tenue">Además pagó {pesos(e.fijos)} de pagos fijos.</p>}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/** Lista de categorías del dorso: entra en el alto que queda y, si sobra, se desliza adentro. */
+function ListaCategorias({ categorias }: { categorias: EstadisticasPersona["categorias"] }) {
+  const lista = useRef<HTMLUListElement>(null);
+  const [masAbajo, setMasAbajo] = useState(false);
+  useLayoutEffect(() => {
+    const el = lista.current;
+    if (!el) return;
+    const medir = () => setMasAbajo(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    el.addEventListener("scroll", medir, { passive: true });
+    return () => {
+      obs.disconnect();
+      el.removeEventListener("scroll", medir);
+    };
+  }, [categorias]);
+  return (
+    <div className="relative mt-2 flex min-h-0 flex-1 flex-col">
+      <ul ref={lista} className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {categorias.map((c) => (
+          <li key={c.categoria.id} className="flex items-center gap-2 py-1">
+            <IconoCategoria nombre={c.categoria.nombre} tamano="sm" />
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.categoria.nombre}</span>
+            <span className="w-9 shrink-0 text-right text-[13px] text-tenue tabular-nums">{Math.round(c.parte * 100)}%</span>
+            <span className="min-w-[4.5rem] shrink-0 text-right text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</span>
+          </li>
+        ))}
+      </ul>
+      {masAbajo && (
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-tarjeta via-tarjeta/85 to-transparent">
+          <Icono trazo={ICONOS.adelante} className="size-4 rotate-90 text-tenue" />
+        </span>
       )}
     </div>
   );
