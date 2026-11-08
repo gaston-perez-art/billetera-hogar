@@ -17,6 +17,7 @@ En **SQL Editor**, correr en orden:
 4. `supabase/migrations/0004_fotos.sql` (fotos de perfil compartidas)
 5. `supabase/migrations/0005_alta_pagos.sql` (agregar pagos fijos desde Ajustes)
 6. `supabase/migrations/0006_cuotas.sql` (compras en cuotas con tarjeta)
+7. `supabase/migrations/0007_tarjetas.sql` (tarjetas de crédito para las compras en cuotas)
 
 ## 3. Cuentas
 

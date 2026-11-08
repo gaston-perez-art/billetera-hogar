@@ -64,6 +64,18 @@ export interface PagoFijo {
    * pasada la última, deja de aparecer sola. Sin valor = pago fijo común, sin fin.
    */
   cuotas?: number | null;
+  /** Compra en cuotas: con qué tarjeta se pagó (null = sin decir). */
+  tarjetaId?: string | null;
+}
+
+/** Tarjeta de crédito, para agrupar las compras en cuotas. Solo banco y últimos 4 números. */
+export interface Tarjeta {
+  id: string;
+  banco: string;
+  /** Últimos 4 números, para distinguir dos del mismo banco. */
+  ultimos4: string;
+  /** De quién es. */
+  miembroId: string;
 }
 
 export interface PagoMes {
@@ -82,4 +94,6 @@ export interface Datos {
   movimientos: Movimiento[];
   pagosFijos: PagoFijo[];
   pagosMes: PagoMes[];
+  /** Tarjetas de crédito (datos viejos pueden no tenerlas). */
+  tarjetas?: Tarjeta[];
 }

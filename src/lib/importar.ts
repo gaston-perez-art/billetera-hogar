@@ -18,6 +18,7 @@ export function leerDatosImportados(texto: string): Datos {
     if (!Array.isArray(d[clave])) throw new Error(`Falta la lista "${clave}" en el archivo.`);
   }
   const datos = d as unknown as Datos;
+  if (d.tarjetas !== undefined && !Array.isArray(d.tarjetas)) throw new Error('La lista "tarjetas" del archivo no es válida.');
   if (datos.miembros.length === 0) throw new Error("El archivo no tiene miembros.");
   const categorias = new Set(datos.categorias.map((c) => c.id));
   const miembros = new Set(datos.miembros.map((m) => m.id));
@@ -28,5 +29,12 @@ export function leerDatosImportados(texto: string): Datos {
       throw new Error(`El gasto "${m.detalle}" tiene monto o fecha inválidos.`);
     }
   }
-  return datos;
+  for (const t of datos.tarjetas ?? []) {
+    if (!miembros.has(t.miembroId)) throw new Error(`La tarjeta ${t.banco} ${t.ultimos4} es de alguien que no es del hogar.`);
+  }
+  const tarjetas = new Set((datos.tarjetas ?? []).map((t) => t.id));
+  for (const p of datos.pagosFijos) {
+    if (p.tarjetaId && !tarjetas.has(p.tarjetaId)) throw new Error(`"${p.concepto}" tiene una tarjeta que no existe.`);
+  }
+  return { ...datos, tarjetas: datos.tarjetas ?? [] };
 }

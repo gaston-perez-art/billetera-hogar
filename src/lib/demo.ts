@@ -49,6 +49,8 @@ export function datosDemo(fechaHoy = hoy()): Datos {
     { id: "pf-tarjeta", concepto: "Plan tarjeta", categoriaId: idCat("Deuda"), dia: 20, monto: 95000, esDeuda: true, activo: true },
     { id: "pf-seguro", concepto: "Seguro del auto", categoriaId: idCat("Seguro del auto"), dia: 12, monto: 60000, esDeuda: false, activo: true },
     { id: "pf-escuela", concepto: "Cuota escuela", categoriaId: idCat("Izán"), dia: 10, monto: 90000, esDeuda: false, activo: true },
+    // Compra en cuotas (ficticia): arrancó hace dos meses, va por la 3 de 6.
+    { id: "pf-lavarropas", concepto: "Lavarropas", categoriaId: idCat("Deuda"), dia: 20, monto: 50000, esDeuda: true, activo: true, altaDesde: sumarMeses(mes, -2), cuotas: 6, tarjetaId: "tj-galicia" },
   ];
 
   let n = 0;
@@ -107,6 +109,11 @@ export function datosDemo(fechaHoy = hoy()): Datos {
     movimientos,
     pagosFijos,
     pagosMes,
+    // Ficticias: banco y últimos 4 inventados.
+    tarjetas: [
+      { id: "tj-galicia", banco: "Galicia", ultimos4: "1234", miembroId: "gaston" },
+      { id: "tj-bbva", banco: "BBVA", ultimos4: "5678", miembroId: "jime" },
+    ],
   };
 }
 

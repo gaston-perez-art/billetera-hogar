@@ -14,6 +14,12 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#f3f5f4",
     theme_color: "#0f7a50",
     lang: "es-AR",
-    icons: [{ src: `${base}/icon.svg`, sizes: "any", type: "image/svg+xml", purpose: "any" }],
+    // PNG para Android (el SVG no siempre lo toma para la pantalla de inicio). El iPhone usa apple-icon.png.
+    icons: [
+      { src: `${base}/icon-192.png`, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: `${base}/icon-512.png`, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: `${base}/icon-512.png`, sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: `${base}/icon.svg`, sizes: "any", type: "image/svg+xml", purpose: "any" },
+    ],
   };
 }

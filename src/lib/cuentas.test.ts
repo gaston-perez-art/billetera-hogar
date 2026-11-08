@@ -193,4 +193,47 @@ describe("editar desde un mes no cambia los meses anteriores", () => {
     expect(pagosDelMes(baja, MES).some((p) => p.pagoFijo.id === "tele" && p.pagado)).toBe(true);
     expect(pagosDelMes(baja, sumarMeses(MES, 1)).some((p) => p.pagoFijo.id === "tele")).toBe(false);
   });
+
+  it("corregir una compra en cuotas: adelantar la primera cuota la trae a este mes, y las pagadas no se pierden", () => {
+    const d = demo();
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const con = op.agregarPagoFijo(
+      d,
+      op.armarPagoFijo({ concepto: "Silla", categoriaId: deuda.id, dia: 28, monto: 300, esDeuda: true, cuotas: 3 }, MES, "silla"),
+    );
+    const tiene = (x: Datos, m: string) => pagosDelMes(x, m).some((p) => p.pagoFijo.id === "silla");
+    expect(tiene(con, MES)).toBe(false);
+    const corregida = op.actualizarPagoFijo(con, "silla", { altaDesde: MES, cuotas: 4 });
+    expect(tiene(corregida, MES)).toBe(true);
+    expect(cuotaDelMes(corregida.pagosFijos.find((p) => p.id === "silla")!, MES)).toEqual({ numero: 1, total: 4 });
+    expect(planMes(corregida, MES).faltan).toBe(planMes(d, MES).faltan + 300);
+    // Pagada la de este mes, si después se corre la primera cuota para adelante, la pagada sigue en su mes.
+    const pagada = op.marcarPagado(corregida, "silla", MES, "gaston", "mov-silla", FECHA);
+    const corrida = op.actualizarPagoFijo(pagada, "silla", { altaDesde: sumarMeses(MES, 1) });
+    expect(pagosDelMes(corrida, MES).some((p) => p.pagoFijo.id === "silla" && p.pagado)).toBe(true);
+  });
+
+  it("borrar una tarjeta deja sus compras sin tarjeta y las cuentas no cambian", () => {
+    const d = demo();
+    const t = op.armarTarjeta({ banco: " Galicia ", ultimos4: "4321", miembroId: "jime" }, "tj");
+    const deuda = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const con = op.agregarPagoFijo(
+      op.agregarTarjeta(d, t),
+      op.armarPagoFijo({ concepto: "Tele", categoriaId: deuda.id, dia: 28, monto: 500, esDeuda: true, cuotas: 6, primeraCuota: MES, tarjetaId: "tj" }, MES, "tele"),
+    );
+    expect(t.banco).toBe("Galicia");
+    expect(con.pagosFijos.find((p) => p.id === "tele")!.tarjetaId).toBe("tj");
+    const sin = op.borrarTarjeta(con, "tj");
+    expect(sin.tarjetas!.some((x) => x.id === "tj")).toBe(false);
+    expect(sin.pagosFijos.find((p) => p.id === "tele")!.tarjetaId).toBeNull();
+    expect(planMes(sin, MES)).toEqual(planMes(con, MES));
+  });
+
+  it("un pago fijo común no guarda tarjeta aunque venga una", () => {
+    const d = demo();
+    const pf = op.armarPagoFijo({ concepto: "Gas", categoriaId: d.categorias[0].id, dia: 5, monto: 10, esDeuda: false, tarjetaId: "tj" }, MES, "gas");
+    expect(pf.tarjetaId).toBeNull();
+    expect(pf.cuotas).toBeNull();
+  });
 });
+

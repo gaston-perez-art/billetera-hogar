@@ -621,3 +621,38 @@ export function Interruptor({ activo, onCambio }: { activo: boolean; onCambio: (
     </span>
   );
 }
+
+/** Botones − y + con el número en el medio (día de vencimiento, cantidad de cuotas). */
+export function Contador({
+  valor,
+  min,
+  max,
+  onCambio,
+  menos,
+  mas,
+  texto,
+}: {
+  valor: number;
+  min: number;
+  max: number;
+  onCambio: (n: number) => void;
+  menos: string;
+  mas: string;
+  /** Lo que se muestra en el medio, si no es el número (por ejemplo, un mes). */
+  texto?: string;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      <button type="button" onClick={() => onCambio(Math.max(min, valor - 1))} disabled={valor <= min} aria-label={menos} className="grid size-10 place-items-center rounded-full bg-tarjeta text-[20px] font-semibold disabled:opacity-40">
+        -
+      </button>
+      <span className={`text-center font-semibold tabular-nums ${texto ? "min-w-[5.5rem] text-[15px] capitalize" : "w-8 text-[20px]"}`} aria-live="polite">
+        {texto ?? valor}
+      </span>
+      <button type="button" onClick={() => onCambio(Math.min(max, valor + 1))} disabled={valor >= max} aria-label={mas} className="grid size-10 place-items-center rounded-full bg-tarjeta disabled:opacity-40">
+        <Icono trazo={ICONOS.mas} className="size-5" />
+      </button>
+    </span>
+  );
+}
+

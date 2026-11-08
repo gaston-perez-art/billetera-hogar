@@ -96,5 +96,7 @@ export const ICONOS = {
   exportar: ["M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5", "M12 15V4M7.5 8.5 12 4l4.5 4.5"],
   importar: ["M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5", "M12 4v11M7.5 10.5 12 15l4.5-4.5"],
   lapiz: ["M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z", "M13.5 6.5l4 4"],
+  // Tarjeta de crédito: banda y chip.
+  tarjeta: ["M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", "M3 10h18M7 15h3"],
   campana: ["M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z", "M10 20a2 2 0 0 0 4 0"],
 } satisfies Record<string, Trazo>;

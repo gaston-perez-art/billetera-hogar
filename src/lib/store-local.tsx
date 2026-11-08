@@ -39,7 +39,7 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const guardados = leer<Datos>(CLAVE_DATOS);
-    const inicial = guardados ?? datosDemo();
+    const inicial = guardados ? { ...guardados, tarjetas: guardados.tarjetas ?? [] } : datosDemo();
     if (!guardados) guardar(CLAVE_DATOS, inicial);
     setDatos(inicial);
     const usuario = leer<string>(CLAVE_USUARIO);
@@ -98,6 +98,13 @@ export function ProveedorLocal({ children }: { children: React.ReactNode }) {
       renombrarIngreso: (ingresoId, concepto) => cambiar((d) => op.renombrarIngreso(d, ingresoId, concepto)),
       agregarPagoFijo: (nuevo) => cambiar((d) => op.agregarPagoFijo(d, op.armarPagoFijo(nuevo, mes))),
       guardarFoto: (miembroId, foto) => cambiar((d) => op.cambiarFoto(d, miembroId, foto)),
+      agregarTarjeta: (nueva) => {
+        const t = op.armarTarjeta(nueva);
+        cambiar((d) => op.agregarTarjeta(d, t));
+        return t.id;
+      },
+      actualizarTarjeta: (tarjetaId, cambios) => cambiar((d) => op.actualizarTarjeta(d, tarjetaId, cambios)),
+      borrarTarjeta: (tarjetaId) => cambiar((d) => op.borrarTarjeta(d, tarjetaId)),
       reiniciarDemo: () => cambiar(() => datosDemo()),
       importarDatos: async (nuevos) => {
         cambiar(() => nuevos);

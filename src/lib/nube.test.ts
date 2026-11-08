@@ -62,6 +62,15 @@ describe("prepararImportacion", () => {
     expect(new Set(p.movimientos.map((m) => m.pagoPor))).toEqual(new Set(["uuid-gaston", "uuid-jime"]));
   });
 
+  it("lleva las tarjetas con su dueño del hogar y las compras apuntan a la tarjeta nueva", () => {
+    const p = prepararImportacion(demo, hogar, "2026-11-01");
+    const tarjetas = new Map(p.tarjetas.map((t) => [t.id, t]));
+    expect(p.tarjetas.map((t) => t.miembroId).sort()).toEqual(["uuid-gaston", "uuid-jime"]);
+    const conTarjeta = p.pagosFijos.filter((pf) => pf.tarjetaId);
+    expect(conTarjeta.length).toBeGreaterThan(0);
+    expect(conTarjeta.every((pf) => tarjetas.has(pf.tarjetaId!))).toBe(true);
+  });
+
   it("guarda los techos desde el mes más viejo con datos", () => {
     const p = prepararImportacion(demo, hogar, "2026-11-01");
     expect(new Set(p.techos.map((t) => t.mes))).toEqual(new Set(["2026-09-01"]));
