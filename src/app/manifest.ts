@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Gastos del hogar, reparto y lo que queda del mes.",
     start_url: `${base}/`,
     display: "standalone",
-    background_color: "#f3f5f4",
-    theme_color: "#0f7a50",
+    background_color: "#f7f4ed",
+    theme_color: "#ee6a52",
     lang: "es-AR",
     // PNG para Android (el SVG no siempre lo toma para la pantalla de inicio). El iPhone usa apple-icon.png.
     icons: [
