@@ -391,6 +391,12 @@ export interface ParaGastarPersona {
   propio: number;
   /** ingresa − puso − su parte de los pagos que faltan − lo propio. Suman "para gastar" de Inicio. */
   paraGastar: number;
+  /**
+   * Lo libre de verdad, según lo que tiene en el bolsillo: su saldo − su parte (por ingreso) de
+   * lo que falta pagar y de lo reservado para el mes. Si puso más que su parte, tiene menos libre.
+   * Los dos suman el "Libre" de Inicio (paraCadaUno).
+   */
+  libre: number;
 }
 
 /**
@@ -416,6 +422,7 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
       parteFaltan,
       propio,
       paraGastar: ingresa - puso - parteFaltan - propio,
+      libre: ingresa - puso - parteFaltan - plan.paraGastar * proporcion,
     };
   });
 }
