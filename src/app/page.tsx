@@ -30,6 +30,7 @@ import {
   saldoPorDia,
   textoCuota,
   type PagoDelMes,
+  type ParaGastarPersona,
   type PlanMes,
 } from "@/lib/calculos";
 import {
@@ -55,8 +56,8 @@ export default function Inicio() {
   const quien = persona?.id ?? usuarioId;
   // Cómo se le habla: "Gastaste" si es quien usa la app, "Gastó Jime" si no.
   const t = persona && !persona.vos
-    ? { gasto: `Gastó ${persona.nombre}`, queda: "Le queda", cargo: "Cargó", ninguno: `${persona.nombre} no cargó gastos este mes`, aclaracion: `Solo lo que cargó ${persona.nombre}. Le queda: lo que le entró menos lo que puso.`, grupo: `Lo de ${persona.nombre}` }
-    : { gasto: "Gastaste", queda: "Te queda", cargo: "Cargaste", ninguno: "No cargaste gastos este mes", aclaracion: "Solo lo que cargaste vos. Te queda: lo que te entró menos lo que pusiste.", grupo: "Lo tuyo" };
+    ? { gasto: `Gastó ${persona.nombre}`, queda: "Su dinero hoy", ninguno: `${persona.nombre} no cargó gastos este mes`, aclaracion: `Solo lo que cargó ${persona.nombre}. Libre: lo suyo, después de poner su parte de lo que falta del mes.`, grupo: `Lo de ${persona.nombre}` }
+    : { gasto: "Gastaste", queda: "Tu dinero hoy", ninguno: "No cargaste gastos este mes", aclaracion: "Solo lo que cargaste vos. Libre: lo tuyo, después de poner tu parte de lo que falta del mes.", grupo: "Lo tuyo" };
   const plan = planMes(datos, mes);
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
@@ -94,9 +95,9 @@ export default function Inicio() {
                 </dd>
               </div>
               <div className="px-2">
-                <dt className="text-[12px] text-tenue">{t.cargo}</dt>
-                <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
-                  {mios.cantidad === 1 ? "1 gasto" : `${mios.cantidad} gastos`}
+                <dt className="text-[12px] text-tenue">Libre</dt>
+                <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${yo && Math.round(yo.libre) < 0 ? "text-pasaste" : ""}`}>
+                  {pesos(yo?.libre ?? 0, { ceroComoGuion: false })}
                 </dd>
               </div>
             </dl>
@@ -106,8 +107,8 @@ export default function Inicio() {
           </section>
         </SaldoFijo>
       ) : (
-        <SaldoFijo monto={plan.paraCadaUno} etiqueta="Les sobra este mes">
-          <CuentaDelMes plan={plan} />
+        <SaldoFijo monto={plan.saldo} etiqueta="Tu dinero hoy">
+          <CuentaDelMes plan={plan} personas={personas} />
         </SaldoFijo>
       )}
 
@@ -375,13 +376,13 @@ function ProximosPagos({
 const CLAVE_CUENTA_ABIERTA = "billetera-hogar:cuenta-abierta";
 
 /**
- * La tarjeta de Inicio. Plegada: lo que les sobra este mes, en total (lo de cada uno, filtrando
- * por persona o en Reparto). Abierta: la cuenta de arriba hacia abajo, con su barra: entró,
- * menos lo gastado, los pagos que faltan y lo que queda para la casa = lo que sobra.
- * Se acuerda si la dejaste abierta.
+ * La tarjeta de Inicio. Plegada: tu dinero hoy (lo que entró en el mes menos lo gastado) y,
+ * debajo, lo libre de cada uno por separado: sumado engaña, porque uno puede tener y el otro no.
+ * Abierta: entró − gastaron = tu dinero hoy, y en qué se reparte: pagos que faltan, reservado
+ * para el mes (lo que queda de los techos) y libre. Se acuerda si la dejaste abierta.
  */
-function CuentaDelMes({ plan }: { plan: PlanMes }) {
-  const { entra, gastado, faltan, paraCadaUno, sobrante, paraGastar } = plan;
+function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarPersona[] }) {
+  const { entra, gastado, saldo, faltan, paraCadaUno, sobrante, paraGastar } = plan;
   const [abierta, setAbierta] = useState(false);
   useEffect(() => {
     try {
@@ -404,8 +405,8 @@ function CuentaDelMes({ plan }: { plan: PlanMes }) {
   const partes = [
     { etiqueta: "Ya gastaron", monto: gastado, color: "bg-tenue" },
     { etiqueta: "Pagos que faltan", monto: faltan, color: "bg-sutil" },
-    { etiqueta: "Para la casa", monto: Math.max(paraGastar, 0), color: "bg-marca/40" },
-    { etiqueta: "Les sobra", monto: paraCadaUno, color: "bg-marca" },
+    { etiqueta: "Reservado para el mes", monto: Math.max(paraGastar, 0), color: "bg-marca/40" },
+    { etiqueta: "Libre", monto: paraCadaUno, color: "bg-marca" },
   ];
   const total = partes.reduce((a, p) => a + Math.max(p.monto, 0), 0) || 1;
   const Renglon = ({
@@ -444,12 +445,25 @@ function CuentaDelMes({ plan }: { plan: PlanMes }) {
         aria-expanded={abierta}
         className="block w-full px-5 pb-4 pt-6 text-center"
       >
-        <MontoGrande monto={paraCadaUno} className="text-[40px]" />
-        <p className="mt-2 text-[14px] text-tenue">Les sobra este mes</p>
+        <MontoGrande monto={saldo} className="text-[40px]" />
+        <p className="mt-2 text-[14px] text-tenue">Tu dinero hoy</p>
         {entra > 0 && sobrante < 0 && (
           <p className="mt-2 text-[13px] leading-5 text-pasaste">
             Los gastos de la casa superan lo que entra en {pesos(-sobrante)}.
           </p>
+        )}
+
+        {entra > 0 && personas.length > 1 && (
+          <dl className="mt-5 grid grid-cols-2 divide-x divide-linea border-t border-linea pt-4">
+            {personas.map((p) => (
+              <div key={p.miembroId} className="px-2">
+                <dt className="text-[12px] text-tenue">Libre de {p.nombre}</dt>
+                <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${Math.round(p.libre) < 0 ? "text-pasaste" : ""}`}>
+                  {pesos(p.libre, { ceroComoGuion: false })}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
 
         <span className="mt-4 flex items-center justify-center gap-1 text-[13px] font-semibold text-marca">
@@ -490,13 +504,14 @@ function CuentaDelMes({ plan }: { plan: PlanMes }) {
                 <dl className="mt-4 space-y-2.5 text-[15px] tabular-nums">
                   <Renglon etiqueta="Entró este mes" monto={entra} />
                   <Renglon etiqueta="Ya gastaron" monto={gastado} color="bg-tenue" resta />
-                  <Renglon etiqueta="Pagos que faltan" monto={faltan} color="bg-sutil" resta />
-                  <Renglon etiqueta="Para la casa" monto={paraGastar} color="bg-marca/40" resta />
-                  <Renglon etiqueta="Les sobra" monto={paraCadaUno} color="bg-marca" fuerte />
+                  <Renglon etiqueta="Tu dinero hoy" monto={saldo} fuerte />
                 </dl>
-                <p className="mt-3 text-[13px] leading-5 text-tenue">
-                  Para la casa: lo que les queda para el día a día (súper, nafta…) según los techos de las categorías.
-                </p>
+                <p className="mt-4 text-[13px] text-tenue">De eso:</p>
+                <dl className="mt-2 space-y-2.5 text-[15px] tabular-nums">
+                  <Renglon etiqueta="Pagos que faltan" monto={faltan} color="bg-sutil" />
+                  <Renglon etiqueta="Reservado para el mes" monto={paraGastar} color="bg-marca/40" />
+                  <Renglon etiqueta="Libre" monto={paraCadaUno} color="bg-marca" />
+                </dl>
               </>
             )}
           </div>

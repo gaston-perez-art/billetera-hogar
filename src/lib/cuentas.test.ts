@@ -44,6 +44,16 @@ describe("los números coinciden entre pantallas", () => {
     cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.paraGastar)), planMes(d, MES).paraGastar);
   });
 
+  it("Inicio: lo libre de Gastón más lo de Jime es el libre de la pareja", () => {
+    const d = demo();
+    cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.libre)), planMes(d, MES).paraCadaUno);
+  });
+
+  it("Inicio: tu dinero hoy = pagos que faltan + reservado + libre", () => {
+    const p = planMes(demo(), MES);
+    cerca(p.faltan + p.paraGastar + p.paraCadaUno, p.saldo);
+  });
+
   it("Solo yo: lo de cada uno, sumado, es lo gastado de Inicio", () => {
     const d = demo();
     const porPersona = d.miembros.map((m) => gastosDe(d, MES, m.id));
