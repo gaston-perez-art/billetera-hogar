@@ -392,9 +392,15 @@ export interface ParaGastarPersona {
   /** ingresa − puso − su parte de los pagos que faltan − lo propio. Suman "para gastar" de Inicio. */
   paraGastar: number;
   /**
-   * Lo libre de verdad, según lo que tiene en el bolsillo: su saldo − su parte (por ingreso) de
-   * lo que falta pagar y de lo reservado para el mes. Si puso más que su parte, tiene menos libre.
-   * Los dos suman el "Libre" de Inicio (paraCadaUno).
+   * Lo que le falta poner para la casa en el mes: su parte del gasto previsto − lo que ya puso.
+   * Negativo = puso de más; el otro se lo compensa al cerrar el mes.
+   */
+  faltaPoner: number;
+  /**
+   * Lo libre: su dinero hoy − lo que le falta poner (= lo que gana − su parte de la casa).
+   * Es el mismo "Queda para {nombre}" de Reparto (`leQuedaPlan`). No depende de quién pagó
+   * primero: si uno se adelantó a pagar, el otro tiene que poner más de lo que falta.
+   * Los dos suman el sobrante (el "Libre" de Inicio cuando no es negativo).
    */
   libre: number;
 }
@@ -405,6 +411,7 @@ export interface ParaGastarPersona {
  */
 export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
   const plan = planMes(d, mes);
+  const previsto = gastoPrevisto(d, mes);
   const movs = movimientosDelMes(d, mes);
   return d.miembros.map((m) => {
     const ingresa = ingresosDelMes(d, mes, m.id);
@@ -422,7 +429,8 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
       parteFaltan,
       propio,
       paraGastar: ingresa - puso - parteFaltan - propio,
-      libre: ingresa - puso - parteFaltan - plan.paraGastar * proporcion,
+      faltaPoner: previsto * proporcion - puso,
+      libre: ingresa - previsto * proporcion,
     };
   });
 }

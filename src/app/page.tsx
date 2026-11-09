@@ -56,8 +56,8 @@ export default function Inicio() {
   const quien = persona?.id ?? usuarioId;
   // Cómo se le habla: "Gastaste" si es quien usa la app, "Gastó Jime" si no.
   const t = persona && !persona.vos
-    ? { gasto: `Gastó ${persona.nombre}`, queda: "Su dinero hoy", ninguno: `${persona.nombre} no cargó gastos este mes`, aclaracion: `Solo lo que cargó ${persona.nombre}. Libre: lo suyo, después de poner su parte de lo que falta del mes.`, grupo: `Lo de ${persona.nombre}` }
-    : { gasto: "Gastaste", queda: "Tu dinero hoy", ninguno: "No cargaste gastos este mes", aclaracion: "Solo lo que cargaste vos. Libre: lo tuyo, después de poner tu parte de lo que falta del mes.", grupo: "Lo tuyo" };
+    ? { gasto: `Gastó ${persona.nombre}`, queda: "Su dinero hoy", ninguno: `${persona.nombre} no cargó gastos este mes`, libreFalta: "Libre: su dinero hoy menos lo que le falta poner para la casa,", libreDeMas: (m: string) => `Puso ${m} de más para la casa: se lo compensan al cerrar el mes.`, libreJusto: "Ya puso toda su parte de la casa.", grupo: `Lo de ${persona.nombre}` }
+    : { gasto: "Gastaste", queda: "Tu dinero hoy", ninguno: "No cargaste gastos este mes", libreFalta: "Libre: tu dinero hoy menos lo que te falta poner para la casa,", libreDeMas: (m: string) => `Pusiste ${m} de más para la casa: te lo compensan al cerrar el mes.`, libreJusto: "Ya pusiste toda tu parte de la casa.", grupo: "Lo tuyo" };
   const plan = planMes(datos, mes);
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
@@ -102,7 +102,11 @@ export default function Inicio() {
               </div>
             </dl>
             <p className="mt-4 text-[13px] leading-5 text-tenue">
-              {t.aclaracion}
+              {yo && Math.round(yo.faltaPoner) > 0
+                ? `${t.libreFalta} ${pesos(yo.faltaPoner)}.`
+                : yo && Math.round(yo.faltaPoner) < 0
+                  ? `${t.libreDeMas(pesos(-yo.faltaPoner))}`
+                  : t.libreJusto}
             </p>
           </section>
         </SaldoFijo>
