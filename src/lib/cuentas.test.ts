@@ -46,7 +46,27 @@ describe("los números coinciden entre pantallas", () => {
 
   it("Inicio: lo libre de Gastón más lo de Jime es el libre de la pareja", () => {
     const d = demo();
-    cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.libre)), planMes(d, MES).paraCadaUno);
+    cerca(suma(paraGastarPorPersona(d, MES).map((x) => x.libre)), planMes(d, MES).sobrante);
+  });
+
+  it("Inicio y Reparto: el libre de cada uno es su \"Queda para\" y es su dinero hoy menos lo que le falta poner", () => {
+    const d = demo();
+    const reparto = repartoMes(d, MES).miembros;
+    for (const p of paraGastarPorPersona(d, MES)) {
+      cerca(p.libre, reparto.find((r) => r.miembroId === p.miembroId)!.leQuedaPlan);
+      cerca(p.libre, p.saldo - p.faltaPoner);
+    }
+  });
+
+  it("Inicio: quien se adelanta a pagar no queda con libre negativo", () => {
+    const d = demo();
+    const [a] = d.miembros;
+    const antes = paraGastarPorPersona(d, MES).find((p) => p.miembroId === a.id)!.libre;
+    // Un gasto que entra en el techo (no cambia lo previsto): pagarlo antes no cambia su libre.
+    const cat = categoriasDelMes(d, MES).find((c) => c.categoria.nombre !== "Ahorro" && c.techo - c.gastado - c.pendiente >= 100_000)!.categoria;
+    const despues = op.agregarMovimiento(d, { id: "adelanto", fecha: FECHA, monto: 100_000, categoriaId: cat.id, detalle: "x", pagoPor: a.id, creadoEn: FECHA });
+    const libreDespues = paraGastarPorPersona(despues, MES).find((p) => p.miembroId === a.id)!.libre;
+    expect(Math.abs(libreDespues - antes)).toBeLessThan(1);
   });
 
   it("Inicio: tu dinero hoy = pagos que faltan + reservado + libre", () => {
