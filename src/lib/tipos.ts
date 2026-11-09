@@ -90,7 +90,14 @@ export interface Tarjeta {
   ultimos4: string;
   /** De quién es. */
   miembroId: string;
+  /** Color del plástico. Sin color, se alternan salmón y grafito. */
+  color?: ColorTarjeta | null;
 }
+
+/** Colores de tarjeta: lista cerrada, cada uno con su clase `plastico-…` en globals.css. */
+export const COLORES_TARJETA = ["salmon", "celeste", "azul", "rojo", "blanco", "violeta", "naranja", "verde", "grafito"] as const;
+export type ColorTarjeta = (typeof COLORES_TARJETA)[number];
+export const esColorTarjeta = (c: unknown): c is ColorTarjeta => COLORES_TARJETA.includes(c as ColorTarjeta);
 
 export interface PagoMes {
   id: string;

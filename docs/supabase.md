@@ -20,6 +20,7 @@ En **SQL Editor**, correr en orden:
 7. `supabase/migrations/0007_tarjetas.sql` (tarjetas de crédito para las compras en cuotas)
 8. `supabase/migrations/0008_prestamos.sql` (préstamos en la pestaña Préstamos de Pagos)
 9. `supabase/migrations/0009_dolares.sql` (préstamos en dólares, pagados en pesos al dólar del día)
+10. `supabase/migrations/0010_color_tarjetas.sql` (color de cada tarjeta)
 
 ## 3. Cuentas
 

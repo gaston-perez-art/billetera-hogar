@@ -12,7 +12,7 @@ import { cuotaDelMes, esCompraEnCuotas, mesesEntre, mesUltimaCuota, pagoFijoVige
 import { mesCorto, nombreMes, pesos, pesosCortos, sumarMeses } from "@/lib/formato";
 import type { NuevaTarjeta, NuevoPagoFijo } from "@/lib/operaciones";
 import { useBilletera } from "@/lib/store";
-import type { Mes, PagoFijo, Tarjeta } from "@/lib/tipos";
+import { COLORES_TARJETA, type ColorTarjeta, type Mes, type PagoFijo, type Tarjeta } from "@/lib/tipos";
 
 export function nombreTarjeta(t: Pick<Tarjeta, "banco" | "ultimos4">) {
   return `${t.banco} ${t.ultimos4}`;
@@ -193,7 +193,7 @@ export function VistaTarjetas() {
 /**
  * La tarjeta como plástico, al estilo de las billeteras: banco y de quién es arriba, chip y
  * contactless, lo del mes en grande y abajo los últimos 4 y lo que resta. Flota con sombra
- * (clases `plastico` en globals.css). Se alternan verde y grafito para distinguirlas.
+ * (clases `plastico` en globals.css), del color elegido; sin color, se alternan salmón y grafito.
  * La del centro, al tocarla, se da vuelta con el mismo giro que Reparto (`.giro`) y muestra
  * lo de cada mes en barras.
  */
@@ -215,7 +215,7 @@ function PlasticoTarjeta({ lugar, orden, elegida, vuelta, onClick }: { lugar: Lu
   const tarjeta = lugar.tipo === "tarjeta" ? lugar.tarjeta : null;
   const r = resumenTarjeta(datos, tarjeta?.id ?? null, mes);
   const duenio = tarjeta ? datos.miembros.find((m) => m.id === tarjeta.miembroId)?.nombre : null;
-  const estilo = !tarjeta ? "superficie text-texto shadow-tarjeta ring-1 ring-linea" : `plastico ${orden % 2 === 0 ? "plastico-verde" : "plastico-grafito"}`;
+  const estilo = !tarjeta ? "superficie text-texto shadow-tarjeta ring-1 ring-linea" : `plastico plastico-${colorDeTarjeta(tarjeta, orden)}`;
   const cara = `absolute inset-0 flex flex-col overflow-hidden rounded-[20px] px-[18px] pb-4 pt-[18px] ${estilo}`;
   const nombre = tarjeta ? `${nombreTarjeta(tarjeta)}, de ${duenio}` : "Compras sin tarjeta";
 
@@ -401,7 +401,24 @@ function HojaTarjetas({ edicion, alCerrar }: { edicion: Edicion | null; alCerrar
   );
 }
 
-/** Banco, últimos 4 y de quién es. Se usa sola o dentro de una compra (tarjeta nueva al toque). */
+const NOMBRE_COLOR: Record<ColorTarjeta, string> = {
+  salmon: "Salmón",
+  celeste: "Celeste",
+  azul: "Azul",
+  rojo: "Rojo",
+  blanco: "Blanco",
+  violeta: "Violeta",
+  naranja: "Naranja",
+  verde: "Verde",
+  grafito: "Grafito",
+};
+
+/** El color elegido; sin color, se alternan salmón y grafito según el lugar en el carrusel. */
+export function colorDeTarjeta(t: Pick<Tarjeta, "color">, orden: number): ColorTarjeta {
+  return t.color ?? (orden % 2 === 0 ? "salmon" : "grafito");
+}
+
+/** Banco, últimos 4, color y de quién es. Se usa sola o dentro de una compra (tarjeta nueva al toque). */
 function CamposTarjeta({ valor, onCambio }: { valor: NuevaTarjeta; onCambio: (t: NuevaTarjeta) => void }) {
   const { datos } = useBilletera();
   return (
@@ -425,6 +442,22 @@ function CamposTarjeta({ valor, onCambio }: { valor: NuevaTarjeta; onCambio: (t:
           className="min-w-0 flex-1 bg-transparent text-right text-[16px] font-medium tabular-nums outline-none placeholder:text-sutil"
         />
       </label>
+      <div className="px-4 py-3">
+        <span className="block text-[15px] font-medium">Color</span>
+        <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label="Color">
+          {COLORES_TARJETA.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={valor.color === c}
+              aria-label={NOMBRE_COLOR[c]}
+              onClick={() => onCambio({ ...valor, color: c })}
+              className={`plastico-${c} size-9 rounded-full ring-1 ring-black/10 ring-offset-relleno aria-checked:ring-2 aria-checked:ring-texto aria-checked:ring-offset-2`}
+            />
+          ))}
+        </div>
+      </div>
       <div className="px-4 py-3">
         <span className="block text-[15px] font-medium">De quién es</span>
         <div className="mt-2 grid grid-cols-2 rounded-full bg-tarjeta p-1" role="radiogroup" aria-label="De quién es">
@@ -454,6 +487,8 @@ function FormularioTarjeta({ tarjeta, alGuardar, alBorrar }: { tarjeta?: Tarjeta
     banco: tarjeta?.banco ?? "",
     ultimos4: tarjeta?.ultimos4 ?? "",
     miembroId: tarjeta?.miembroId ?? usuarioId,
+    // Solo si ya tenía: así no se manda el color si no se tocó.
+    ...(tarjeta?.color ? { color: tarjeta.color } : {}),
   });
   const compras = tarjeta ? datos.pagosFijos.filter((p) => p.tarjetaId === tarjeta.id).length : 0;
   return (

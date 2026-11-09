@@ -233,7 +233,7 @@ export function agregarTarjeta(d: Datos, t: Tarjeta): Datos {
 }
 
 export function armarTarjeta(nueva: NuevaTarjeta, id = nuevoId()): Tarjeta {
-  return { id, banco: nueva.banco.trim(), ultimos4: nueva.ultimos4.trim(), miembroId: nueva.miembroId };
+  return { id, banco: nueva.banco.trim(), ultimos4: nueva.ultimos4.trim(), miembroId: nueva.miembroId, ...(nueva.color ? { color: nueva.color } : {}) };
 }
 
 export function actualizarTarjeta(d: Datos, tarjetaId: string, cambios: Partial<NuevaTarjeta>): Datos {

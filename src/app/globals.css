@@ -302,7 +302,7 @@ label:has(input[type="file"], input[type="checkbox"]):active {
 /*
  * Plásticos de Pagos → Tarjetas: tarjetas de crédito que flotan sobre la pantalla.
  * Son objetos, no pantalla: no cambian con el modo oscuro (salvo la sombra, más profunda).
- * Verde = el de la marca, más hondo; negro = grafito. Degradé con luz arriba a la izquierda,
+ * Cada tarjeta elige su color (como el plástico real); sin color, salmón y grafito alternados. Degradé con luz arriba a la izquierda,
  * una trama muy fina, un reflejo en diagonal y un filo de luz en el borde.
  */
 .plastico {
@@ -339,6 +339,45 @@ label:has(input[type="file"], input[type="checkbox"]):active {
   background:
     radial-gradient(120% 130% at 0% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%),
     linear-gradient(140deg, #3a413d 0%, #232825 55%, #121513 100%);
+}
+/* Colores que se eligen por tarjeta (COLORES_TARJETA en tipos.ts), para parecerse al plástico real. */
+.plastico-salmon {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 210, 190, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #f4826a 0%, #e0563e 55%, #a83a27 100%);
+}
+.plastico-celeste {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(200, 235, 255, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #4fb6ef 0%, #1e8fd6 55%, #0f5e9c 100%);
+}
+.plastico-azul {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(150, 180, 255, 0.28) 0%, transparent 55%),
+    linear-gradient(140deg, #2f5fd0 0%, #1d3f99 55%, #10245f 100%);
+}
+.plastico-rojo {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 170, 170, 0.28) 0%, transparent 55%),
+    linear-gradient(140deg, #e23b3b 0%, #b51f26 55%, #7a1018 100%);
+}
+.plastico-violeta {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(215, 180, 255, 0.30) 0%, transparent 55%),
+    linear-gradient(140deg, #8b4fd8 0%, #6a2fb8 55%, #421a78 100%);
+}
+.plastico-naranja {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 220, 170, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #ff8a2b 0%, #ec6a0c 55%, #a84400 100%);
+}
+/* Blanca: letra oscura (todo lo de adentro usa currentColor) y filo gris para que no se pierda. */
+.plastico-blanco {
+  color: #1c1c1c;
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 255, 255, 0.9) 0%, transparent 55%),
+    linear-gradient(140deg, #ffffff 0%, #f1efea 55%, #dcd8cf 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(0, 0, 0, 0.08), var(--sombra-plastico);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) .plastico {

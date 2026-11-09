@@ -382,7 +382,15 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
           () => {
             const guardado = sb
               .from("tarjetas")
-              .insert({ id: t.id, hogar_id: hogarId, banco: t.banco, ultimos4: t.ultimos4, miembro_id: t.miembroId })
+              .insert({
+                id: t.id,
+                hogar_id: hogarId,
+                banco: t.banco,
+                ultimos4: t.ultimos4,
+                miembro_id: t.miembroId,
+                // Solo si hay: así anda aunque todavía no se haya corrido 0010_color_tarjetas.sql.
+                ...(t.color ? { color: t.color } : {}),
+              })
               .then((r) => r);
             tarjetaGuardandose.current = guardado;
             return guardado;
@@ -402,6 +410,7 @@ function Hogar({ sb, miembro, email, children }: { sb: SupabaseClient; miembro: 
                 ...(resto.banco !== undefined ? { banco: resto.banco.trim() } : {}),
                 ...(resto.ultimos4 !== undefined ? { ultimos4: resto.ultimos4.trim() } : {}),
                 ...(miembroId !== undefined ? { miembro_id: miembroId } : {}),
+                ...(resto.color !== undefined ? { color: resto.color } : {}),
               })
               .eq("id", tarjetaId);
           },
