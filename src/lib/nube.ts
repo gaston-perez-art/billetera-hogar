@@ -3,9 +3,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ajustarCuotasEnDolares } from "./operaciones";
-import type { Datos, Mes, Miembro } from "./tipos";
+import { esColorTarjeta, type Datos, type Mes, type Miembro } from "./tipos";
 
-type FilaTarjeta = { id: string; banco: string; ultimos4: string; miembro_id: string };
+type FilaTarjeta = { id: string; banco: string; ultimos4: string; miembro_id: string; color?: string | null };
 
 export interface Filas {
   miembros: { id: string; nombre: string; user_id: string; foto?: string | null }[];
@@ -121,7 +121,13 @@ export function filasADatos(f: Filas, mes: Mes): Datos {
       ...(p.prestamo ? { prestamo: true, uva: !!p.uva } : {}),
       ...(p.prestamo && p.usd_total != null && p.usd_cuota != null ? { usdTotal: num(p.usd_total), usdCuota: num(p.usd_cuota) } : {}),
     })),
-    tarjetas: (f.tarjetas ?? []).map((t) => ({ id: t.id, banco: t.banco, ultimos4: t.ultimos4, miembroId: t.miembro_id })),
+    tarjetas: (f.tarjetas ?? []).map((t) => ({
+      id: t.id,
+      banco: t.banco,
+      ultimos4: t.ultimos4,
+      miembroId: t.miembro_id,
+      color: esColorTarjeta(t.color) ? t.color : null,
+    })),
     pagosMes: f.pagos_mes.map((p) => ({
       id: p.id,
       pagoFijoId: p.pago_fijo_id,

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 export type Tema = "auto" | "claro" | "oscuro";
 
 const CLAVE = "billetera-hogar:tema";
-const FONDO = { claro: "#f3f5f4", oscuro: "#080a09" };
+const FONDO = { claro: "#f7f4ed", oscuro: "#0c0a09" };
 
 /** Se ejecuta antes de pintar (en <head>) para que no parpadee el tema equivocado. */
 export const SCRIPT_TEMA = `try{var t=localStorage.getItem("${CLAVE}");if(t==="claro"||t==="oscuro")document.documentElement.dataset.tema=t}catch(e){}`;

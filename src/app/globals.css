@@ -2,37 +2,37 @@
 
 /*
  * Sistema de color, claro y con pocas piezas.
- * - fondo: gris apenas marcado (como Galicia), para que las tarjetas blancas se despeguen.
+ * - fondo: crema apenas marcado, para que las tarjetas blancas se despeguen.
  * - tarjeta: blanco. Todo lo que agrupa (número principal, listas, secciones) va en tarjeta.
  * - texto / tenue / sutil: tres niveles de tinta.
  * - relleno: gris muy claro para chips, campos y botones redondos.
- * - marca: verde de la casa (botones, pestaña activa, barras). marca-suave: su fondo claro
+ * - marca: salmón de la casa (botones, pestaña activa, barras). marca-suave: su fondo claro
  *   (íconos de categoría, botones secundarios, chip seleccionado).
  * - queda / pasaste: semáforo de montos.
  * No agregar colores fuera de estos tokens.
  */
 @theme {
-  --color-fondo: #f3f5f4;
-  --color-tarjeta: #ffffff;
-  --color-texto: #141917;
-  --color-tenue: #66706b;
-  --color-sutil: #a0a8a4;
-  --color-linea: #e8ebe9;
-  --color-relleno: #eff2f0;
-  --color-marca: #0f7a50;
-  --color-marca-suave: #e4f3eb;
+  --color-fondo: #f7f4ed;
+  --color-tarjeta: #fffdf9;
+  --color-texto: #1c1c1c;
+  --color-tenue: #6d685f;
+  --color-sutil: #aaa499;
+  --color-linea: #eceae4;
+  --color-relleno: #efebe2;
+  --color-marca: #ee6a52;
+  --color-marca-suave: #fce6df;
   --color-sobre-marca: #ffffff;
-  --color-queda: #0f7a50;
-  --color-pasaste: #d0402f;
-  --shadow-tarjeta: 0 1px 2px rgba(20, 30, 25, 0.04), 0 6px 20px rgba(20, 30, 25, 0.045);
-  --shadow-hoja: 0 -8px 32px rgba(20, 30, 25, 0.12);
+  --color-queda: #2f7d55;
+  --color-pasaste: #a61b29;
+  --shadow-tarjeta: 0 1px 2px rgba(40, 30, 20, 0.04), 0 6px 20px rgba(40, 30, 20, 0.045);
+  --shadow-hoja: 0 -8px 32px rgba(40, 30, 20, 0.12);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
 /*
  * Modo oscuro: los mismos tokens con otros valores, así ninguna pantalla cambia su código.
  * Sigue al celular salvo que se elija Claro u Oscuro en Ajustes (atributo data-tema en <html>).
- * El verde de marca se aclara y el texto sobre él pasa a oscuro para mantener el contraste.
+ * El salmón de marca se aclara y el texto sobre él pasa a oscuro para mantener el contraste.
  */
 :root {
   color-scheme: light;
@@ -40,18 +40,18 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
-    --color-fondo: #080a09;
-    --color-tarjeta: #121614;
-    --color-texto: #f1f4f2;
-    --color-tenue: #959f9a;
-    --color-sutil: #5a645f;
-    --color-linea: #222826;
-    --color-relleno: #1b201e;
-    --color-marca: #4cc993;
-    --color-marca-suave: #12281e;
-    --color-sobre-marca: #04190f;
-    --color-queda: #55d09b;
-    --color-pasaste: #ff8270;
+    --color-fondo: #0c0a09;
+    --color-tarjeta: #171412;
+    --color-texto: #f4f0ea;
+    --color-tenue: #a39b91;
+    --color-sutil: #615a52;
+    --color-linea: #2a2521;
+    --color-relleno: #211d1a;
+    --color-marca: #ff8a72;
+    --color-marca-suave: #2e1b16;
+    --color-sobre-marca: #2a0d06;
+    --color-queda: #5fcf98;
+    --color-pasaste: #ff4d5e;
     --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
     --shadow-hoja: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 -8px 40px rgba(0, 0, 0, 0.6);
     --brillo: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 55%);
@@ -59,18 +59,18 @@
   }
 }
 :root[data-tema="oscuro"] {
-  --color-fondo: #080a09;
-  --color-tarjeta: #121614;
-  --color-texto: #f1f4f2;
-  --color-tenue: #959f9a;
-  --color-sutil: #5a645f;
-  --color-linea: #222826;
-  --color-relleno: #1b201e;
-  --color-marca: #4cc993;
-  --color-marca-suave: #12281e;
-  --color-sobre-marca: #04190f;
-  --color-queda: #55d09b;
-  --color-pasaste: #ff8270;
+  --color-fondo: #0c0a09;
+  --color-tarjeta: #171412;
+  --color-texto: #f4f0ea;
+  --color-tenue: #a39b91;
+  --color-sutil: #615a52;
+  --color-linea: #2a2521;
+  --color-relleno: #211d1a;
+  --color-marca: #ff8a72;
+  --color-marca-suave: #2e1b16;
+  --color-sobre-marca: #2a0d06;
+  --color-queda: #5fcf98;
+  --color-pasaste: #ff4d5e;
   --shadow-tarjeta: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow-hoja: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 -8px 40px rgba(0, 0, 0, 0.6);
   --brillo: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 55%);
@@ -302,7 +302,7 @@ label:has(input[type="file"], input[type="checkbox"]):active {
 /*
  * Plásticos de Pagos → Tarjetas: tarjetas de crédito que flotan sobre la pantalla.
  * Son objetos, no pantalla: no cambian con el modo oscuro (salvo la sombra, más profunda).
- * Verde = el de la marca, más hondo; negro = grafito. Degradé con luz arriba a la izquierda,
+ * Cada tarjeta elige su color (como el plástico real); sin color, salmón y grafito alternados. Degradé con luz arriba a la izquierda,
  * una trama muy fina, un reflejo en diagonal y un filo de luz en el borde.
  */
 .plastico {
@@ -339,6 +339,45 @@ label:has(input[type="file"], input[type="checkbox"]):active {
   background:
     radial-gradient(120% 130% at 0% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%),
     linear-gradient(140deg, #3a413d 0%, #232825 55%, #121513 100%);
+}
+/* Colores que se eligen por tarjeta (COLORES_TARJETA en tipos.ts), para parecerse al plástico real. */
+.plastico-salmon {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 210, 190, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #f4826a 0%, #e0563e 55%, #a83a27 100%);
+}
+.plastico-celeste {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(200, 235, 255, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #4fb6ef 0%, #1e8fd6 55%, #0f5e9c 100%);
+}
+.plastico-azul {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(150, 180, 255, 0.28) 0%, transparent 55%),
+    linear-gradient(140deg, #2f5fd0 0%, #1d3f99 55%, #10245f 100%);
+}
+.plastico-rojo {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 170, 170, 0.28) 0%, transparent 55%),
+    linear-gradient(140deg, #e23b3b 0%, #b51f26 55%, #7a1018 100%);
+}
+.plastico-violeta {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(215, 180, 255, 0.30) 0%, transparent 55%),
+    linear-gradient(140deg, #8b4fd8 0%, #6a2fb8 55%, #421a78 100%);
+}
+.plastico-naranja {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 220, 170, 0.35) 0%, transparent 55%),
+    linear-gradient(140deg, #ff8a2b 0%, #ec6a0c 55%, #a84400 100%);
+}
+/* Blanca: letra oscura (todo lo de adentro usa currentColor) y filo gris para que no se pierda. */
+.plastico-blanco {
+  color: #1c1c1c;
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(255, 255, 255, 0.9) 0%, transparent 55%),
+    linear-gradient(140deg, #ffffff 0%, #f1efea 55%, #dcd8cf 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(0, 0, 0, 0.08), var(--sombra-plastico);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) .plastico {

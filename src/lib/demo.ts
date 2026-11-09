@@ -111,8 +111,8 @@ export function datosDemo(fechaHoy = hoy()): Datos {
     pagosMes,
     // Ficticias: banco y últimos 4 inventados.
     tarjetas: [
-      { id: "tj-galicia", banco: "Galicia", ultimos4: "1234", miembroId: "gaston" },
-      { id: "tj-bbva", banco: "BBVA", ultimos4: "5678", miembroId: "jime" },
+      { id: "tj-galicia", banco: "Galicia", ultimos4: "1234", miembroId: "gaston", color: "salmon" },
+      { id: "tj-bbva", banco: "BBVA", ultimos4: "5678", miembroId: "jime", color: "azul" },
     ],
   };
 }

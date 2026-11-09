@@ -119,3 +119,31 @@ describe("operaciones", () => {
     expect(desmarcado.pagosMes.find((p) => p.pagoFijoId === pf.id && p.mes === "2026-10-01")?.pagado).toBe(false);
   });
 });
+
+describe("color de tarjeta", () => {
+  const filas = (color?: string | null): Filas => ({
+    miembros: [{ id: "g", nombre: "Gastón", user_id: "u1" }],
+    categorias: [],
+    techos: [],
+    ingresos: [],
+    movimientos: [],
+    pagos_fijos: [],
+    pagos_mes: [],
+    tarjetas: [{ id: "t", banco: "Banco", ultimos4: "1234", miembro_id: "g", ...(color !== undefined ? { color } : {}) }],
+  });
+
+  it("lee el color de la base y descarta lo que no está en la lista", () => {
+    expect(filasADatos(filas("celeste"), "2026-10-01").tarjetas?.[0].color).toBe("celeste");
+    expect(filasADatos(filas("fucsia"), "2026-10-01").tarjetas?.[0].color).toBeNull();
+    expect(filasADatos(filas(), "2026-10-01").tarjetas?.[0].color).toBeNull();
+  });
+
+  it("se guarda al crear y se cambia al editar", () => {
+    const sinColor = op.armarTarjeta({ banco: "Banco", ultimos4: "1234", miembroId: "g" }, "t");
+    expect(sinColor).not.toHaveProperty("color");
+    const t = op.armarTarjeta({ banco: "Banco", ultimos4: "1234", miembroId: "g", color: "rojo" }, "t");
+    expect(t.color).toBe("rojo");
+    const d = op.actualizarTarjeta({ ...datosDemo("2026-10-01"), tarjetas: [t] }, "t", { color: "blanco" });
+    expect(d.tarjetas?.[0].color).toBe("blanco");
+  });
+});
