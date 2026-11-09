@@ -105,3 +105,4 @@ Leer antes de tocar lógica:
 3. Pasar los cálculos de `calculos.ts` a las vistas SQL (techo vigente incluido).
 4. Importador desde la planilla (CSV de la hoja "Base de datos": Fecha, Monto, Categoría, Detalle, Medio de pago, Pagó).
 5. Explorar actualización de saldo real (ver "Ideas" en README).
+6. Abrir la app a otros hogares: plan en `docs/plan-para-escalar.md` (registro, aislamiento de datos, N miembros).
