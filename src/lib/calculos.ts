@@ -454,45 +454,56 @@ export function paraGastarPorPersona(d: Datos, mes: Mes): ParaGastarPersona[] {
 }
 
 export interface EstadisticasPersona {
-  /** Lo que pagó en el mes sin contar pagos fijos ni plata que entra. */
+  /** Lo que pagó en el mes, pagos fijos incluidos (sin plata que entra). Igual que Categorías en su vista. */
   total: number;
   cantidad: number;
-  /** Categorías donde más gastó (sin pagos fijos), de mayor a menor. `parte` = monto / total. */
+  /** En qué categorías, pagos fijos incluidos, de mayor a menor. `parte` = monto / total. */
   categorias: { categoria: Categoria; monto: number; parte: number }[];
-  /** El gasto más grande del mes (sin pagos fijos). */
+  /** Su compra más grande del mes: sin pagos fijos, que siempre ganan y no dicen nada. */
   mayor?: Movimiento;
   /** Lo que pagó en pagos fijos marcados como pagados. */
   fijos: number;
+  /** Qué pagos fijos pagó en el mes, de mayor a menor: responde "¿quién paga qué?". */
+  pagosFijos: { concepto: string; monto: number }[];
   /** El mismo `total` del mes anterior, para comparar. */
   totalAnterior: number;
 }
 
 /**
- * En qué gasta cada uno. Separa los pagos fijos (alquiler, cuotas) porque siempre ganan
- * y no dicen nada: lo interesante es el gasto del día a día.
+ * En qué gasta cada uno, con el mismo criterio que Categorías en la vista de esa persona
+ * (pagos fijos incluidos), así las cifras de una categoría coinciden entre pantallas. Aparte,
+ * qué pagos fijos pagó y su compra más grande sin contar fijos.
  */
 export function estadisticasPersona(d: Datos, mes: Mes, miembroId: string, mesAnterior: Mes): EstadisticasPersona {
-  const deFijos = new Set(d.pagosMes.map((p) => p.movimientoId).filter(Boolean));
+  const pagoDe = new Map(d.pagosMes.filter((p) => p.movimientoId).map((p) => [p.movimientoId as string, p]));
   const suyos = (m: Mes) => movimientosDelMes(d, m).filter((mv) => mv.pagoPor === miembroId && mv.monto > 0);
   const delMes = suyos(mes);
-  const variables = delMes.filter((mv) => !deFijos.has(mv.id));
-  const total = suma(variables.map((mv) => mv.monto));
+  const total = suma(delMes.map((mv) => mv.monto));
   const porCategoria = new Map<string, number>();
-  for (const mv of variables) porCategoria.set(mv.categoriaId, (porCategoria.get(mv.categoriaId) ?? 0) + mv.monto);
+  for (const mv of delMes) porCategoria.set(mv.categoriaId, (porCategoria.get(mv.categoriaId) ?? 0) + mv.monto);
   const categorias = [...porCategoria]
     .flatMap(([id, monto]) => {
       const categoria = d.categorias.find((c) => c.id === id);
       return categoria ? [{ categoria, monto, parte: total > 0 ? monto / total : 0 }] : [];
     })
     .sort((a, b) => b.monto - a.monto);
+  const variables = delMes.filter((mv) => !pagoDe.has(mv.id));
   const mayor = variables.reduce<Movimiento | undefined>((a, mv) => (!a || mv.monto > a.monto ? mv : a), undefined);
+  const fijosDelMes = delMes.filter((mv) => pagoDe.has(mv.id));
+  const pagosFijos = fijosDelMes
+    .map((mv) => ({
+      concepto: d.pagosFijos.find((pf) => pf.id === pagoDe.get(mv.id)?.pagoFijoId)?.concepto ?? (mv.detalle || "Pago fijo"),
+      monto: mv.monto,
+    }))
+    .sort((a, b) => b.monto - a.monto);
   return {
     total,
-    cantidad: variables.length,
+    cantidad: delMes.length,
     categorias,
     mayor,
-    fijos: suma(delMes.filter((mv) => deFijos.has(mv.id)).map((mv) => mv.monto)),
-    totalAnterior: suma(suyos(mesAnterior).filter((mv) => !deFijos.has(mv.id)).map((mv) => mv.monto)),
+    fijos: suma(fijosDelMes.map((mv) => mv.monto)),
+    pagosFijos,
+    totalAnterior: suma(suyos(mesAnterior).map((mv) => mv.monto)),
   };
 }
 

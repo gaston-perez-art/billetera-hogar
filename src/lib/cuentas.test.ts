@@ -6,6 +6,7 @@ import {
   ahorro,
   alcanceDelMes,
   extrasDelMes,
+  estadisticasPersona,
   categoriasDelMes,
   esCompraEnCuotas,
   cuotaDelMes,
@@ -588,5 +589,20 @@ describe("plata extra (Uber, rendimientos)", () => {
     const ahorro = { id: "ah", nombre: "Ahorro", orden: 98, techo: 0 };
     const conRetiro = { ...d, categorias: [...d.categorias, ahorro], movimientos: [...d.movimientos, { id: "r", fecha: "2026-11-10", monto: -10_000, categoriaId: "ah", detalle: "", pagoPor: d.miembros[0].id, creadoEn: "" }] };
     expect(extrasDelMes(conRetiro, MES)).toHaveLength(0);
+  });
+});
+
+describe("Reparto y Categorías dicen lo mismo de cada uno", () => {
+  it("lo de cada categoría en Reparto es lo de Categorías en la vista de esa persona", () => {
+    const d = demo();
+    for (const m of d.miembros) {
+      const reparto = estadisticasPersona(d, MES, m.id, sumarMeses(MES, -1));
+      const categorias = gastosDe(d, MES, m.id);
+      cerca(reparto.total, categorias.gastado);
+      for (const c of reparto.categorias) {
+        cerca(c.monto, categorias.categorias.find((x) => x.categoria.id === c.categoria.id)!.monto);
+      }
+      cerca(reparto.fijos, reparto.pagosFijos.reduce((a, p) => a + p.monto, 0));
+    }
   });
 });

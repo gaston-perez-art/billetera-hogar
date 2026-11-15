@@ -201,7 +201,7 @@ function EnQueGasta({
         <div className="min-w-0 flex-1">
           <h2 className="text-[17px] font-bold leading-tight">En qué gasta {nombre}</h2>
           <p className="mt-0.5 text-[13px] text-tenue">
-            Este mes, sin contar pagos fijos
+            Este mes, pagos fijos incluidos
           </p>
         </div>
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-relleno text-texto" aria-hidden>
@@ -210,7 +210,7 @@ function EnQueGasta({
       </div>
 
       {e.cantidad === 0 ? (
-        <p className="m-auto px-4 text-center text-[15px] text-tenue">Todavía no cargó gastos este mes{e.fijos > 0 ? `, solo pagos fijos por ${pesos(e.fijos)}` : ""}.</p>
+        <p className="m-auto px-4 text-center text-[15px] text-tenue">Todavía no cargó gastos este mes.</p>
       ) : (
         <>
           <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-linea pt-4">
@@ -219,7 +219,7 @@ function EnQueGasta({
                 En {e.categorias.length === 1 ? "1 categoría" : `${e.categorias.length} categorías`}
               </span>
               <span className="mt-0.5 block text-[13px] text-tenue">
-                {[e.cantidad === 1 ? "1 compra" : `${e.cantidad} compras`, comparacion?.toLowerCase()].filter(Boolean).join(", ")}
+                {[e.cantidad === 1 ? "1 gasto" : `${e.cantidad} gastos`, comparacion?.toLowerCase()].filter(Boolean).join(", ")}
               </span>
             </span>
             <span className="text-[20px] font-bold tabular-nums">{pesos(e.total, { ceroComoGuion: false })}</span>
@@ -236,7 +236,7 @@ function EnQueGasta({
             {e.mayor && (
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0">
-                  <span className="block text-[13px] text-tenue">Su gasto más grande</span>
+                  <span className="block text-[13px] text-tenue">Su compra más grande, sin fijos</span>
                   <span className="mt-0.5 block truncate text-[15px] font-medium">
                     {e.mayor.detalle || "Sin detalle"}, el {fechaCorta(e.mayor.fecha).slice(0, 5)}
                   </span>
@@ -244,7 +244,11 @@ function EnQueGasta({
                 <span className="shrink-0 text-[15px] font-semibold tabular-nums">{pesos(e.mayor.monto)}</span>
               </div>
             )}
-            {e.fijos > 0 && <p className="mt-2 text-[13px] text-tenue">Además pagó {pesos(e.fijos)} de pagos fijos.</p>}
+            {e.pagosFijos.length > 0 && (
+              <p className="mt-2 text-[13px] leading-[18px] text-tenue">
+                Pagó {pesos(e.fijos)} de fijos: {listaDeFijos(e.pagosFijos.map((p) => p.concepto))}.
+              </p>
+            )}
           </div>
         </>
       )}
@@ -276,7 +280,7 @@ function ListaCategorias({ categorias }: { categorias: EstadisticasPersona["cate
           <li key={c.categoria.id} className="flex items-center gap-2 py-1">
             <IconoCategoria nombre={c.categoria.nombre} tamano="sm" />
             <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.categoria.nombre}</span>
-            <span className="w-9 shrink-0 text-right text-[13px] text-tenue tabular-nums">{Math.round(c.parte * 100)}%</span>
+            <span className="w-9 shrink-0 text-right text-[13px] text-tenue tabular-nums">{c.parte < 0.01 ? "<1%" : `${Math.round(c.parte * 100)}%`}</span>
             <span className="min-w-[4.5rem] shrink-0 text-right text-[15px] font-semibold tabular-nums">{pesos(c.monto)}</span>
           </li>
         ))}
@@ -440,4 +444,10 @@ function Ingresos({ entra, miembros }: { entra: number; miembros: RepartoMiembro
       )}
     </>
   );
+}
+
+/** "Alquiler, Luz y Escuela" o, si son muchos, "Alquiler, Luz y 3 más". */
+function listaDeFijos(conceptos: string[]): string {
+  if (conceptos.length <= 3) return conceptos.length === 1 ? conceptos[0] : `${conceptos.slice(0, -1).join(", ")} y ${conceptos[conceptos.length - 1]}`;
+  return `${conceptos.slice(0, 2).join(", ")} y ${conceptos.length - 2} más`;
 }
