@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   ahorro,
   alcanceDelMes,
+  extrasDelMes,
   categoriasDelMes,
   esCompraEnCuotas,
   cuotaDelMes,
@@ -549,5 +550,43 @@ describe("¿hasta cuándo alcanza?", () => {
 
   it("otro mes no proyecta", () => {
     expect(alcanceDelMes(demo(), sumarMeses(MES, -1), FECHA)).toBeNull();
+  });
+});
+
+describe("plata extra (Uber, rendimientos)", () => {
+  const conUber = (monto: number) => {
+    const d = demo();
+    const uber = { id: "uber", nombre: "Uber Driver", orden: 99, techo: 0 };
+    return {
+      ...d,
+      categorias: [...d.categorias, uber],
+      movimientos: [...d.movimientos, { id: "u1", fecha: "2026-11-10", monto: -monto, categoriaId: uber.id, detalle: "", pagoPor: d.miembros[0].id, creadoEn: "" }],
+    };
+  };
+
+  it("suma a lo que tienen y aparece aparte, por categoría", () => {
+    const d = conUber(27_900);
+    cerca(planMes(d, MES).saldo - planMes(demo(), MES).saldo, 27_900);
+    cerca(planMes(d, MES).extra, 27_900);
+    expect(extrasDelMes(d, MES).map((e) => e.categoria.nombre)).toContain("Uber Driver");
+  });
+
+  it("sueldos + extra − gastos = tienen hoy", () => {
+    const p = planMes(conUber(27_900), MES);
+    cerca(p.entra + p.extra - (p.gastado + p.extra), p.saldo);
+  });
+
+  it("no baja el ritmo de gasto: ya sube lo que les queda", () => {
+    const con = alcanceDelMes(conUber(500_000), MES, FECHA)!;
+    const sin = alcanceDelMes(demo(), MES, FECHA)!;
+    cerca(con.porDia, sin.porDia);
+    cerca(con.teQueda - sin.teQueda, 500_000);
+  });
+
+  it("el ahorro retirado no es plata extra", () => {
+    const d = demo();
+    const ahorro = { id: "ah", nombre: "Ahorro", orden: 98, techo: 0 };
+    const conRetiro = { ...d, categorias: [...d.categorias, ahorro], movimientos: [...d.movimientos, { id: "r", fecha: "2026-11-10", monto: -10_000, categoriaId: "ah", detalle: "", pagoPor: d.miembros[0].id, creadoEn: "" }] };
+    expect(extrasDelMes(conRetiro, MES)).toHaveLength(0);
   });
 });

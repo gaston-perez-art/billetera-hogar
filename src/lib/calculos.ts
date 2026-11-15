@@ -350,6 +350,23 @@ export interface PlanMes {
    * Es lo que se puede gastar sin tocar el ahorro. Negativo = ya se comieron parte del ahorro.
    */
   paraGastar: number;
+  /**
+   * Plata extra del mes: lo que entró en categorías donde entró más de lo que salió (Uber,
+   * rendimientos). Ya está restado de `gastado`; se muestra aparte para que se vea.
+   */
+  extra: number;
+}
+
+/**
+ * Categorías donde en el mes entró más plata de la que salió (Uber, rendimientos): plata extra,
+ * de mayor a menor. Un reintegro dentro de una categoría de gastos sigue restando ahí. Ahorro no
+ * cuenta: retirar del ahorro no es plata nueva.
+ */
+export function extrasDelMes(d: Datos, mes: Mes): { categoria: Categoria; monto: number }[] {
+  return categoriasDelMes(d, mes)
+    .filter((c) => Math.round(c.gastado) < 0 && c.categoria.nombre !== CATEGORIA_AHORRO)
+    .map((c) => ({ categoria: c.categoria, monto: -c.gastado }))
+    .sort((a, b) => b.monto - a.monto);
 }
 
 /** La cuenta de Inicio, de arriba hacia abajo: entra, menos gastado, menos pagos que faltan, menos ahorro. */
@@ -357,7 +374,8 @@ export function planMes(d: Datos, mes: Mes): PlanMes {
   const { entra, gastado, faltan, teQueda } = resumenMes(d, mes);
   const sobrante = entra - gastoPrevisto(d, mes);
   const paraCadaUno = Math.max(sobrante, 0);
-  return { entra, gastado, saldo: entra - gastado, faltan, sobrante, paraCadaUno, paraGastar: teQueda - paraCadaUno };
+  const extra = suma(extrasDelMes(d, mes).map((e) => e.monto));
+  return { entra, gastado, saldo: entra - gastado, faltan, sobrante, paraCadaUno, paraGastar: teQueda - paraCadaUno, extra };
 }
 
 /**
@@ -635,9 +653,9 @@ export interface Alcance {
   /** Lo que tienen hoy menos los pagos fijos que faltan (el "Te queda" de Inicio). */
   teQueda: number;
   /**
-   * Lo que vienen gastando por día en el mes, sin pagos fijos ni ahorro: lo que se gasta
-   * al día a día (súper, nafta, salidas…). Promedio desde el 1 hasta hoy inclusive, neto de la
-   * plata que entró sin ser ingreso (montos negativos: un préstamo, un reintegro).
+   * Lo que vienen gastando por día en el mes, sin pagos fijos, ahorro ni plata extra: lo que se
+   * gasta al día a día (súper, nafta, salidas…). Promedio desde el 1 hasta hoy inclusive, neto de
+   * lo que entró dentro de esas categorías (un préstamo para cancelar deudas, un reintegro).
    */
   porDia: number;
   /** Lo que pueden gastar por día, de hoy a fin de mes inclusive, para llegar: te queda ÷ días. */
@@ -664,10 +682,12 @@ export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | nu
   const pagos = pagosDelMes(d, mes);
   const deFijos = new Set(pagos.filter((p) => p.pagado && p.movimientoId).map((p) => p.movimientoId));
   const ahorroId = d.categorias.find((c) => c.nombre === CATEGORIA_AHORRO)?.id;
+  // La plata extra (Uber, rendimientos) ya suma en lo que les queda: no baja el ritmo de gasto.
+  const deExtra = new Set(extrasDelMes(d, mes).map((e) => e.categoria.id));
   const diaHoy = Number(fechaHoy.slice(8, 10));
   const alDia = suma(
     movimientosDelMes(d, mes)
-      .filter((m) => m.fecha <= fechaHoy && !deFijos.has(m.id) && m.categoriaId !== ahorroId)
+      .filter((m) => m.fecha <= fechaHoy && !deFijos.has(m.id) && m.categoriaId !== ahorroId && !deExtra.has(m.categoriaId))
       .map((m) => m.monto),
   );
   const porDia = Math.max(alDia, 0) / diaHoy;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda, Resumen } from "@/components/ui";
-import { CATEGORIA_AHORRO, categoriasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
+import { CATEGORIA_AHORRO, categoriasDelMes, extrasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
 import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import { usePersonaVista } from "@/lib/vista";
@@ -22,7 +22,10 @@ export default function Categorias() {
 
 function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
   const { datos, mes } = useBilletera();
-  const categorias = categoriasDelMes(datos, mes);
+  const extras = extrasDelMes(datos, mes);
+  const esExtra = new Set(extras.map((e) => e.categoria.id));
+  // La plata extra (Uber, rendimientos) va en su grupo: no es gasto.
+  const categorias = categoriasDelMes(datos, mes).filter((c) => !esExtra.has(c.categoria.id));
   const plan = planMes(datos, mes);
   const total = categorias.reduce((a, c) => ({ gastado: a.gastado + c.gastado, techo: a.techo + c.techo }), { gastado: 0, techo: 0 });
   // De mayor a menor gasto, como en la vista de cada uno; las que no tienen gastos, por techo.
@@ -46,7 +49,7 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
         </Resumen>
       </SaldoFijo>
       <p className="mx-5 mt-3 text-[13px] leading-5 text-tenue">
-        Lo libre de cada categoría ya descuenta los pagos fijos que faltan. Sumado da lo mismo que Inicio. Tocá una para ver sus gastos.
+        Lo libre de cada categoría ya descuenta los pagos fijos que faltan. Tocá una para ver sus gastos.
       </p>
 
       <main className="mt-6 space-y-6">
@@ -77,6 +80,21 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
             );
           })}
         </Grupo>
+
+        {extras.length > 0 && (
+          <Grupo titulo="Plata extra" detalle={`Entró ${pesos(plan.extra)}`}>
+            {extras.map((e) => (
+              <FilaLista
+                key={e.categoria.id}
+                onClick={() => alAbrir(e.categoria.id)}
+                icono={<IconoCategoria nombre={e.categoria.nombre} />}
+                titulo={e.categoria.nombre}
+                bajada="Entró este mes"
+                valor={<MontoMovimiento monto={-e.monto} />}
+              />
+            ))}
+          </Grupo>
+        )}
 
         {vacias.length > 0 && (
           <p className="px-5 text-[13px] leading-5 text-tenue">
@@ -162,10 +180,11 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
   const total = gastos.reduce((a, m) => a + m.monto, 0);
   const fijos = pagosDelMes(datos, mes).filter((p) => !p.pagado && p.pagoFijo.categoriaId === categoriaId);
   const miembro = (id: string) => datos.miembros.find((m) => m.id === id)?.nombre ?? "";
-  const estado = c && estadoCategoria(c.gastado, c.techo, c.pendiente);
+  const esExtra = !!c && Math.round(c.gastado) < 0 && c.categoria.nombre !== CATEGORIA_AHORRO;
+  const estado = c && (esExtra ? { texto: "Plata extra del mes", alerta: false } : estadoCategoria(c.gastado, c.techo, c.pendiente));
 
   return (
-    <Hoja abierta={categoriaId !== null} alCerrar={alCerrar} titulo={c ? `Gastos de ${c.categoria.nombre}` : "Gastos de la categoría"}>
+    <Hoja abierta={categoriaId !== null} alCerrar={alCerrar} titulo={c ? (esExtra ? c.categoria.nombre : `Gastos de ${c.categoria.nombre}`) : "Gastos de la categoría"}>
       {c && (
         <>
           <div className="flex items-center gap-3">
@@ -181,7 +200,12 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
           <div className="mt-5 rounded-2xl bg-relleno px-4 py-3 text-center">
             <Cifras
               items={
-                soloYo
+                esExtra && !soloYo
+                  ? [
+                      { etiqueta: "Entró", valor: <span className="text-queda">{pesos(-c.gastado)}</span> },
+                      { etiqueta: "Movimientos", valor: gastos.length },
+                    ]
+                  : soloYo
                   ? [
                       { etiqueta: persona?.vos ? "Gastaste" : "Gastó", valor: pesos(total, { ceroComoGuion: false }) },
                       { etiqueta: "Gastos", valor: gastos.length },

@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Boton, CampoMonto, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
-import { hoy, pesos } from "@/lib/formato";
+import { OPERADORES, operar, type Operador } from "@/lib/calculadora";
+import { hoy, montoATexto, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
 type Paso = "monto" | "categoria" | "detalle";
@@ -20,6 +21,22 @@ export default function Cargar() {
   const [paso, setPasoState] = useState<Paso>("monto");
   const [direccion, setDireccion] = useState<"adelante" | "atras">("adelante");
   const [monto, setMonto] = useState(0);
+  // Calculadora: lo acumulado y la operación pendiente. Sin tocarla, cargar es igual que siempre.
+  const [cuenta, setCuenta] = useState<{ valor: number; op: Operador } | null>(null);
+  const [reinicio, setReinicio] = useState(0);
+  const resultado = cuenta ? (monto > 0 ? operar(cuenta.valor, cuenta.op, monto) : cuenta.valor) : monto;
+
+  function tocarOperador(op: Operador) {
+    if (!cuenta && monto <= 0) return;
+    setCuenta({ valor: resultado, op });
+    setMonto(0);
+    setReinicio((r) => r + 1);
+  }
+  function borrarCuenta() {
+    setCuenta(null);
+    setMonto(0);
+    setReinicio((r) => r + 1);
+  }
   const [creando, setCreando] = useState(false);
   const [nombreNueva, setNombreNueva] = useState("");
   const contenedor = useRef<HTMLElement>(null);
@@ -96,20 +113,60 @@ export default function Cargar() {
           className="flex flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
-            if (monto > 0) setPaso("categoria");
+            if (resultado <= 0) return;
+            if (cuenta) {
+              // Se guarda el resultado de la cuenta; si volvés, el campo lo muestra.
+              setMonto(resultado);
+              setCuenta(null);
+              setReinicio((r) => r + 1);
+            }
+            setPaso("categoria");
           }}
         >
-          <div className="mt-12">
-            <CampoMonto valor={monto} onCambio={setMonto} autoFocus entra={entraPlata} />
+          <p className="mt-6 flex h-6 items-center justify-center gap-2 text-[17px] text-tenue tabular-nums" aria-live="polite">
+            {cuenta && (
+              <>
+                <span>
+                  {montoATexto(cuenta.valor) || "0"} {cuenta.op}
+                </span>
+                <button type="button" onClick={borrarCuenta} className="text-[14px] font-semibold text-marca">
+                  Borrar
+                </button>
+              </>
+            )}
+          </p>
+          <div className="mt-3">
+            <CampoMonto valor={monto} onCambio={setMonto} autoFocus entra={entraPlata} reinicio={reinicio} />
           </div>
-          <label className="mt-10 flex items-center justify-between gap-4 rounded-3xl superficie px-4 py-3.5 shadow-tarjeta ring-1 ring-linea">
+          <p className="mt-3 h-6 text-center text-[17px] font-semibold tabular-nums" aria-live="polite">
+            {cuenta && monto > 0 && <>= {pesos(resultado, { ceroComoGuion: false })}</>}
+          </p>
+          <div className="mt-3 flex justify-center gap-3" role="group" aria-label="Calculadora">
+            {OPERADORES.map((op) => (
+              <button
+                key={op}
+                type="button"
+                // Sin perder el foco del monto: el teclado no se cierra.
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => tocarOperador(op)}
+                aria-label={{ "+": "Sumar", "−": "Restar", "×": "Multiplicar", "÷": "Dividir" }[op]}
+                aria-pressed={cuenta?.op === op && monto === 0}
+                className={`grid size-12 place-items-center rounded-full text-[22px] font-medium ring-1 ring-linea superficie shadow-tarjeta ${
+                  cuenta?.op === op && monto === 0 ? "text-marca ring-marca" : ""
+                }`}
+              >
+                {op}
+              </button>
+            ))}
+          </div>
+          <label className="mt-8 flex items-center justify-between gap-4 rounded-3xl superficie px-4 py-3.5 shadow-tarjeta ring-1 ring-linea">
             <span>
               <span className="block text-[15px] font-medium">Es plata que entra</span>
               <span className="mt-0.5 block text-[13px] text-tenue">Por ejemplo, un préstamo para cancelar deudas.</span>
             </span>
             <Interruptor activo={entraPlata} onCambio={setEntraPlata} />
           </label>
-          <Boton type="submit" disabled={monto <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
+          <Boton type="submit" disabled={resultado <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
             Continuar
           </Boton>
         </form>

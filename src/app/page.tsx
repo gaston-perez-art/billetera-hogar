@@ -397,7 +397,9 @@ function CuentaDelMes({
   personas: ParaGastarPersona[];
   alcance: Alcance | null;
 }) {
-  const { entra, gastado, saldo, faltan, sobrante } = plan;
+  const { entra, gastado, saldo, faltan, sobrante, extra } = plan;
+  // Lo que salió en gastos, sin la plata extra (que `gastado` ya trae restada).
+  const gastos = gastado + extra;
   const teQueda = saldo - faltan;
   const [abierta, setAbierta] = useState(false);
   useEffect(() => {
@@ -419,7 +421,7 @@ function CuentaDelMes({
 
   const rojo = (n: number) => (Math.round(n) < 0 ? "text-pasaste" : "");
   const partes = [
-    { etiqueta: "Ya gastaron", monto: gastado, color: "bg-tenue" },
+    { etiqueta: "Ya gastaron", monto: gastos, color: "bg-tenue" },
     { etiqueta: "Pagos que faltan", monto: faltan, color: "bg-sutil" },
     { etiqueta: "Te queda", monto: Math.max(teQueda, 0), color: "bg-marca" },
   ];
@@ -446,7 +448,7 @@ function CuentaDelMes({
         {color && <span className={`size-2.5 rounded-full ${color}`} />}
         {etiqueta}
       </dt>
-      <dd className={`${fuerte ? "font-bold" : ""} ${resta ? "" : rojo(monto)}`}>
+      <dd className={`${fuerte ? "font-bold" : ""} ${resta ? (Math.round(monto) < 0 ? "text-queda" : "") : rojo(monto)}`}>
         {resta ? (Math.round(monto) < 0 ? "+ " : "- ") : ""}
         {pesos(resta ? Math.abs(monto) : monto, { ceroComoGuion: false })}
       </dd>
@@ -538,8 +540,15 @@ function CuentaDelMes({
                     ))}
                 </div>
                 <dl className="mt-4 space-y-2.5 text-[15px] tabular-nums">
-                  <Renglon etiqueta="Entró este mes" monto={entra} />
-                  <Renglon etiqueta="Ya gastaron" monto={gastado} color="bg-tenue" resta />
+                  {Math.round(extra) > 0 ? (
+                    <>
+                      <Renglon etiqueta="Sueldos" monto={entra} />
+                      <Renglon etiqueta="Plata extra" monto={-extra} resta />
+                    </>
+                  ) : (
+                    <Renglon etiqueta="Entró este mes" monto={entra} />
+                  )}
+                  <Renglon etiqueta="Ya gastaron" monto={gastos} color="bg-tenue" resta />
                   <Renglon etiqueta="Tienen hoy" monto={saldo} fuerte />
                   <Renglon etiqueta="Pagos que faltan" monto={faltan} color="bg-sutil" resta />
                   <Renglon etiqueta="Te queda este mes" monto={teQueda} color="bg-marca" fuerte />

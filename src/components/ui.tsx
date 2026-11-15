@@ -635,9 +635,12 @@ export function CampoMonto({
   entra = false,
   moneda = "$",
   chico = false,
+  reinicio = 0,
 }: {
   valor: number;
   onCambio: (v: number) => void;
+  /** Al cambiar, el campo vuelve a mostrar `valor` (la calculadora de Cargar lo vacía entre números). */
+  reinicio?: number;
   autoFocus?: boolean;
   etiqueta?: string;
   onEnter?: () => void;
@@ -649,6 +652,11 @@ export function CampoMonto({
   chico?: boolean;
 }) {
   const [texto, setTexto] = useState(() => montoATexto(valor));
+  const [ultimoReinicio, setUltimoReinicio] = useState(reinicio);
+  if (reinicio !== ultimoReinicio) {
+    setUltimoReinicio(reinicio);
+    setTexto(montoATexto(valor));
+  }
   const color = entra && valor > 0 ? "text-queda" : "";
   const signo = chico ? "text-[20px]" : "text-[30px]";
   return (
