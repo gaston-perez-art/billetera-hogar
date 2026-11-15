@@ -142,12 +142,16 @@ describe("en qué gasta cada uno", () => {
     );
     d.pagosMes.push({ id: "p", pagoFijoId: "alq", mes: MES, monto: 20, pagado: true, movimientoId: "f" });
     const e = estadisticasPersona(d, MES, "g", "2026-02-01");
-    expect(e.total).toBe(100);
-    expect(e.cantidad).toBe(3);
-    expect(e.categorias.map((c) => [c.categoria.id, c.monto])).toEqual([["super", 70], ["chicos", 30]]);
-    expect(e.categorias[0].parte).toBeCloseTo(0.7);
+    // Pagos fijos incluidos, como Categorías en su vista.
+    expect(e.total).toBe(120);
+    expect(e.cantidad).toBe(4);
+    expect(e.categorias.map((c) => [c.categoria.id, c.monto])).toEqual([["super", 90], ["chicos", 30]]);
+    expect(e.categorias[0].parte).toBeCloseTo(0.75);
+    // La compra más grande no cuenta fijos.
     expect(e.mayor?.id).toBe("a");
     expect(e.fijos).toBe(20);
+    expect(e.pagosFijos).toHaveLength(1);
+    expect(e.pagosFijos[0]).toEqual({ concepto: "Alquiler", monto: 20 });
     expect(e.totalAnterior).toBe(50);
   });
 

@@ -29,7 +29,6 @@ export function Encabezado({ titulo, conMes = true, conVista = false }: { titulo
       <div className="flex min-h-12 items-center justify-between gap-3">
         {titulo ? <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">{titulo}</h1> : <Saludo />}
         <div className="flex items-center gap-2">
-          {titulo && <CambiarUsuario />}
           <BotonOjito />
           <Link href="/ajustes" aria-label="Ajustes" className={BOTON_REDONDO}>
             <Icono trazo={ICONOS.ajustes} className="size-5" />
@@ -89,16 +88,6 @@ function Saludo() {
   );
 }
 
-function CambiarUsuario() {
-  const { actual, cambiar, etiqueta } = useUsuarios();
-  if (!actual) return null;
-  return (
-    <button onClick={cambiar} aria-label={etiqueta} className="rounded-full">
-      <Avatar id={actual.id} nombre={actual.nombre} tamano={40} />
-    </button>
-  );
-}
-
 /** Chip con el mes y flechas. Tocar el nombre vuelve al mes actual. */
 function SelectorMes() {
   const { mes, setMes } = useBilletera();
@@ -145,14 +134,13 @@ function SelectorVista() {
   }, [abierto]);
 
   if (datos.miembros.length === 0) return null;
-  const opciones: { valor: string; nombre: string; icono: React.ReactNode }[] = [
-    { valor: "pareja", nombre: "La pareja", icono: <IconoPareja /> },
-    ...datos.miembros.map((m) => ({
-      valor: m.id,
-      nombre: m.id === usuarioId ? `${m.nombre} (vos)` : m.nombre,
-      icono: <Avatar id={m.id} nombre={m.nombre} tamano={28} />,
-    })),
+  // Es un filtro, no una persona: va con palabras. Quien usa la app es "Vos" (su foto ya está en
+  // el saludo de Inicio; repetirla al lado confundía).
+  const opciones: { valor: string; nombre: string }[] = [
+    { valor: "pareja", nombre: "Pareja" },
+    ...datos.miembros.map((m) => ({ valor: m.id, nombre: m.id === usuarioId ? "Vos" : m.nombre })),
   ];
+  const etiqueta = opciones.find((o) => o.valor === (persona ?? "pareja"))?.nombre ?? "Pareja";
   const elegir = (v: string) => {
     setVista(v);
     setAbierto(false);
@@ -166,14 +154,13 @@ function SelectorVista() {
         aria-expanded={abierto}
         aria-label={`Viendo lo de ${elegida ? elegida.nombre : "la pareja"}. Tocá para cambiar.`}
         {...alTocar(() => setAbierto((a) => !a))}
-        className="flex h-11 items-center gap-2 rounded-full superficie pl-1 pr-3 shadow-tarjeta ring-1 ring-linea"
+        className="flex h-11 items-center gap-1.5 rounded-full superficie pl-4 pr-3 shadow-tarjeta ring-1 ring-linea"
       >
-        {elegida ? <Avatar id={elegida.id} nombre={elegida.nombre} tamano={36} /> : <IconoPareja />}
-        <span className="max-w-24 truncate text-[14px] font-semibold">{elegida ? elegida.nombre : "Pareja"}</span>
+        <span className="max-w-24 truncate text-[15px] font-semibold">{etiqueta}</span>
         <Icono trazo={ICONOS.abajo} className={`size-4 text-tenue transition-transform ${abierto ? "rotate-180" : ""}`} />
       </button>
       {abierto && (
-        <ul role="listbox" aria-label="Ver lo de" className="absolute right-0 top-full z-30 mt-2 w-56 rounded-2xl superficie p-1.5 shadow-tarjeta ring-1 ring-linea">
+        <ul role="listbox" aria-label="Ver lo de" className="absolute right-0 top-full z-30 mt-2 w-44 rounded-2xl superficie p-1.5 shadow-tarjeta ring-1 ring-linea">
           {opciones.map((o) => {
             const activa = (persona ?? "pareja") === o.valor;
             return (
@@ -182,9 +169,8 @@ function SelectorVista() {
                   role="option"
                   aria-selected={activa}
                   {...alTocar(() => elegir(o.valor))}
-                  className="fila flex min-h-12 w-full items-center gap-3 rounded-xl px-2.5 text-left"
+                  className="fila flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left"
                 >
-                  {o.icono}
                   <span className="flex-1 truncate text-[15px] font-medium">{o.nombre}</span>
                   {activa && <Icono trazo={ICONOS.check} className="size-5 text-marca" />}
                 </button>
@@ -194,14 +180,6 @@ function SelectorVista() {
         </ul>
       )}
     </div>
-  );
-}
-
-function IconoPareja() {
-  return (
-    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-marca text-sobre-marca">
-      <Icono trazo={ICONOS.reparto} className="size-[18px]" />
-    </span>
   );
 }
 
