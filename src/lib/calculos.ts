@@ -636,9 +636,14 @@ export interface Alcance {
   teQueda: number;
   /**
    * Lo que vienen gastando por día en el mes, sin pagos fijos ni ahorro: lo que se gasta
-   * al día a día (súper, nafta, salidas…). Promedio desde el 1 hasta hoy inclusive.
+   * al día a día (súper, nafta, salidas…). Promedio desde el 1 hasta hoy inclusive, neto de la
+   * plata que entró sin ser ingreso (montos negativos: un préstamo, un reintegro).
    */
   porDia: number;
+  /** Lo que pueden gastar por día, de hoy a fin de mes inclusive, para llegar: te queda ÷ días. */
+  paraLlegar: number;
+  /** Días que faltan, contando hoy. */
+  dias: number;
   /**
    * Primer día en que, a este ritmo y con los pagos fijos en su día, la plata no alcanza.
    * `null` = alcanza hasta fin de mes.
@@ -662,10 +667,10 @@ export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | nu
   const diaHoy = Number(fechaHoy.slice(8, 10));
   const alDia = suma(
     movimientosDelMes(d, mes)
-      .filter((m) => m.fecha <= fechaHoy && m.monto > 0 && !deFijos.has(m.id) && m.categoriaId !== ahorroId)
+      .filter((m) => m.fecha <= fechaHoy && !deFijos.has(m.id) && m.categoriaId !== ahorroId)
       .map((m) => m.monto),
   );
-  const porDia = alDia / diaHoy;
+  const porDia = Math.max(alDia, 0) / diaHoy;
   const pendientes = pagos.filter((p) => !p.pagado);
   const ultimo = diasDelMes(mes);
 
@@ -676,5 +681,7 @@ export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | nu
     saldo -= porDia + suma(pendientes.filter((p) => Math.min(p.pagoFijo.dia, ultimo) === dia).map((p) => p.monto));
     if (!seAcaba && Math.round(saldo) < 0) seAcaba = fechaEnMes(mes, dia);
   }
-  return { teQueda: entra - gastado - faltan, porDia, seAcaba, finDeMes: saldo };
+  const teQueda = entra - gastado - faltan;
+  const dias = ultimo - diaHoy + 1;
+  return { teQueda, porDia, paraLlegar: Math.max(teQueda, 0) / dias, dias, seAcaba, finDeMes: saldo };
 }
