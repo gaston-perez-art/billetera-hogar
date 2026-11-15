@@ -100,7 +100,7 @@ export default function Cargar() {
   }
 
   return (
-    <main ref={contenedor} className="fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto overflow-x-hidden bg-fondo px-5 pt-[env(safe-area-inset-top)]">
+    <main ref={contenedor} className="pantalla-fija fixed inset-0 z-30 mx-auto flex max-w-md flex-col overflow-y-auto overflow-x-hidden bg-fondo px-5 pt-[env(safe-area-inset-top)]">
       <div className="mt-2 flex h-14 items-center justify-between">
         <button onClick={atras} className="grid size-10 place-items-center rounded-full active:bg-relleno" aria-label="Atrás">
           <Icono trazo={ICONOS.atras} className="size-[22px]" />
@@ -152,36 +152,7 @@ export default function Cargar() {
             <Interruptor activo={entraPlata} onCambio={setEntraPlata} />
           </label>
 
-          <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Teclado">
-            {(["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "−", ",", "0", "⌫", "+"] as Tecla[]).map((tecla) => {
-              const operador = (OPERADORES as string[]).includes(tecla);
-              const borrar = tecla === "⌫";
-              return (
-                <button
-                  key={tecla}
-                  type="button"
-                  onClick={() => tocar(tecla)}
-                  onPointerDown={
-                    borrar
-                      ? () => {
-                          borrandoTodo.current = setTimeout(() => setTerminos([]), 600);
-                        }
-                      : undefined
-                  }
-                  onPointerUp={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
-                  onPointerLeave={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
-                  aria-label={{ "÷": "Dividir", "×": "Multiplicar", "−": "Restar", "+": "Sumar", "⌫": "Borrar", ",": "Coma" }[tecla as string] ?? tecla}
-                  className={`grid h-14 select-none place-items-center rounded-2xl tabular-nums ${
-                    operador ? "bg-relleno text-[28px] font-medium text-marca" : borrar ? "text-[24px] text-tenue active:bg-relleno" : "text-[26px] font-medium active:bg-relleno"
-                  }`}
-                >
-                  {borrar ? <Icono trazo={ICONOS.borrarTecla} className="size-7" /> : tecla}
-                </button>
-              );
-            })}
-          </div>
-
-          <Boton type="submit" disabled={resultado <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-4">
+          <Boton type="submit" disabled={resultado <= 0} className="mb-4 mt-4">
             Continuar
           </Boton>
         </form>
@@ -306,6 +277,43 @@ export default function Cargar() {
           </Boton>
         </form>
       </Hoja>
+      {/* Teclado propio, al pie: sube como una hoja, como el del celular. */}
+      {paso === "monto" && (
+        <div className="hoja-entra -mx-5 shrink-0 rounded-t-[28px] bg-relleno px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-hoja">
+          <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Teclado">
+            {(["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "−", ",", "0", "⌫", "+"] as Tecla[]).map((tecla) => {
+              const operador = (OPERADORES as string[]).includes(tecla);
+              const borrar = tecla === "⌫";
+              return (
+                <button
+                  key={tecla}
+                  type="button"
+                  onClick={() => tocar(tecla)}
+                  onPointerDown={
+                    borrar
+                      ? () => {
+                          borrandoTodo.current = setTimeout(() => setTerminos([]), 600);
+                        }
+                      : undefined
+                  }
+                  onPointerUp={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
+                  onPointerLeave={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
+                  aria-label={{ "÷": "Dividir", "×": "Multiplicar", "−": "Restar", "+": "Sumar", "⌫": "Borrar", ",": "Coma" }[tecla as string] ?? tecla}
+                  className={`grid h-[52px] select-none place-items-center rounded-[12px] tabular-nums ${
+                    operador
+                      ? "bg-marca-suave text-[28px] font-medium text-marca active:bg-linea"
+                      : borrar || tecla === ","
+                        ? "text-[26px] text-texto active:bg-linea"
+                        : "tecla text-[26px] font-medium"
+                  }`}
+                >
+                  {borrar ? <Icono trazo={ICONOS.borrarTecla} className="size-7" /> : tecla}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
