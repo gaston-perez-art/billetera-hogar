@@ -7,9 +7,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
-import { Boton, CampoMonto, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
-import { OPERADORES, operar, type Operador } from "@/lib/calculadora";
-import { hoy, montoATexto, pesos } from "@/lib/formato";
+import { Boton, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
+import { desdeMonto, evaluar, mostrar, OPERADORES, teclear, tieneOperador, type Tecla } from "@/lib/calculadora";
+import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 
 type Paso = "monto" | "categoria" | "detalle";
@@ -21,22 +21,37 @@ export default function Cargar() {
   const [paso, setPasoState] = useState<Paso>("monto");
   const [direccion, setDireccion] = useState<"adelante" | "atras">("adelante");
   const [monto, setMonto] = useState(0);
-  // Calculadora: lo acumulado y la operación pendiente. Sin tocarla, cargar es igual que siempre.
-  const [cuenta, setCuenta] = useState<{ valor: number; op: Operador } | null>(null);
-  const [reinicio, setReinicio] = useState(0);
-  const resultado = cuenta ? (monto > 0 ? operar(cuenta.valor, cuenta.op, monto) : cuenta.valor) : monto;
+  // Teclado propio con cuentas: los términos de la cuenta ("29000", "+", "14000").
+  const [terminos, setTerminos] = useState<string[]>([]);
+  const resultado = evaluar(terminos);
+  const conCuenta = tieneOperador(terminos);
+  const tocar = (tecla: Tecla) => setTerminos((t) => teclear(t, tecla));
+  // Mantener apretado borrar vacía todo.
+  const borrandoTodo = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function tocarOperador(op: Operador) {
-    if (!cuenta && monto <= 0) return;
-    setCuenta({ valor: resultado, op });
-    setMonto(0);
-    setReinicio((r) => r + 1);
+  function continuarMonto() {
+    if (resultado <= 0) return;
+    setMonto(resultado);
+    // Si volvés a este paso, se ve el resultado y no la cuenta.
+    setTerminos(desdeMonto(resultado));
+    setPaso("categoria");
   }
-  function borrarCuenta() {
-    setCuenta(null);
-    setMonto(0);
-    setReinicio((r) => r + 1);
-  }
+
+  // Con teclado físico (computadora) también se escribe y se calcula.
+  useEffect(() => {
+    if (paso !== "monto") return;
+    const teclas: Record<string, Tecla> = { ",": ",", ".": ",", Backspace: "⌫", "+": "+", "-": "−", "*": "×", x: "×", "/": "÷" };
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tecla = /^[0-9]$/.test(e.key) ? (e.key as Tecla) : teclas[e.key];
+      if (tecla) {
+        e.preventDefault();
+        setTerminos((t) => teclear(t, tecla));
+      }
+    };
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [paso]);
   const [creando, setCreando] = useState(false);
   const [nombreNueva, setNombreNueva] = useState("");
   const contenedor = useRef<HTMLElement>(null);
@@ -113,60 +128,60 @@ export default function Cargar() {
           className="flex flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
-            if (resultado <= 0) return;
-            if (cuenta) {
-              // Se guarda el resultado de la cuenta; si volvés, el campo lo muestra.
-              setMonto(resultado);
-              setCuenta(null);
-              setReinicio((r) => r + 1);
-            }
-            setPaso("categoria");
+            continuarMonto();
           }}
         >
-          <p className="mt-6 flex h-6 items-center justify-center gap-2 text-[17px] text-tenue tabular-nums" aria-live="polite">
-            {cuenta && (
-              <>
-                <span>
-                  {montoATexto(cuenta.valor) || "0"} {cuenta.op}
-                </span>
-                <button type="button" onClick={borrarCuenta} className="text-[14px] font-semibold text-marca">
-                  Borrar
-                </button>
-              </>
-            )}
-          </p>
-          <div className="mt-3">
-            <CampoMonto valor={monto} onCambio={setMonto} autoFocus entra={entraPlata} reinicio={reinicio} />
+          <div className="flex min-h-36 flex-1 flex-col items-center justify-center text-center" aria-live="polite">
+            <p
+              className={`max-w-full break-words font-semibold leading-[1.05] tracking-[-0.035em] tabular-nums ${tamanoCuenta(mostrar(terminos))} ${entraPlata && resultado > 0 ? "text-queda" : ""}`}
+            >
+              {entraPlata && <span className="mr-1 align-[0.35em] text-[0.55em] font-medium tracking-normal">+</span>}
+              <span className={`mr-1 align-[0.35em] text-[0.55em] font-medium tracking-normal ${entraPlata && resultado > 0 ? "" : "text-tenue"}`}>$</span>
+              {terminos.length ? mostrar(terminos) : <span className="text-sutil">0</span>}
+            </p>
+            <p className="mt-2 h-7 text-[20px] font-semibold tabular-nums text-tenue">
+              {conCuenta && <>= {pesos(resultado, { ceroComoGuion: false })}</>}
+            </p>
           </div>
-          <p className="mt-3 h-6 text-center text-[17px] font-semibold tabular-nums" aria-live="polite">
-            {cuenta && monto > 0 && <>= {pesos(resultado, { ceroComoGuion: false })}</>}
-          </p>
-          <div className="mt-3 flex justify-center gap-3" role="group" aria-label="Calculadora">
-            {OPERADORES.map((op) => (
-              <button
-                key={op}
-                type="button"
-                // Sin perder el foco del monto: el teclado no se cierra.
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => tocarOperador(op)}
-                aria-label={{ "+": "Sumar", "−": "Restar", "×": "Multiplicar", "÷": "Dividir" }[op]}
-                aria-pressed={cuenta?.op === op && monto === 0}
-                className={`grid size-12 place-items-center rounded-full text-[22px] font-medium ring-1 ring-linea superficie shadow-tarjeta ${
-                  cuenta?.op === op && monto === 0 ? "text-marca ring-marca" : ""
-                }`}
-              >
-                {op}
-              </button>
-            ))}
-          </div>
-          <label className="mt-8 flex items-center justify-between gap-4 rounded-3xl superficie px-4 py-3.5 shadow-tarjeta ring-1 ring-linea">
+
+          <label className="flex items-center justify-between gap-4 rounded-3xl superficie px-4 py-3 shadow-tarjeta ring-1 ring-linea">
             <span>
               <span className="block text-[15px] font-medium">Es plata que entra</span>
-              <span className="mt-0.5 block text-[13px] text-tenue">Por ejemplo, un préstamo para cancelar deudas.</span>
+              <span className="mt-0.5 block text-[13px] text-tenue">Lo que ganaste con Uber, un préstamo.</span>
             </span>
             <Interruptor activo={entraPlata} onCambio={setEntraPlata} />
           </label>
-          <Boton type="submit" disabled={resultado <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-auto">
+
+          <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Teclado">
+            {(["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "−", ",", "0", "⌫", "+"] as Tecla[]).map((tecla) => {
+              const operador = (OPERADORES as string[]).includes(tecla);
+              const borrar = tecla === "⌫";
+              return (
+                <button
+                  key={tecla}
+                  type="button"
+                  onClick={() => tocar(tecla)}
+                  onPointerDown={
+                    borrar
+                      ? () => {
+                          borrandoTodo.current = setTimeout(() => setTerminos([]), 600);
+                        }
+                      : undefined
+                  }
+                  onPointerUp={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
+                  onPointerLeave={borrar ? () => borrandoTodo.current && clearTimeout(borrandoTodo.current) : undefined}
+                  aria-label={{ "÷": "Dividir", "×": "Multiplicar", "−": "Restar", "+": "Sumar", "⌫": "Borrar", ",": "Coma" }[tecla as string] ?? tecla}
+                  className={`grid h-14 select-none place-items-center rounded-2xl tabular-nums ${
+                    operador ? "bg-relleno text-[28px] font-medium text-marca" : borrar ? "text-[24px] text-tenue active:bg-relleno" : "text-[26px] font-medium active:bg-relleno"
+                  }`}
+                >
+                  {borrar ? <Icono trazo={ICONOS.borrarTecla} className="size-7" /> : tecla}
+                </button>
+              );
+            })}
+          </div>
+
+          <Boton type="submit" disabled={resultado <= 0} className="mb-[max(env(safe-area-inset-bottom),1.25rem)] mt-4">
             Continuar
           </Boton>
         </form>
@@ -293,4 +308,12 @@ export default function Cargar() {
       </Hoja>
     </main>
   );
+}
+
+/** Tamaño de la cuenta según lo larga que es: un monto solo se ve grande, una cuenta larga achica. */
+function tamanoCuenta(texto: string): string {
+  if (texto.length <= 9) return "text-[52px]";
+  if (texto.length <= 14) return "text-[42px]";
+  if (texto.length <= 20) return "text-[34px]";
+  return "text-[28px]";
 }
