@@ -5,7 +5,7 @@
 // (ver CLAUDE.md: los cálculos viven en SQL, no duplicados en el frontend).
 // Los tests de calculos.test.ts sirven como casos para validar esas vistas.
 
-import { fechaEnMes, mesDe, sumarMeses } from "./formato";
+import { diasDelMes, fechaEnMes, mesDe, sumarMeses } from "./formato";
 import type { Categoria, Datos, Fecha, Ingreso, Mes, Movimiento, PagoFijo } from "./tipos";
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -629,4 +629,52 @@ export function deudas(d: Datos, mes: Mes, meses = 12): Deudas {
 /** Vale en el mes o empieza más adelante (no terminó ni se dio de baja). */
 function pagoFijoVigenteOFuturo(pf: PagoFijo, mes: Mes): boolean {
   return pagoFijoVigente(pf, mes) || (pf.activo && !!pf.altaDesde && pf.altaDesde > mes);
+}
+
+export interface Alcance {
+  /** Lo que tienen hoy menos los pagos fijos que faltan (el "Te queda" de Inicio). */
+  teQueda: number;
+  /**
+   * Lo que vienen gastando por día en el mes, sin pagos fijos ni ahorro: lo que se gasta
+   * al día a día (súper, nafta, salidas…). Promedio desde el 1 hasta hoy inclusive.
+   */
+  porDia: number;
+  /**
+   * Primer día en que, a este ritmo y con los pagos fijos en su día, la plata no alcanza.
+   * `null` = alcanza hasta fin de mes.
+   */
+  seAcaba: Fecha | null;
+  /** Lo que sobraría a fin de mes a este ritmo (negativo = lo que faltaría). */
+  finDeMes: number;
+}
+
+/**
+ * ¿Hasta cuándo alcanza? Solo para el mes en curso (`null` si `fechaHoy` no es de ese mes).
+ * Parte de lo que tienen hoy (entró − gastado), resta cada día lo que vienen gastando por día y
+ * cada pago fijo pendiente en su día de vencimiento (los vencidos, hoy mismo).
+ */
+export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | null {
+  if (mesDe(fechaHoy) !== mes) return null;
+  const { entra, gastado, faltan } = resumenMes(d, mes);
+  const pagos = pagosDelMes(d, mes);
+  const deFijos = new Set(pagos.filter((p) => p.pagado && p.movimientoId).map((p) => p.movimientoId));
+  const ahorroId = d.categorias.find((c) => c.nombre === CATEGORIA_AHORRO)?.id;
+  const diaHoy = Number(fechaHoy.slice(8, 10));
+  const alDia = suma(
+    movimientosDelMes(d, mes)
+      .filter((m) => m.fecha <= fechaHoy && m.monto > 0 && !deFijos.has(m.id) && m.categoriaId !== ahorroId)
+      .map((m) => m.monto),
+  );
+  const porDia = alDia / diaHoy;
+  const pendientes = pagos.filter((p) => !p.pagado);
+  const ultimo = diasDelMes(mes);
+
+  // Hoy: lo que tienen menos los pagos ya vencidos o que vencen hoy.
+  let saldo = entra - gastado - suma(pendientes.filter((p) => p.pagoFijo.dia <= diaHoy).map((p) => p.monto));
+  let seAcaba: Fecha | null = Math.round(saldo) < 0 ? fechaHoy : null;
+  for (let dia = diaHoy + 1; dia <= ultimo; dia++) {
+    saldo -= porDia + suma(pendientes.filter((p) => Math.min(p.pagoFijo.dia, ultimo) === dia).map((p) => p.monto));
+    if (!seAcaba && Math.round(saldo) < 0) seAcaba = fechaEnMes(mes, dia);
+  }
+  return { teQueda: entra - gastado - faltan, porDia, seAcaba, finDeMes: saldo };
 }

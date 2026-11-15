@@ -22,6 +22,7 @@ import {
 import { Recordatorio } from "@/components/Recordatorio";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import {
+  alcanceDelMes,
   gastosDe,
   movimientosDelMes,
   pagosDelMes,
@@ -29,6 +30,7 @@ import {
   planMes,
   saldoPorDia,
   textoCuota,
+  type Alcance,
   type PagoDelMes,
   type ParaGastarPersona,
   type PlanMes,
@@ -62,6 +64,7 @@ export default function Inicio() {
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
   const fechaHoy = hoy();
+  const alcance = alcanceDelMes(datos, mes, fechaHoy);
   const pendientes = pagosDelMes(datos, mes).filter((p) => !p.pagado);
   // "Solo yo": la actividad muestra solo lo que cargó quien usa la app.
   const movimientos = movimientosDelMes(datos, mes).filter((m) => !soloYo || m.pagoPor === quien);
@@ -111,8 +114,8 @@ export default function Inicio() {
           </section>
         </SaldoFijo>
       ) : (
-        <SaldoFijo monto={plan.saldo} etiqueta="Tu dinero hoy">
-          <CuentaDelMes plan={plan} personas={personas} />
+        <SaldoFijo monto={plan.entra - plan.gastado - plan.faltan} etiqueta="Te queda este mes">
+          <CuentaDelMes plan={plan} personas={personas} alcance={alcance} />
         </SaldoFijo>
       )}
 
@@ -143,7 +146,7 @@ export default function Inicio() {
         ) : (
           <Grupo titulo={soloYo ? t.grupo : "Tu actividad"} sinTarjeta>
             {[...porDia].map(([fecha, lista]) => {
-              // Saldo al cierre de ese día: el de hoy es el número grande de la tarjeta.
+              // Lo que tenían al cierre de ese día: el de hoy es "Tienen hoy" de la tarjeta.
               // En "Solo yo" el saldo es de los dos: se muestra lo que gastaste ese día.
               const saldo = saldos.get(fecha);
               const delDia = lista.reduce((a, m) => a + Math.max(m.monto, 0), 0);
@@ -158,7 +161,7 @@ export default function Inicio() {
                     ) : (
                       saldo !== undefined && (
                         <span className="text-[13px] text-tenue tabular-nums">
-                          {fecha >= fechaHoy ? "Te queda" : "Te quedaba"}{" "}
+                          {fecha >= fechaHoy ? "Tienen" : "Tenían"}{" "}
                           {pesos(saldo, { ceroComoGuion: false })}
                         </span>
                       )
@@ -380,13 +383,22 @@ function ProximosPagos({
 const CLAVE_CUENTA_ABIERTA = "billetera-hogar:cuenta-abierta";
 
 /**
- * La tarjeta de Inicio. Plegada: tu dinero hoy (lo que entró en el mes menos lo gastado) y,
- * debajo, lo libre de cada uno por separado: sumado engaña, porque uno puede tener y el otro no.
- * Abierta: entró − gastaron = tu dinero hoy, y en qué se reparte: pagos que faltan, reservado
- * para el mes (lo que queda de los techos) y libre. Se acuerda si la dejaste abierta.
+ * La tarjeta de Inicio. Responde "¿cuánto nos queda?" y "¿hasta cuándo alcanza?".
+ * Plegada: te queda (tienen hoy − pagos fijos que faltan), hasta cuándo alcanza a este ritmo,
+ * y las dos cifras de la resta. Abierta: la cuenta renglón por renglón, la proyección a fin de
+ * mes y, aparte, lo libre de cada uno según los techos. Se acuerda si la dejaste abierta.
  */
-function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarPersona[] }) {
-  const { entra, gastado, saldo, faltan, paraCadaUno, sobrante, paraGastar } = plan;
+function CuentaDelMes({
+  plan,
+  personas,
+  alcance,
+}: {
+  plan: PlanMes;
+  personas: ParaGastarPersona[];
+  alcance: Alcance | null;
+}) {
+  const { entra, gastado, saldo, faltan, sobrante } = plan;
+  const teQueda = saldo - faltan;
   const [abierta, setAbierta] = useState(false);
   useEffect(() => {
     try {
@@ -409,8 +421,7 @@ function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarP
   const partes = [
     { etiqueta: "Ya gastaron", monto: gastado, color: "bg-tenue" },
     { etiqueta: "Pagos que faltan", monto: faltan, color: "bg-sutil" },
-    { etiqueta: "Reservado para el mes", monto: Math.max(paraGastar, 0), color: "bg-marca/40" },
-    { etiqueta: "Libre", monto: paraCadaUno, color: "bg-marca" },
+    { etiqueta: "Te queda", monto: Math.max(teQueda, 0), color: "bg-marca" },
   ];
   const total = partes.reduce((a, p) => a + Math.max(p.monto, 0), 0) || 1;
   const Renglon = ({
@@ -435,12 +446,23 @@ function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarP
         {color && <span className={`size-2.5 rounded-full ${color}`} />}
         {etiqueta}
       </dt>
-      <dd className={`${fuerte ? "font-bold" : ""} ${rojo(monto)}`}>
+      <dd className={`${fuerte ? "font-bold" : ""} ${resta ? "" : rojo(monto)}`}>
         {resta ? (Math.round(monto) < 0 ? "+ " : "- ") : ""}
         {pesos(resta ? Math.abs(monto) : monto, { ceroComoGuion: false })}
       </dd>
     </div>
   );
+
+  // "Se acaba el 24/11" o "alcanza hasta fin de mes". Solo en el mes en curso y con ingresos.
+  const proyeccion =
+    alcance && entra > 0
+      ? alcance.seAcaba === null
+        ? { texto: `A este ritmo, alcanza hasta fin de mes y sobran ${pesos(alcance.finDeMes, { ceroComoGuion: false })}.`, rojo: false }
+        : alcance.seAcaba === hoy()
+          ? { texto: "Ya no alcanza para los pagos que faltan.", rojo: true }
+          : { texto: `A este ritmo, la plata se acaba el ${fechaCorta(alcance.seAcaba)}.`, rojo: true }
+      : null;
+  const diasQueFaltan = alcance ? Math.round((alcance.teQueda - alcance.finDeMes) / (alcance.porDia || 1)) : 0;
 
   return (
     <section className="mx-5 mt-4 rounded-3xl superficie shadow-tarjeta ring-1 ring-linea">
@@ -449,24 +471,33 @@ function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarP
         aria-expanded={abierta}
         className="block w-full px-5 pb-4 pt-6 text-center"
       >
-        <MontoGrande monto={saldo} className="text-[40px]" />
-        <p className="mt-2 text-[14px] text-tenue">Tu dinero hoy</p>
-        {entra > 0 && sobrante < 0 && (
-          <p className="mt-2 text-[13px] leading-5 text-pasaste">
-            Los gastos de la casa superan lo que entra en {pesos(-sobrante)}.
+        <MontoGrande monto={teQueda} className={`text-[40px] ${rojo(teQueda)}`} />
+        <p className="mt-2 text-[14px] text-tenue">Te queda este mes</p>
+        {proyeccion && (
+          <p className={`mt-2 text-[14px] font-medium leading-5 ${proyeccion.rojo ? "text-pasaste" : "text-queda"}`}>
+            {proyeccion.texto}
+          </p>
+        )}
+        {proyeccion && alcance && alcance.porDia > 0 && (
+          <p className="mt-1 text-[13px] leading-5 text-tenue">
+            Vienen gastando {pesos(alcance.porDia)} por día, sin contar pagos fijos.
           </p>
         )}
 
-        {entra > 0 && personas.length > 1 && (
+        {entra > 0 && (
           <dl className="mt-5 grid grid-cols-2 divide-x divide-linea border-t border-linea pt-4">
-            {personas.map((p) => (
-              <div key={p.miembroId} className="px-2">
-                <dt className="text-[12px] text-tenue">Libre de {p.nombre}</dt>
-                <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${Math.round(p.libre) < 0 ? "text-pasaste" : ""}`}>
-                  {pesos(p.libre, { ceroComoGuion: false })}
-                </dd>
-              </div>
-            ))}
+            <div className="px-2">
+              <dt className="text-[12px] text-tenue">Tienen hoy</dt>
+              <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${rojo(saldo)}`}>
+                {pesos(saldo, { ceroComoGuion: false })}
+              </dd>
+            </div>
+            <div className="px-2">
+              <dt className="text-[12px] text-tenue">Faltan pagar</dt>
+              <dd className="mt-0.5 text-[17px] font-semibold tabular-nums">
+                {pesos(faltan, { ceroComoGuion: false })}
+              </dd>
+            </div>
           </dl>
         )}
 
@@ -493,7 +524,7 @@ function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarP
                 <div
                   className="flex h-2.5 gap-0.5 overflow-hidden rounded-full"
                   role="img"
-                  aria-label="En qué se reparte lo que entró este mes"
+                  aria-label="En qué se va lo que entró este mes"
                 >
                   {partes
                     .filter((p) => p.monto > 0)
@@ -508,14 +539,43 @@ function CuentaDelMes({ plan, personas }: { plan: PlanMes; personas: ParaGastarP
                 <dl className="mt-4 space-y-2.5 text-[15px] tabular-nums">
                   <Renglon etiqueta="Entró este mes" monto={entra} />
                   <Renglon etiqueta="Ya gastaron" monto={gastado} color="bg-tenue" resta />
-                  <Renglon etiqueta="Tu dinero hoy" monto={saldo} fuerte />
+                  <Renglon etiqueta="Tienen hoy" monto={saldo} fuerte />
+                  <Renglon etiqueta="Pagos que faltan" monto={faltan} color="bg-sutil" resta />
+                  <Renglon etiqueta="Te queda este mes" monto={teQueda} color="bg-marca" fuerte />
                 </dl>
-                <p className="mt-4 text-[13px] text-tenue">De eso:</p>
-                <dl className="mt-2 space-y-2.5 text-[15px] tabular-nums">
-                  <Renglon etiqueta="Pagos que faltan" monto={faltan} color="bg-sutil" />
-                  <Renglon etiqueta="Reservado para el mes" monto={paraGastar} color="bg-marca/40" />
-                  <Renglon etiqueta="Libre" monto={paraCadaUno} color="bg-marca" />
-                </dl>
+
+                {alcance && alcance.porDia > 0 && (
+                  <>
+                    <p className="mt-5 text-[13px] text-tenue">Si siguen gastando igual hasta fin de mes:</p>
+                    <dl className="mt-2 space-y-2.5 text-[15px] tabular-nums">
+                      <Renglon
+                        etiqueta={`${pesos(alcance.porDia)} por día, ${diasQueFaltan} ${diasQueFaltan === 1 ? "día" : "días"}`}
+                        monto={alcance.teQueda - alcance.finDeMes}
+                        resta
+                      />
+                      <Renglon
+                        etiqueta={Math.round(alcance.finDeMes) < 0 ? "Faltaría a fin de mes" : "Sobraría a fin de mes"}
+                        monto={alcance.finDeMes}
+                        fuerte
+                      />
+                    </dl>
+                  </>
+                )}
+
+                {personas.length > 1 && (
+                  <>
+                    <p className="mt-5 text-[13px] leading-5 text-tenue">
+                      {Math.round(sobrante) < 0
+                        ? `Los techos de las categorías suman ${pesos(-sobrante)} más de lo que entra, así que a ninguno le queda plata propia:`
+                        : "Para cada uno, después de poner su parte de la casa según los techos:"}
+                    </p>
+                    <dl className="mt-2 space-y-2.5 text-[15px] tabular-nums">
+                      {personas.map((p) => (
+                        <Renglon key={p.miembroId} etiqueta={`Libre de ${p.nombre}`} monto={p.libre} />
+                      ))}
+                    </dl>
+                  </>
+                )}
               </>
             )}
           </div>
