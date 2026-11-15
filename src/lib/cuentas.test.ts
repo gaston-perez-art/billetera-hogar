@@ -533,6 +533,20 @@ describe("¿hasta cuándo alcanza?", () => {
     cerca(alcanceDelMes(d, MES, FECHA)!.porDia, alcanceDelMes(sin, MES, FECHA)!.porDia);
   });
 
+  it("un préstamo que entra y se usa para cancelar deudas no cambia el ritmo", () => {
+    const d = demo();
+    const cat = d.categorias.find((c) => c.nombre === "Deuda")!;
+    const mov = (id: string, monto: number) => ({ id, fecha: "2026-11-05", monto, categoriaId: cat.id, detalle: "", pagoPor: d.miembros[0].id, creadoEn: "" });
+    const conPrestamo = { ...d, movimientos: [...d.movimientos, mov("entra", -5_000_000), mov("cancela", 5_000_000)] };
+    cerca(alcanceDelMes(conPrestamo, MES, FECHA)!.porDia, alcanceDelMes(d, MES, FECHA)!.porDia);
+  });
+
+  it("lo que pueden gastar por día hasta fin de mes, por los días que faltan, es lo que queda", () => {
+    const a = alcanceDelMes(demo(), MES, FECHA)!;
+    expect(a.dias).toBe(30 - 12 + 1);
+    cerca(a.paraLlegar * a.dias, Math.max(a.teQueda, 0));
+  });
+
   it("otro mes no proyecta", () => {
     expect(alcanceDelMes(demo(), sumarMeses(MES, -1), FECHA)).toBeNull();
   });

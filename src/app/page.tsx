@@ -453,15 +453,6 @@ function CuentaDelMes({
     </div>
   );
 
-  // "Se acaba el 24/11" o "alcanza hasta fin de mes". Solo en el mes en curso y con ingresos.
-  const proyeccion =
-    alcance && entra > 0
-      ? alcance.seAcaba === null
-        ? { texto: `A este ritmo, alcanza hasta fin de mes y sobran ${pesos(alcance.finDeMes, { ceroComoGuion: false })}.`, rojo: false }
-        : alcance.seAcaba === hoy()
-          ? { texto: "Ya no alcanza para los pagos que faltan.", rojo: true }
-          : { texto: `A este ritmo, la plata se acaba el ${fechaCorta(alcance.seAcaba)}.`, rojo: true }
-      : null;
   const diasQueFaltan = alcance ? Math.round((alcance.teQueda - alcance.finDeMes) / (alcance.porDia || 1)) : 0;
 
   return (
@@ -473,15 +464,25 @@ function CuentaDelMes({
       >
         <MontoGrande monto={teQueda} className={`text-[40px] ${rojo(teQueda)}`} />
         <p className="mt-2 text-[14px] text-tenue">Te queda este mes</p>
-        {proyeccion && (
-          <p className={`mt-2 text-[14px] font-medium leading-5 ${proyeccion.rojo ? "text-pasaste" : "text-queda"}`}>
-            {proyeccion.texto}
-          </p>
-        )}
-        {proyeccion && alcance && alcance.porDia > 0 && (
-          <p className="mt-1 text-[13px] leading-5 text-tenue">
-            Vienen gastando {pesos(alcance.porDia)} por día, sin contar pagos fijos.
-          </p>
+        {alcance && entra > 0 && (
+          Math.round(alcance.teQueda) <= 0 ? (
+            <p className="mt-2 text-[14px] font-medium leading-5 text-pasaste">
+              Ya no alcanza para lo que falta del mes.
+            </p>
+          ) : (
+            <>
+              <p className="mt-2 text-balance text-[15px] font-medium leading-5">
+                Para llegar a fin de mes: hasta {pesos(alcance.paraLlegar)} por día.
+              </p>
+              {alcance.porDia > 0 && (
+                <p
+                  className={`mt-1 text-[13px] leading-5 ${Math.round(alcance.porDia) > Math.round(alcance.paraLlegar) ? "text-pasaste" : "text-queda"}`}
+                >
+                  Vienen gastando {pesos(alcance.porDia)} por día.
+                </p>
+              )}
+            </>
+          )
         )}
 
         {entra > 0 && (
@@ -559,6 +560,11 @@ function CuentaDelMes({
                         fuerte
                       />
                     </dl>
+                    {alcance.seAcaba && (
+                      <p className="mt-2 text-[13px] leading-5 text-tenue">
+                        A ese ritmo, la plata se acaba el {fechaCorta(alcance.seAcaba)}.
+                      </p>
+                    )}
                   </>
                 )}
 
