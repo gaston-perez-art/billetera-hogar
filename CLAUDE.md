@@ -52,6 +52,7 @@ Leer antes de tocar lógica:
 - Nada de etiquetas en mayúsculas ni metadatos con "·": usar comas o una segunda línea.
 - Verde = lo que queda; rojo = te pasaste. Ceros como "–", salvo plata puesta o saldos ("$0").
 - Carga de gasto en 3 toques: monto → categoría → detalle. Fecha = hoy y "pagó" = usuario logueado por defecto.
+- Calculadora en el paso del monto (`lib/calculadora.ts`): fila de botones redondos + − × ÷ debajo del monto, para sumar tickets sin salir de la app. Arriba "29.000 +" y "Borrar"; abajo "= $43.000"; "Continuar" guarda el resultado. Los botones no le sacan el foco al campo (el teclado no se cierra). Sin tocarlos, cargar es igual que siempre.
 - Nada de métricas que no sirvan (se sacó "gasto por día" de la planilla por inútil).
 
 ## Reglas clave (resumen)
@@ -77,6 +78,7 @@ Leer antes de tocar lógica:
 - Marcar un pago fijo como pagado **crea el movimiento** (en la planilla se olvidaba cargarlo y el saldo quedaba inflado).
 - Reparto: proporción por ingreso. Plan (le toca, le debería quedar) vs. real (puso, le queda) y diferencia. Gasto previsto = Σ max(techo, gastado).
 - Un monto negativo es plata que entra sin ser ingreso del mes (ej.: préstamo usado para cancelar deudas).
+- **Plata extra** (`extrasDelMes`, `plan.extra`): categorías donde en el mes entró más de lo que salió (Uber, rendimientos), salvo Ahorro. Ya suman en lo que tienen (están restadas de `gastado`) pero se muestran aparte: en Inicio, cuenta abierta, "Sueldos" + "Plata extra" en verde y "Ya gastaron" solo con gastos; en Categorías, fuera de la lista y del total gastado, en el grupo "Plata extra". No bajan el ritmo de gasto diario (`alcanceDelMes`). Un reintegro dentro de una categoría de gastos sigue restando ahí (test en `cuentas.test.ts`).
 - Gastos de Santino: categoría Santino (meses viejos: Chicos con detalle que empieza con "Santino"); mostrar total del mes.
 
 ## Seguridad
