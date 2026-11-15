@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ahorro,
+  alcanceDelMes,
   categoriasDelMes,
   esCompraEnCuotas,
   cuotaDelMes,
@@ -498,5 +499,41 @@ describe("lo que deben entre tarjetas y préstamos", () => {
     const d = conTodo();
     const r = deudas(d, MES, 60);
     cerca(suma(r.porMes.map((m) => m.tarjetas + m.prestamos)) - suma(pagosDelMes(d, MES).filter((p) => p.pagado && (p.pagoFijo.prestamo || esCompraEnCuotas(p.pagoFijo))).map((p) => p.monto)), r.resta.tarjetas + r.resta.prestamos);
+  });
+});
+
+describe("¿hasta cuándo alcanza?", () => {
+  it("te queda = lo que tienen hoy − los pagos que faltan, y a fin de mes cierra con lo del día a día", () => {
+    const d = demo();
+    const a = alcanceDelMes(d, MES, FECHA)!;
+    const p = planMes(d, MES);
+    cerca(a.teQueda, p.saldo - p.faltan);
+    cerca(a.teQueda - a.porDia * (30 - 12), a.finDeMes);
+  });
+
+  it("si a fin de mes sobra, no se acaba; si falta, dice el día", () => {
+    const a = alcanceDelMes(demo(), MES, FECHA)!;
+    if (Math.round(a.finDeMes) >= 0) expect(a.seAcaba).toBeNull();
+    else expect(a.seAcaba! > FECHA).toBe(true);
+  });
+
+  it("gastar más por día adelanta el día en que se acaba", () => {
+    const d = demo();
+    const cat = d.categorias.find((c) => c.nombre !== "Ahorro")!;
+    const caro = { ...d, movimientos: [...d.movimientos, { id: "x", fecha: "2026-11-01", monto: 50_000_000, categoriaId: cat.id, detalle: "", pagoPor: d.miembros[0].id, creadoEn: "" }] };
+    const a = alcanceDelMes(caro, MES, FECHA)!;
+    expect(a.seAcaba).not.toBeNull();
+  });
+
+  it("los pagos fijos pagados y el ahorro no cuentan como gasto del día a día", () => {
+    const d = demo();
+    const pagado = pagosDelMes(d, MES).find((p) => p.pagado && p.movimientoId);
+    if (!pagado) return;
+    const sin = { ...d, movimientos: d.movimientos.filter((m) => m.id !== pagado.movimientoId) };
+    cerca(alcanceDelMes(d, MES, FECHA)!.porDia, alcanceDelMes(sin, MES, FECHA)!.porDia);
+  });
+
+  it("otro mes no proyecta", () => {
+    expect(alcanceDelMes(demo(), sumarMeses(MES, -1), FECHA)).toBeNull();
   });
 });
