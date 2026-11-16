@@ -564,7 +564,7 @@ function HojaExportar({ abierta, alCerrar }: { abierta: boolean; alCerrar: () =>
 }
 
 /**
- * Carga rápida con un Atajo del iPhone: "Oye Siri, anotar gasto", dictás "gasté 5 lucas en el
+ * Carga rápida con un Atajo del iPhone: "Oye Siri, Billetera", dictás "gasté 5 lucas en el
  * súper" y se abre Cargar con todo completo, listo para guardar (`lib/rapido.ts`). La app no
  * puede crear el Atajo sola: acá están los pasos y la dirección para copiar.
  */
@@ -589,13 +589,13 @@ function CargarConSiri() {
     "Agregá \"Codificar URL\": codifica el texto dictado.",
     "Agregá \"URL\" y pegá la dirección de abajo; al final sumá la variable \"Texto codificado\".",
     "Agregá \"Abrir URLs\" y fijate que abra \"URL\" (lo del paso anterior), no el texto codificado.",
-    "Llamalo \"Anotar gasto\". Si querés, sumalo a la pantalla de inicio.",
+    "Llamalo \"Billetera\". No uses \"anotar\" ni \"nota\" en el nombre: Siri lo toma como una nota y lo guarda en Notas.",
   ];
   return (
     <section className="px-5 pt-5">
       <h2 className="text-[16px] font-semibold">Cargar con Siri</h2>
       <p className="mt-1 text-[13px] leading-5 text-tenue">
-        Decí &ldquo;Oye Siri, anotar gasto&rdquo; y después &ldquo;gasté 5 lucas en el súper&rdquo;. Se abre Cargar con el monto, la categoría y el detalle: solo tocás Guardar.
+        Decí &ldquo;Oye Siri, Billetera&rdquo; y después &ldquo;gasté 5 lucas en el súper&rdquo;. Se abre Cargar con el monto, la categoría y el detalle: solo tocás Guardar.
       </p>
       <ol className="mt-3 space-y-2 rounded-3xl superficie p-4 text-[14px] leading-5 shadow-tarjeta ring-1 ring-linea">
         {pasos.map((p, i) => (
