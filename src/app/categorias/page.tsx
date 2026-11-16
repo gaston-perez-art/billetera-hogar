@@ -43,7 +43,7 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
           <div className="mt-2 flex justify-between text-[15px]">
             <span className="text-tenue tabular-nums">Techo {pesos(total.techo)}</span>
             <span className="text-tenue">
-              Para gastar <MontoQueda monto={plan.paraGastar} className="font-semibold" />
+              Quedan <MontoQueda monto={plan.paraGastar} className="font-semibold" />
             </span>
           </div>
         </Resumen>
@@ -73,7 +73,7 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
                 </span>
                 <span className="shrink-0 text-right">
                   <span className={`block text-[15px] font-semibold tabular-nums ${libre < 0 ? "text-pasaste" : ""}`}>{pesos(Math.abs(libre), { ceroComoGuion: false })}</span>
-                  <span className="mt-0.5 block text-[13px] text-tenue">{libre < 0 ? "faltan" : "libres"}</span>
+                  <span className="mt-0.5 block text-[13px] text-tenue">{libre < 0 ? "faltan" : "quedan"}</span>
                 </span>
                 <Icono trazo={ICONOS.adelante} className="-mr-1 size-4 shrink-0 text-sutil" />
               </button>
@@ -213,7 +213,7 @@ function DetalleCategoria({ categoriaId, alCerrar }: { categoriaId: string | nul
                   : [
                       { etiqueta: "Gastado", valor: pesos(c.gastado, { ceroComoGuion: false }) },
                       { etiqueta: "Techo", valor: c.techo > 0 ? pesos(c.techo) : "Sin techo" },
-                      { etiqueta: c.libre < 0 ? "Faltan" : "Libres", valor: <span className={c.libre < 0 ? "text-pasaste" : ""}>{pesos(Math.abs(c.libre), { ceroComoGuion: false })}</span> },
+                      { etiqueta: c.libre < 0 ? "Faltan" : "Quedan", valor: <span className={c.libre < 0 ? "text-pasaste" : ""}>{pesos(Math.abs(c.libre), { ceroComoGuion: false })}</span> },
                     ]
               }
             />

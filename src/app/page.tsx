@@ -58,8 +58,8 @@ export default function Inicio() {
   const quien = persona?.id ?? usuarioId;
   // Cómo se le habla: "Gastaste" si es quien usa la app, "Gastó Jime" si no.
   const t = persona && !persona.vos
-    ? { gasto: `Gastó ${persona.nombre}`, queda: "Su dinero hoy", ninguno: `${persona.nombre} no cargó gastos este mes`, libreFalta: "Libre: su dinero hoy menos lo que le falta poner para la casa,", libreDeMas: (m: string) => `Puso ${m} de más para la casa: se lo compensan al cerrar el mes.`, libreJusto: "Ya puso toda su parte de la casa.", grupo: `Lo de ${persona.nombre}` }
-    : { gasto: "Gastaste", queda: "Tu dinero hoy", ninguno: "No cargaste gastos este mes", libreFalta: "Libre: tu dinero hoy menos lo que te falta poner para la casa,", libreDeMas: (m: string) => `Pusiste ${m} de más para la casa: te lo compensan al cerrar el mes.`, libreJusto: "Ya pusiste toda tu parte de la casa.", grupo: "Lo tuyo" };
+    ? { gasto: `Gastó ${persona.nombre}`, queda: "Tiene hoy", libre: `Queda para ${persona.nombre}`, ninguno: `${persona.nombre} no cargó gastos este mes`, libreFalta: (m: string) => `Le falta poner ${m} para la casa.`, libreDeMas: (m: string) => `Puso ${m} de más para la casa: se lo compensan al cerrar el mes.`, libreJusto: "Ya puso toda su parte de la casa.", grupo: `Lo de ${persona.nombre}` }
+    : { gasto: "Gastaste", queda: "Tenés hoy", libre: "Queda para vos", ninguno: "No cargaste gastos este mes", libreFalta: (m: string) => `Te falta poner ${m} para la casa.`, libreDeMas: (m: string) => `Pusiste ${m} de más para la casa: te lo compensan al cerrar el mes.`, libreJusto: "Ya pusiste toda tu parte de la casa.", grupo: "Lo tuyo" };
   const plan = planMes(datos, mes);
   const personas = paraGastarPorPersona(datos, mes);
   const saldos = saldoPorDia(datos, mes);
@@ -98,7 +98,7 @@ export default function Inicio() {
                 </dd>
               </div>
               <div className="px-2">
-                <dt className="text-[12px] text-tenue">Libre</dt>
+                <dt className="text-[12px] text-tenue">{t.libre}</dt>
                 <dd className={`mt-0.5 text-[17px] font-semibold tabular-nums ${yo && Math.round(yo.libre) < 0 ? "text-pasaste" : ""}`}>
                   {pesos(yo?.libre ?? 0, { ceroComoGuion: false })}
                 </dd>
@@ -106,7 +106,7 @@ export default function Inicio() {
             </dl>
             <p className="mt-4 text-[13px] leading-5 text-tenue">
               {yo && Math.round(yo.faltaPoner) > 0
-                ? `${t.libreFalta} ${pesos(yo.faltaPoner)}.`
+                ? t.libreFalta(pesos(yo.faltaPoner))
                 : yo && Math.round(yo.faltaPoner) < 0
                   ? `${t.libreDeMas(pesos(-yo.faltaPoner))}`
                   : t.libreJusto}
@@ -586,7 +586,7 @@ function CuentaDelMes({
                     </p>
                     <dl className="mt-2 space-y-2.5 text-[15px] tabular-nums">
                       {personas.map((p) => (
-                        <Renglon key={p.miembroId} etiqueta={`Libre de ${p.nombre}`} monto={p.libre} />
+                        <Renglon key={p.miembroId} etiqueta={`Queda para ${p.nombre}`} monto={p.libre} />
                       ))}
                     </dl>
                   </>
