@@ -1,14 +1,18 @@
 "use client";
 
 // Barra compacta con el saldo que aparece arriba cuando la tarjeta grande sale de la vista.
-// Así el saldo nunca se pierde mientras bajás por la actividad.
+// Así el saldo nunca se pierde mientras bajás por la actividad. Lleva el mes: al bajar, el chip
+// del mes queda fuera de la vista y era fácil no darse cuenta de estar mirando otro mes.
 
 import { useEffect, useRef, useState } from "react";
-import { pesos } from "@/lib/formato";
+import { hoy, mesDe, nombreMes, pesos } from "@/lib/formato";
+import { useBilletera } from "@/lib/store";
 
 export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etiqueta: string; children: React.ReactNode }) {
   const ancla = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const { mes, setMes } = useBilletera();
+  const otroMes = mes !== mesDe(hoy());
 
   useEffect(() => {
     const el = ancla.current;
@@ -31,8 +35,18 @@ export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etique
           visible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0"
         }`}
       >
-        <div className="flex items-baseline justify-between">
-          <span className="text-[13px] text-tenue">{etiqueta}</span>
+        <div className="flex items-end justify-between gap-3">
+          <span className="min-w-0">
+            <span className={`flex items-center gap-2 text-[13px] font-semibold capitalize ${otroMes ? "text-marca" : "text-tenue"}`}>
+              {nombreMes(mes)}
+              {otroMes && (
+                <button onClick={() => setMes(mesDe(hoy()))} className="rounded-full bg-marca-suave px-2 py-0.5 text-[12px] font-semibold normal-case text-marca">
+                  Volver a hoy
+                </button>
+              )}
+            </span>
+            <span className="block truncate text-[13px] text-tenue">{etiqueta}</span>
+          </span>
           <span className={`text-[20px] font-semibold tracking-[-0.02em] tabular-nums ${Math.round(monto) < 0 ? "text-pasaste" : ""}`}>{pesos(monto, { ceroComoGuion: false })}</span>
         </div>
       </div>
