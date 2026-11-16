@@ -15,13 +15,16 @@ export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etique
   const otroMes = mes !== mesDe(hoy());
 
   useEffect(() => {
-    const el = ancla.current;
+    // Aparece apenas el chip del mes deja de verse (antes esperaba a que saliera toda la tarjeta
+    // y tardaba): así nunca hay un momento sin saber en qué mes estás. Si la pantalla no tiene
+    // chip, se guía por la tarjeta.
+    const fila = document.querySelector("[data-fila-mes]");
+    const el = fila ?? ancla.current;
     if (!el) return;
-    // Se muestra cuando la tarjeta ya quedó detrás de donde aparece la barra (los ~72px de arriba),
-    // así no queda un pedazo de tarjeta a la vista sin el número.
     const obs = new IntersectionObserver(([e]) => setVisible(!e.isIntersecting && e.boundingClientRect.top < 0), {
       threshold: 0,
-      rootMargin: "-72px 0px 0px 0px",
+      // La barra ocupa los ~56 px de arriba: lo que queda detrás de ella ya no se ve.
+      rootMargin: fila ? "-56px 0px 0px 0px" : "-72px 0px 0px 0px",
     });
     obs.observe(el);
     return () => obs.disconnect();
@@ -31,7 +34,7 @@ export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etique
     <>
       <div
         aria-hidden={!visible}
-        className={`fixed inset-x-0 top-0 z-30 mx-auto max-w-md border-b border-linea bg-fondo/90 px-5 pb-2.5 pt-[max(env(safe-area-inset-top),0.625rem)] backdrop-blur-md transition duration-300 ease-out motion-reduce:transition-none ${
+        className={`fixed inset-x-0 top-0 z-30 mx-auto max-w-md border-b border-linea bg-fondo/90 px-5 pb-2.5 pt-[max(env(safe-area-inset-top),0.625rem)] backdrop-blur-md transition duration-200 ease-out motion-reduce:transition-none ${
           visible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0"
         }`}
       >
