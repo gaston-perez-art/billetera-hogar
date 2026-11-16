@@ -15,19 +15,28 @@ export function SaldoFijo({ monto, etiqueta, children }: { monto: number; etique
   const otroMes = mes !== mesDe(hoy());
 
   useEffect(() => {
-    // Aparece apenas el chip del mes deja de verse (antes esperaba a que saliera toda la tarjeta
-    // y tardaba): así nunca hay un momento sin saber en qué mes estás. Si la pantalla no tiene
-    // chip, se guía por la tarjeta.
-    const fila = document.querySelector("[data-fila-mes]");
-    const el = fila ?? ancla.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => setVisible(!e.isIntersecting && e.boundingClientRect.top < 0), {
-      threshold: 0,
-      // La barra ocupa los ~56 px de arriba: lo que queda detrás de ella ya no se ve.
-      rootMargin: fila ? "-56px 0px 0px 0px" : "-72px 0px 0px 0px",
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
+    // Aparece apenas el chip del mes deja de verse: así nunca hay un momento sin saber en qué mes
+    // estás. Se mide en cada scroll y se busca el chip cada vez (no una sola al montar): con los
+    // datos reales Inicio se dibuja en dos tiempos y un chip guardado podía quedar viejo, sin que
+    // la barra apareciera nunca. Si la pantalla no tiene chip, se guía por la tarjeta.
+    let cuadro = 0;
+    const medir = () => {
+      cuadro = 0;
+      const fila = document.querySelector("[data-fila-mes]");
+      if (fila) setVisible(fila.getBoundingClientRect().bottom < 56);
+      else if (ancla.current) setVisible(ancla.current.getBoundingClientRect().bottom < 72);
+    };
+    const pedir = () => {
+      if (!cuadro) cuadro = requestAnimationFrame(medir);
+    };
+    medir();
+    window.addEventListener("scroll", pedir, { passive: true });
+    window.addEventListener("resize", pedir);
+    return () => {
+      window.removeEventListener("scroll", pedir);
+      window.removeEventListener("resize", pedir);
+      if (cuadro) cancelAnimationFrame(cuadro);
+    };
   }, []);
 
   return (
