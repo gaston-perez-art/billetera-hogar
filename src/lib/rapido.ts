@@ -63,6 +63,49 @@ function leerMonto(palabras: string[]): { monto: number; usadas: Set<number> } {
   return { monto: 0, usadas: new Set() };
 }
 
+/** Números dichos con palabras, como los escribe Siri al dictar: "cinco lucas", "dos mil quinientos". */
+const UNIDADES: Record<string, number> = {
+  cero: 0, uno: 1, un: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9,
+  diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17, dieciocho: 18,
+  diecinueve: 19, veinte: 20, veintiuno: 21, veintiun: 21, veintiuna: 21, veintidos: 22, veintitres: 23,
+  veinticuatro: 24, veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+  treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60, setenta: 70, ochenta: 80, noventa: 90,
+  cien: 100, ciento: 100, doscientos: 200, doscientas: 200, trescientos: 300, trescientas: 300,
+  cuatrocientos: 400, cuatrocientas: 400, quinientos: 500, quinientas: 500, seiscientos: 600, seiscientas: 600,
+  setecientos: 700, setecientas: 700, ochocientos: 800, ochocientas: 800, novecientos: 900, novecientas: 900,
+};
+const MILLONES = new Set(["millon", "millones", "palo", "palos"]);
+
+function leerMontoEnPalabras(palabras: string[]): { monto: number; usadas: Set<number> } {
+  for (let i = 0; i < palabras.length; i++) {
+    const p = palabras[i];
+    // "un"/"una" solo cuentan si después viene "mil", "luca" o "millón" ("una luca"); si no, son relleno.
+    const esUnidad = p in UNIDADES && (!["un", "una", "uno"].includes(p) || MILES.has(palabras[i + 1] ?? "") || MILLONES.has(palabras[i + 1] ?? ""));
+    if (!esUnidad) continue;
+    let total = 0;
+    let actual = 0;
+    const usadas = new Set<number>();
+    let j = i;
+    for (; j < palabras.length; j++) {
+      const w = palabras[j];
+      if (w in UNIDADES) actual += UNIDADES[w];
+      else if (MILES.has(w)) {
+        total += (actual || 1) * 1000;
+        actual = 0;
+      } else if (MILLONES.has(w)) {
+        total = (total + (actual || 1)) * 1_000_000;
+        actual = 0;
+      } else if (w === "y" && palabras[j + 1] in UNIDADES) {
+        // "treinta y cinco"
+      } else break;
+      usadas.add(j);
+    }
+    const monto = total + actual;
+    if (monto > 0) return { monto, usadas };
+  }
+  return { monto: 0, usadas: new Set() };
+}
+
 /** La categoría que mejor encaja con las palabras, si alguna encaja. */
 function elegirCategoria(palabras: string[], categorias: Categoria[]): { id: string | null; usadas: Set<number> } {
   let mejor: { id: string | null; puntaje: number; usadas: Set<number> } = { id: null, puntaje: 0, usadas: new Set() };
@@ -97,7 +140,9 @@ export function leerCargaRapida(texto: string, categorias: Categoria[]): CargaRa
     .filter((x) => x.n);
   const palabras = pares.map((x) => x.n);
   const entra = ENTRA.test(limpio);
-  const { monto, usadas: delMonto } = leerMonto(palabras);
+  // Primero con cifras ("5000", "5 lucas"); si no hay, con palabras ("cinco lucas").
+  const conCifras = leerMonto(palabras);
+  const { monto, usadas: delMonto } = conCifras.monto > 0 ? conCifras : leerMontoEnPalabras(palabras);
   const { id, usadas: deCategoria } = elegirCategoria(palabras.filter((_, i) => !delMonto.has(i)).length ? palabras : [], categorias);
   // Lo que sobra (sin el monto, la categoría, los verbos ni el relleno de las puntas) es el detalle.
   const resto = pares.filter((x, i) => !delMonto.has(i) && !deCategoria.has(i) && !VERBOS.has(x.n));

@@ -588,7 +588,7 @@ function CargarConSiri() {
     "Agregá la acción \"Dictar texto\" (idioma: español).",
     "Agregá \"Codificar URL\": codifica el texto dictado.",
     "Agregá \"URL\" y pegá la dirección de abajo; al final sumá la variable \"Texto codificado\".",
-    "Agregá \"Abrir URLs\".",
+    "Agregá \"Abrir URLs\" y fijate que abra \"URL\" (lo del paso anterior), no el texto codificado.",
     "Llamalo \"Anotar gasto\". Si querés, sumalo a la pantalla de inicio.",
   ];
   return (
