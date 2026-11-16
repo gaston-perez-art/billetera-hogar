@@ -14,17 +14,21 @@ import { useBilletera } from "@/lib/store";
 
 const CADA = 7;
 
+/** La fila de Inicio: aparece solo cuando toca comparar (nunca se hizo o pasaron 7 días). */
 export function FilaBanco() {
   const { mes } = useBilletera();
   const [abierta, setAbierta] = useState(false);
   const [punto, setPunto] = useState<PuntoBanco | null>(null);
+  const [leido, setLeido] = useState(false);
   // Se lee después de montar: leerlo al dibujar haría que la página generada no coincida.
-  useEffect(() => setPunto(leerPunto()), []);
-  if (mes !== mesDe(hoy())) return null;
+  useEffect(() => {
+    setPunto(leerPunto());
+    setLeido(true);
+  }, [abierta]);
+  if (!leido || mes !== mesDe(hoy())) return null;
   const dias = punto ? diasEntre(punto.fecha, hoy()) : null;
-  const toca = dias === null || dias >= CADA;
-  const bajada =
-    dias === null ? "Fijate si falta cargar algo" : dias === 0 ? "Comparado hoy" : dias === 1 ? "Comparado ayer" : `Comparado hace ${dias} días`;
+  // Se deja ver mientras la hoja está abierta, para que no desaparezca al guardar.
+  if (!abierta && dias !== null && dias < CADA) return null;
   return (
     <>
       <TarjetaLista>
@@ -32,27 +36,60 @@ export function FilaBanco() {
           onClick={() => setAbierta(true)}
           icono={<IconoCategoria nombre="Banco" />}
           titulo="Comparar con el banco"
-          bajada={<span className={toca && dias !== null ? "text-marca" : ""}>{bajada}</span>}
-          valor={toca ? <span className="text-[14px] font-semibold text-marca">Comparar</span> : undefined}
+          bajada={dias === null ? "Fijate si falta cargar algo" : `La última vez fue hace ${dias} días`}
+          valor={<span className="text-[14px] font-semibold text-marca">Comparar</span>}
         />
       </TarjetaLista>
-      <Hoja abierta={abierta} alCerrar={() => setAbierta(false)} titulo="Comparar con el banco" mostrarTitulo>
-        <Comparar
-          punto={punto}
-          alTerminar={(p) => {
-            if (p) {
-              guardarPunto(p);
-              setPunto(p);
-            }
-            setAbierta(false);
-          }}
-        />
-      </Hoja>
+      <HojaBanco abierta={abierta} alCerrar={() => setAbierta(false)} />
     </>
   );
 }
 
-function Comparar({ punto, alTerminar }: { punto: PuntoBanco | null; alTerminar: (p: PuntoBanco | null) => void }) {
+/** La hoja para comparar. También se abre desde "Ver la cuenta" en Inicio. */
+export function HojaBanco({ abierta, alCerrar }: { abierta: boolean; alCerrar: () => void }) {
+  const [punto, setPunto] = useState<PuntoBanco | null>(null);
+  const [listo, setListo] = useState<null | "partida" | "ajustado" | "coincide">(null);
+  useEffect(() => {
+    if (abierta) {
+      setPunto(leerPunto());
+      setListo(null);
+    }
+  }, [abierta]);
+  return (
+    <Hoja abierta={abierta} alCerrar={alCerrar} titulo="Comparar con el banco" mostrarTitulo>
+      {listo ? (
+        <div className="space-y-4">
+          <p className="text-[17px] font-semibold leading-6 text-queda">
+            {listo === "partida" ? "Listo, guardé el punto de partida." : listo === "coincide" ? "Listo: está todo cargado." : "Listo: cargué la diferencia en Sin anotar."}
+          </p>
+          <p className="text-[14px] leading-5 text-tenue">
+            {listo === "partida"
+              ? `La próxima vez que compares te digo si falta cargar algo. En ${CADA} días te lo recuerdo acá en Inicio.`
+              : `En ${CADA} días te lo recuerdo acá en Inicio.`}
+          </p>
+          <Boton onClick={alCerrar}>Entendido</Boton>
+        </div>
+      ) : (
+        <Comparar
+          punto={punto}
+          alTerminar={(p, como) => {
+            if (p) guardarPunto(p);
+            if (como) setListo(como);
+            else alCerrar();
+          }}
+        />
+      )}
+    </Hoja>
+  );
+}
+
+function Comparar({
+  punto,
+  alTerminar,
+}: {
+  punto: PuntoBanco | null;
+  alTerminar: (p: PuntoBanco | null, como?: "partida" | "ajustado" | "coincide") => void;
+}) {
   const { datos, usuarioId, agregarMovimiento, agregarCategoria } = useBilletera();
   const [cuentas, setCuentas] = useState(0);
   const [tarjetas, setTarjetas] = useState(0);
@@ -66,7 +103,7 @@ function Comparar({ punto, alTerminar }: { punto: PuntoBanco | null; alTerminar:
     const categoriaId = datos.categorias.find((c) => c.nombre === CATEGORIA_SIN_ANOTAR)?.id ?? agregarCategoria(CATEGORIA_SIN_ANOTAR);
     // Faltan gastos: un gasto por la diferencia. Entró plata: un monto negativo (plata que entra).
     agregarMovimiento({ fecha, monto: -r.diferencia, categoriaId, detalle: `Diferencia con el banco desde el ${fechaCorta(punto!.fecha)}`, pagoPor: usuarioId });
-    alTerminar({ fecha, banco, app: app + r.diferencia });
+    alTerminar({ fecha, banco, app: app + r.diferencia }, "ajustado");
   };
 
   return (
@@ -88,16 +125,16 @@ function Comparar({ punto, alTerminar }: { punto: PuntoBanco | null; alTerminar:
       {!punto ? (
         <>
           <p className="text-[14px] leading-5">Es la primera vez: esto queda como punto de partida. La próxima te digo si falta cargar algo.</p>
-          <Boton disabled={cuentas <= 0} onClick={() => alTerminar({ fecha, banco, app })}>
+          <Boton disabled={cuentas <= 0} onClick={() => alTerminar({ fecha, banco, app }, "partida")}>
             Guardar punto de partida
           </Boton>
         </>
       ) : !r ? (
-        <p className="text-[13px] text-tenue">La última vez fue el {fechaCorta(punto.fecha)}.</p>
+        <p className="text-[13px] text-tenue">La última vez fue el {fechaCorta(punto.fecha)}. Poné cuánto tienen hoy para comparar.</p>
       ) : r.coincide ? (
         <>
           <p className="text-[15px] font-semibold text-queda">Coincide: está todo cargado desde el {fechaCorta(punto.fecha)}.</p>
-          <Boton onClick={() => alTerminar({ fecha, banco, app })}>Listo</Boton>
+          <Boton onClick={() => alTerminar({ fecha, banco, app }, "coincide")}>Listo</Boton>
         </>
       ) : (
         <>

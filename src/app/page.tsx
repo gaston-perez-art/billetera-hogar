@@ -1,7 +1,7 @@
 "use client";
 
 import { FilaAhorro } from "@/components/Ahorro";
-import { FilaBanco } from "@/components/Banco";
+import { FilaBanco, HojaBanco } from "@/components/Banco";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
@@ -408,6 +408,7 @@ function CuentaDelMes({
   const gastos = gastado + extra;
   const teQueda = saldo - faltan;
   const [abierta, setAbierta] = useState(false);
+  const [banco, setBanco] = useState(false);
   useEffect(() => {
     try {
       setAbierta(localStorage.getItem(CLAVE_CUENTA_ABIERTA) === "1");
@@ -522,7 +523,7 @@ function CuentaDelMes({
       <div
         className={`grid transition-[grid-template-rows] duration-250 ease-out motion-reduce:transition-none ${abierta ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
-        <div className="min-h-0 overflow-hidden">
+        <div className="min-h-0 overflow-hidden" inert={!abierta}>
           <div className="px-5 pb-5">
             {entra <= 0 ? (
               <p className="rounded-2xl bg-relleno px-4 py-3 text-center text-[14px] text-tenue">
@@ -597,11 +598,17 @@ function CuentaDelMes({
                     </dl>
                   </>
                 )}
+                {alcance && (
+                  <button onClick={() => setBanco(true)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-relleno py-2.5 text-[14px] font-semibold">
+                    Comparar con el banco
+                  </button>
+                )}
               </>
             )}
           </div>
         </div>
       </div>
+      <HojaBanco abierta={banco} alCerrar={() => setBanco(false)} />
     </section>
   );
 }

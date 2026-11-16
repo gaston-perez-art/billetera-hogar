@@ -21,6 +21,8 @@ const TRAZOS: Record<string, Trazo> = {
   otros: ["M5 12h.01M12 12h.01M19 12h.01"],
   chicos: ["M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "M3 20a5 5 0 0 1 10 0M11 20a5 5 0 0 1 10 0"],
   entra: ["M12 19V5M6 11l6-6 6 6"],
+  banco: ["M3 9l9-5 9 5", "M4 9h16M6 9v8M10 9v8M14 9v8M18 9v8M3 20h18M4 17h16"],
+  compensacion: ["M4 8h14l-3-3M20 16H6l3 3"],
   // Chanchito, como las reservas de MP.
   ahorro: ["M4.5 11.5a7 5.5 0 0 1 12.6-3.3H19v3.3l1.5.8v2.4l-1.8.5a6.6 6.6 0 0 1-2.2 2.2V20h-2.6v-1.8h-4V20H7.3v-2.6a5.6 5.6 0 0 1-2.8-5.9z", "M15.5 11h.01M9.5 7.2h3.5"],
 };
@@ -43,6 +45,9 @@ const CATEGORIAS: Record<string, keyof typeof TRAZOS> = {
   "seguro del auto": "seguro",
   otros: "otros",
   ahorro: "ahorro",
+  banco: "banco",
+  "sin anotar": "banco",
+  compensacion: "compensacion",
 };
 
 function normalizar(nombre: string) {
