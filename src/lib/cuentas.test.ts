@@ -606,3 +606,24 @@ describe("Reparto y Categorías dicen lo mismo de cada uno", () => {
     }
   });
 });
+
+describe("Reparto y Categorías: previsto y gastado", () => {
+  it("el 'ya gastaron' de Reparto es el gastado de Categorías, y lo previsto suma lo que queda de los techos", () => {
+    // Con plata extra (Uber), que no es gasto ni entra en lo previsto.
+    const base = demo();
+    const uber = { id: "uber", nombre: "Uber Driver", orden: 99, techo: 0 };
+    const d = {
+      ...base,
+      categorias: [...base.categorias, uber],
+      movimientos: [...base.movimientos, { id: "u1", fecha: "2026-11-10", monto: -27_900, categoriaId: "uber", detalle: "", pagoPor: base.miembros[0].id, creadoEn: "" }],
+    };
+    const p = planMes(d, MES);
+    const extras = new Set(extrasDelMes(d, MES).map((e) => e.categoria.id));
+    const deCategorias = categoriasDelMes(d, MES).filter((c) => !extras.has(c.categoria.id));
+    cerca(p.gastado + p.extra, suma(deCategorias.map((c) => c.gastado)));
+    cerca(
+      repartoMes(d, MES).previsto - (p.gastado + p.extra),
+      suma(deCategorias.map((c) => Math.max(c.techo - c.gastado, 0))),
+    );
+  });
+});

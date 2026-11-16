@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
-import { estadisticasPersona, ingresosDelMes, previstoPorTipo, repartoMes, type EstadisticasPersona, type RepartoMiembro } from "@/lib/calculos";
+import { estadisticasPersona, ingresosDelMes, planMes, previstoPorTipo, repartoMes, type EstadisticasPersona, type RepartoMiembro } from "@/lib/calculos";
 import { fechaCorta, hoy, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
@@ -19,7 +19,11 @@ export default function Reparto() {
   const entra = ingresosDelMes(datos, mes);
   const [a, b] = miembros;
   const futuro = mes > mesDe(hoy());
-  const etiqueta = futuro ? "Gastos previstos, entre los dos" : "Gastos del mes, entre los dos";
+  // Es lo previsto (por categoría, el techo o lo gastado si se pasaron), no lo gastado: sobre eso
+  // se reparte. Se dice con esas palabras y debajo va lo gastado, el mismo número de Categorías.
+  const etiqueta = futuro ? "Gastos previstos, entre los dos" : "Previsto para el mes, entre los dos";
+  const plan = planMes(datos, mes);
+  const yaGastaron = plan.gastado + plan.extra;
 
   return (
     <>
@@ -30,6 +34,7 @@ export default function Reparto() {
           <>
             <MontoGrande monto={previsto} className="self-center text-[40px]" />
             <p className="mt-2 text-[14px] text-tenue">{etiqueta}</p>
+            {!futuro && <p className="mt-1 text-[13px] text-tenue tabular-nums">Ya gastaron {pesos(yaGastaron, { ceroComoGuion: false })}</p>}
             <div className="mt-5 border-t border-linea pt-4">
               {a && b && (
                 <div className="mb-5 flex items-center gap-3">
