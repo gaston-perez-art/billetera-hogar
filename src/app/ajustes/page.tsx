@@ -137,6 +137,8 @@ export default function Ajustes() {
           </button>
         </Seccion>
 
+        <CargarConSiri />
+
         <section className="px-5 pt-5">
           <h2 className="text-[16px] font-semibold">Apariencia</h2>
           <div className="mt-3 grid grid-cols-3 rounded-full bg-relleno p-1" role="radiogroup" aria-label="Apariencia">
@@ -558,5 +560,65 @@ function HojaExportar({ abierta, alCerrar }: { abierta: boolean; alCerrar: () =>
         {aviso && <p className="px-1 text-center text-[13px] text-queda">{aviso}</p>}
       </div>
     </Hoja>
+  );
+}
+
+/**
+ * Carga rápida con un Atajo del iPhone: "Oye Siri, anotar gasto", dictás "gasté 5 lucas en el
+ * súper" y se abre Cargar con todo completo, listo para guardar (`lib/rapido.ts`). La app no
+ * puede crear el Atajo sola: acá están los pasos y la dirección para copiar.
+ */
+function CargarConSiri() {
+  const [copiado, setCopiado] = useState(false);
+  const [base, setBase] = useState("");
+  useEffect(() => {
+    setBase(`${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/cargar/?texto=`);
+  }, []);
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(base);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // Sin portapapeles: la dirección queda a la vista para copiarla a mano.
+    }
+  };
+  const pasos = [
+    "Abrí la app Atajos y tocá + para crear uno nuevo.",
+    "Agregá la acción \"Dictar texto\" (idioma: español).",
+    "Agregá \"Codificar URL\": codifica el texto dictado.",
+    "Agregá \"URL\" y pegá la dirección de abajo; al final sumá la variable \"Texto codificado\".",
+    "Agregá \"Abrir URLs\".",
+    "Llamalo \"Anotar gasto\". Si querés, sumalo a la pantalla de inicio.",
+  ];
+  return (
+    <section className="px-5 pt-5">
+      <h2 className="text-[16px] font-semibold">Cargar con Siri</h2>
+      <p className="mt-1 text-[13px] leading-5 text-tenue">
+        Decí &ldquo;Oye Siri, anotar gasto&rdquo; y después &ldquo;gasté 5 lucas en el súper&rdquo;. Se abre Cargar con el monto, la categoría y el detalle: solo tocás Guardar.
+      </p>
+      <ol className="mt-3 space-y-2 rounded-3xl superficie p-4 text-[14px] leading-5 shadow-tarjeta ring-1 ring-linea">
+        {pasos.map((p, i) => (
+          <li key={i} className="flex gap-3">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-marca-suave text-[13px] font-semibold text-marca">{i + 1}</span>
+            <span>{p}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 flex items-center gap-2 rounded-2xl bg-relleno py-2 pl-4 pr-2">
+        <span className="min-w-0 flex-1 truncate text-[13px] text-tenue">{base || "…"}</span>
+        <button onClick={copiar} className="h-9 shrink-0 rounded-full bg-marca px-4 text-[14px] font-semibold text-sobre-marca">
+          {copiado ? "Copiada" : "Copiar"}
+        </button>
+      </div>
+      <p className="mt-2 text-[13px] leading-5 text-tenue">
+        El Atajo abre la app en Safari: la primera vez entrá ahí con tu cuenta. Entiende &ldquo;5.000&rdquo;, &ldquo;5 mil&rdquo;, &ldquo;5 lucas&rdquo; y &ldquo;cobré&rdquo; para plata que entra. Si no reconoce la categoría, te la pregunta.
+      </p>
+      {base && (
+        <a href={`${base}${encodeURIComponent("gasté 5 lucas en el súper")}`} className="mt-2 inline-block text-[14px] font-semibold text-marca">
+          Probar con &ldquo;gasté 5 lucas en el súper&rdquo;
+        </a>
+      )}
+    </section>
   );
 }
