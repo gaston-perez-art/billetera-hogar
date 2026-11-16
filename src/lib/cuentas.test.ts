@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   ahorro,
   alcanceDelMes,
+  cierreDelMes,
   extrasDelMes,
   estadisticasPersona,
   categoriasDelMes,
@@ -625,5 +626,45 @@ describe("Reparto y Categorías: previsto y gastado", () => {
       repartoMes(d, MES).previsto - (p.gastado + p.extra),
       suma(deCategorias.map((c) => Math.max(c.techo - c.gastado, 0))),
     );
+  });
+});
+
+describe("cerrar el mes", () => {
+  const conCompensacion = (d: ReturnType<typeof demo>, de: string, a: string, monto: number) => {
+    const comp = { id: "comp", nombre: "Compensación", orden: 98, techo: 0 };
+    const mov = (id: string, m: number, quien: string) => ({ id, fecha: "2026-11-30", monto: m, categoriaId: "comp", detalle: "", pagoPor: quien, creadoEn: "" });
+    return { ...d, categorias: [...d.categorias, comp], movimientos: [...d.movimientos, mov("c1", monto, de), mov("c2", -monto, a)] };
+  };
+
+  it("lo que le toca a cada uno suma lo gastado, y lo que deben se cancela entre los dos", () => {
+    const c = cierreDelMes(demo(), MES);
+    cerca(suma(c.personas.map((p) => p.leTocaba)), c.gastaron);
+    cerca(suma(c.personas.map((p) => p.puso)), c.gastaron);
+    cerca(suma(c.personas.map((p) => p.debe)), 0);
+  });
+
+  it("compensar deja el mes cerrado, sin cambiar lo que tienen", () => {
+    const d = demo();
+    const c = cierreDelMes(d, MES);
+    expect(c.transferencia).not.toBeNull();
+    const t = c.transferencia!;
+    const despues = conCompensacion(d, t.de, t.a, t.monto);
+    const c2 = cierreDelMes(despues, MES);
+    expect(c2.hecho).toBe(true);
+    cerca(planMes(despues, MES).saldo, planMes(d, MES).saldo);
+    cerca(c2.gastaron, c.gastaron);
+    // En Reparto, lo puesto por quien pagó sube y lo del otro baja en lo mismo.
+    const puso = (x: typeof d, id: string) => repartoMes(x, MES).miembros.find((m) => m.miembroId === id)!.puso;
+    cerca(puso(despues, t.de) - puso(d, t.de), t.monto);
+    cerca(puso(despues, t.a) - puso(d, t.a), -t.monto);
+  });
+
+  it("la compensación no aparece como gasto ni como plata extra", () => {
+    const d = demo();
+    const t = cierreDelMes(d, MES).transferencia!;
+    const despues = conCompensacion(d, t.de, t.a, t.monto);
+    expect(extrasDelMes(despues, MES).map((e) => e.categoria.nombre)).not.toContain("Compensación");
+    cerca(gastosDe(despues, MES, t.de).gastado, gastosDe(d, MES, t.de).gastado);
+    cerca(alcanceDelMes(despues, MES, FECHA)!.porDia, alcanceDelMes(d, MES, FECHA)!.porDia);
   });
 });
