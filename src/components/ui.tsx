@@ -36,7 +36,7 @@ export function Encabezado({ titulo, conMes = true, conVista = false }: { titulo
         </div>
       </div>
       {(conMes || conVista) && (
-        <div className="mt-3 flex items-center gap-2">
+        <div data-fila-mes className="mt-3 flex items-center gap-2">
           {conMes && <SelectorMes />}
           {conVista && <SelectorVista />}
         </div>
