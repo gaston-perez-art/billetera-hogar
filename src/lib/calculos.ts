@@ -364,7 +364,7 @@ export interface PlanMes {
  */
 export function extrasDelMes(d: Datos, mes: Mes): { categoria: Categoria; monto: number }[] {
   return categoriasDelMes(d, mes)
-    .filter((c) => Math.round(c.gastado) < 0 && c.categoria.nombre !== CATEGORIA_AHORRO)
+    .filter((c) => Math.round(c.gastado) < 0 && c.categoria.nombre !== CATEGORIA_AHORRO && c.categoria.nombre !== CATEGORIA_COMPENSACION)
     .map((c) => ({ categoria: c.categoria, monto: -c.gastado }))
     .sort((a, b) => b.monto - a.monto);
 }
@@ -476,7 +476,8 @@ export interface EstadisticasPersona {
  */
 export function estadisticasPersona(d: Datos, mes: Mes, miembroId: string, mesAnterior: Mes): EstadisticasPersona {
   const pagoDe = new Map(d.pagosMes.filter((p) => p.movimientoId).map((p) => [p.movimientoId as string, p]));
-  const suyos = (m: Mes) => movimientosDelMes(d, m).filter((mv) => mv.pagoPor === miembroId && mv.monto > 0);
+  const compensacion = idDeCategoria(d, CATEGORIA_COMPENSACION);
+  const suyos = (m: Mes) => movimientosDelMes(d, m).filter((mv) => mv.pagoPor === miembroId && mv.monto > 0 && mv.categoriaId !== compensacion);
   const delMes = suyos(mes);
   const total = suma(delMes.map((mv) => mv.monto));
   const porCategoria = new Map<string, number>();
@@ -522,7 +523,8 @@ export interface GastosDe {
  * gastado − entró suma lo gastado de Inicio.
  */
 export function gastosDe(d: Datos, mes: Mes, miembroId: string): GastosDe {
-  const suyos = movimientosDelMes(d, mes).filter((mv) => mv.pagoPor === miembroId);
+  const compensacion = idDeCategoria(d, CATEGORIA_COMPENSACION);
+  const suyos = movimientosDelMes(d, mes).filter((mv) => mv.pagoPor === miembroId && mv.categoriaId !== compensacion);
   const gastos = suyos.filter((mv) => mv.monto > 0);
   const gastado = suma(gastos.map((mv) => mv.monto));
   const porCategoria = new Map<string, { monto: number; cantidad: number }>();
@@ -698,7 +700,7 @@ export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | nu
   const diaHoy = Number(fechaHoy.slice(8, 10));
   const alDia = suma(
     movimientosDelMes(d, mes)
-      .filter((m) => m.fecha <= fechaHoy && !deFijos.has(m.id) && m.categoriaId !== ahorroId && !deExtra.has(m.categoriaId))
+      .filter((m) => m.fecha <= fechaHoy && !deFijos.has(m.id) && m.categoriaId !== ahorroId && m.categoriaId !== idDeCategoria(d, CATEGORIA_COMPENSACION) && !deExtra.has(m.categoriaId))
       .map((m) => m.monto),
   );
   const porDia = Math.max(alDia, 0) / diaHoy;
@@ -715,4 +717,69 @@ export function alcanceDelMes(d: Datos, mes: Mes, fechaHoy: Fecha): Alcance | nu
   const teQueda = entra - gastado - faltan;
   const dias = ultimo - diaHoy + 1;
   return { teQueda, porDia, paraLlegar: Math.max(teQueda, 0) / dias, dias, seAcaba, finDeMes: saldo };
+}
+
+/** Las compensaciones del cierre del mes: lo que uno le pasa al otro. No es gasto de la casa. */
+export const CATEGORIA_COMPENSACION = "Compensación";
+/** Lo que faltaba cargar según el banco (la comparación de Inicio). */
+export const CATEGORIA_SIN_ANOTAR = "Sin anotar";
+
+function idDeCategoria(d: Datos, nombre: string): string | undefined {
+  return d.categorias.find((c) => c.nombre === nombre)?.id;
+}
+
+export interface CierrePersona {
+  miembroId: string;
+  nombre: string;
+  /** Lo que gastó para la casa en el mes (sin ahorro, compensaciones ni plata extra). */
+  puso: number;
+  /** Su parte de lo gastado de verdad, según lo que gana. */
+  leTocaba: number;
+  /** Lo que ya recibió (+) o pasó (−) en compensaciones de este mes. */
+  compensado: number;
+  /** Lo que todavía tiene que pasar (+) o recibir (−). */
+  debe: number;
+}
+
+export interface CierreMes {
+  entra: number;
+  /** Lo gastado de verdad en la casa (sin ahorro, compensaciones ni plata extra). */
+  gastaron: number;
+  extra: number;
+  /** Lo que sobró del mes: entró − gastaron (lo de "Tienen hoy" al cierre). */
+  sobro: number;
+  personas: CierrePersona[];
+  /** Quién le pasa a quién y cuánto, si falta. */
+  transferencia: { de: string; a: string; monto: number } | null;
+  /** Ya se compensó todo (o no hacía falta). */
+  hecho: boolean;
+}
+
+/**
+ * Cerrar el mes: con lo gastado de verdad (no lo previsto), cuánto le tocaba a cada uno según lo
+ * que gana y quién le tiene que pasar a quién. Lo ya compensado (movimientos en Compensación,
+ * + a nombre de quien pasa y − a nombre de quien recibe) se descuenta.
+ */
+export function cierreDelMes(d: Datos, mes: Mes): CierreMes {
+  const plan = planMes(d, mes);
+  const fuera = new Set(
+    [idDeCategoria(d, CATEGORIA_AHORRO), idDeCategoria(d, CATEGORIA_COMPENSACION), ...extrasDelMes(d, mes).map((e) => e.categoria.id)].filter(Boolean),
+  );
+  const compensacion = idDeCategoria(d, CATEGORIA_COMPENSACION);
+  const movs = movimientosDelMes(d, mes);
+  const deLaCasa = movs.filter((m) => !fuera.has(m.categoriaId));
+  const gastaron = suma(deLaCasa.map((m) => m.monto));
+  const personas = d.miembros.map((m) => {
+    const ingresa = ingresosDelMes(d, mes, m.id);
+    const proporcion = plan.entra > 0 ? ingresa / plan.entra : 1 / d.miembros.length;
+    const puso = suma(deLaCasa.filter((mv) => mv.pagoPor === m.id).map((mv) => mv.monto));
+    const leTocaba = gastaron * proporcion;
+    const compensado = suma(movs.filter((mv) => mv.categoriaId === compensacion && mv.pagoPor === m.id).map((mv) => mv.monto));
+    return { miembroId: m.id, nombre: m.nombre, puso, leTocaba, compensado, debe: leTocaba - puso - compensado };
+  });
+  const paga = [...personas].sort((a, b) => b.debe - a.debe)[0];
+  const cobra = [...personas].sort((a, b) => a.debe - b.debe)[0];
+  const monto = paga ? Math.round(paga.debe * 100) / 100 : 0;
+  const transferencia = paga && cobra && paga !== cobra && Math.round(monto) > 0 ? { de: paga.miembroId, a: cobra.miembroId, monto } : null;
+  return { entra: plan.entra, gastaron, extra: plan.extra, sobro: plan.saldo, personas, transferencia, hecho: transferencia === null };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { FilaAhorro } from "@/components/Ahorro";
+import { FilaBanco } from "@/components/Banco";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
@@ -131,7 +132,12 @@ export default function Inicio() {
       </div>
 
       <main className="mt-7 space-y-7">
-        {!soloYo && <FilaAhorro />}
+        {!soloYo && (
+          <div className="space-y-3">
+            <FilaAhorro />
+            <FilaBanco />
+          </div>
+        )}
         {pendientes.length > 0 && (
           <ProximosPagos pendientes={pendientes} mes={mes} fechaHoy={fechaHoy} />
         )}

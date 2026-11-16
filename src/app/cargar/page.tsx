@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Boton, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
 import { leerCargaRapida } from "@/lib/rapido";
+import { CATEGORIA_COMPENSACION } from "@/lib/calculos";
 import { desdeMonto, evaluar, mostrar, OPERADORES, teclear, tieneOperador, type Tecla } from "@/lib/calculadora";
 import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
@@ -48,7 +49,7 @@ export default function Cargar() {
     const p = new URLSearchParams(window.location.search);
     const texto = p.get("texto") ?? [p.get("monto"), p.get("categoria"), p.get("detalle")].filter(Boolean).join(" ");
     if (!texto.trim()) return;
-    const r = leerCargaRapida(texto, datos.categorias);
+    const r = leerCargaRapida(texto, datos.categorias.filter((c) => c.nombre !== CATEGORIA_COMPENSACION));
     if (p.get("entra") === "1") r.entra = true;
     window.history.replaceState(null, "", window.location.pathname);
     if (r.monto > 0) {
@@ -106,7 +107,8 @@ export default function Cargar() {
     setPaso("detalle");
   }
   const categoria = datos.categorias.find((c) => c.id === categoriaId);
-  const categorias = [...datos.categorias].sort((a, b) => a.orden - b.orden);
+  // Compensación la usa solo el cierre del mes: no se elige al cargar.
+  const categorias = [...datos.categorias].filter((c) => c.nombre !== CATEGORIA_COMPENSACION).sort((a, b) => a.orden - b.orden);
   const titulos: Record<Paso, string> = {
     monto: entraPlata ? "¿Cuánta plata entró?" : "¿Cuánto gastaste?",
     categoria: "¿En qué?",

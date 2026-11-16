@@ -6,6 +6,7 @@ import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/component
 import { estadisticasPersona, ingresosDelMes, planMes, previstoPorTipo, repartoMes, type EstadisticasPersona, type RepartoMiembro } from "@/lib/calculos";
 import { fechaCorta, hoy, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
 import { SaldoFijo } from "@/components/SaldoFijo";
+import { FilaCierre } from "@/components/Cierre";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
 import { prepararFoto, useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
@@ -79,6 +80,7 @@ export default function Reparto() {
         }}
       />
       </SaldoFijo>
+      <FilaCierre />
 
       <p className="mx-5 mt-7 text-[13px] leading-5 text-tenue">Cada uno pone para la casa según lo que gana. Lo que sobra después de poner su parte es de cada uno.</p>
 

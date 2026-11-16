@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { SaldoFijo } from "@/components/SaldoFijo";
 import { Cifras, Encabezado, FilaLista, Grupo, Hoja, MontoMovimiento, MontoQueda, Resumen } from "@/components/ui";
-import { CATEGORIA_AHORRO, categoriasDelMes, extrasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
+import { CATEGORIA_AHORRO, CATEGORIA_COMPENSACION, categoriasDelMes, extrasDelMes, gastosDe, gastosDeCategoria, pagosDelMes, planMes, textoCuota } from "@/lib/calculos";
 import { etiquetaDia, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
 import { usePersonaVista } from "@/lib/vista";
@@ -32,7 +32,8 @@ function CategoriasDeLosDos({ alAbrir }: { alAbrir: (id: string) => void }) {
   const activas = categorias
     .filter((c) => c.techo !== 0 || c.gastado !== 0)
     .sort((a, b) => b.gastado - a.gastado || b.techo - a.techo);
-  const vacias = categorias.filter((c) => c.techo === 0 && c.gastado === 0);
+  // Compensación es del cierre del mes, no una categoría de gastos: no se nombra entre las vacías.
+  const vacias = categorias.filter((c) => c.techo === 0 && c.gastado === 0 && c.categoria.nombre !== CATEGORIA_COMPENSACION);
 
   return (
     <>

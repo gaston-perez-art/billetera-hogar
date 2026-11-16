@@ -142,7 +142,7 @@ export function actualizarTecho(d: Datos, categoriaId: string, techo: number): D
  * Categorías con lógica atada al nombre (techo de Deuda, total de Santino, meses viejos de Chicos):
  * no se renombran o se rompen esas cuentas.
  */
-export const CATEGORIAS_FIJAS = ["Deuda", "Santino", "Chicos", "Ahorro"];
+export const CATEGORIAS_FIJAS = ["Deuda", "Santino", "Chicos", "Ahorro", "Compensación", "Sin anotar"];
 
 /** Cambiar el nombre de una categoría. Los gastos la siguen por id: no cambia nada del pasado. */
 export function renombrarCategoria(d: Datos, categoriaId: string, nombre: string): Datos {
