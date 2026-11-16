@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Boton, Hoja, Interruptor, MontoGrande, TarjetaLista } from "@/components/ui";
+import { leerCargaRapida } from "@/lib/rapido";
 import { desdeMonto, evaluar, mostrar, OPERADORES, teclear, tieneOperador, type Tecla } from "@/lib/calculadora";
 import { hoy, pesos } from "@/lib/formato";
 import { useBilletera } from "@/lib/store";
@@ -36,6 +37,30 @@ export default function Cargar() {
     setTerminos(desdeMonto(resultado));
     setPaso("categoria");
   }
+
+  // Carga rápida: un Atajo del iPhone abre /cargar/?texto=gasté 5 lucas en súper (o con
+  // ?monto=&categoria=&detalle=). Se completa lo que se entendió y se va al paso que falta:
+  // con monto y categoría, directo a "Revisá y guardá".
+  const yaLeido = useRef(false);
+  useEffect(() => {
+    if (yaLeido.current || datos.categorias.length === 0) return;
+    yaLeido.current = true;
+    const p = new URLSearchParams(window.location.search);
+    const texto = p.get("texto") ?? [p.get("monto"), p.get("categoria"), p.get("detalle")].filter(Boolean).join(" ");
+    if (!texto.trim()) return;
+    const r = leerCargaRapida(texto, datos.categorias);
+    if (p.get("entra") === "1") r.entra = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    if (r.monto > 0) {
+      setMonto(r.monto);
+      setTerminos(desdeMonto(r.monto));
+    }
+    setEntraPlata(r.entra);
+    if (r.categoriaId) setCategoriaId(r.categoriaId);
+    if (r.detalle) setDetalle(r.detalle);
+    if (r.monto > 0) setPaso(r.categoriaId ? "detalle" : "categoria");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se lee una sola vez, con las categorías ya cargadas
+  }, [datos.categorias]);
 
   // Con teclado físico (computadora) también se escribe y se calcula.
   useEffect(() => {
