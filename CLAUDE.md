@@ -59,6 +59,8 @@ Leer antes de tocar lógica:
 
 ## Reglas clave (resumen)
 
+- **Vocabulario cerrado** (en pantalla, siempre con estos nombres; nada de "libre", "reservado", "para gastar" ni "dinero hoy"): **Tienen / Tenés / Tiene hoy** = lo que entró menos lo gastado. **Te queda este mes** = el número grande de Inicio (tienen hoy − fijos que faltan). **Queda para {nombre}** (o "Queda para vos") = lo de cada uno después de poner su parte de la casa. **Quedan** = lo que queda en una categoría (techo − gastado − fijos que faltan). **Previsto** = lo que se espera gastar en el mes (base del reparto). **Le toca poner / Le falta poner / Puso.** En el código los nombres viejos (`libre`, `paraGastar`) siguen como están.
+
 - Te queda de verdad = entra − gastado − pagos fijos pendientes.
 - Te queda por categoría = techo − gastado.
 - **Las cuentas cierran entre pantallas** (`src/lib/cuentas.test.ts`): lo libre de todas las categorías, lo de cada persona (`paraGastarPorPersona`) y el "le queda para gastar" de Reparto suman el número de Inicio; lo comprometido en pagos fijos por categoría suma lo que falta pagar en Pagos. Cualquier cálculo nuevo tiene que sumarse a esos tests.

@@ -167,7 +167,7 @@ function TarjetaPersona({
           <p className="mt-0.5 text-[12px] leading-4 text-tenue">{sobrante >= 0 ? "Lo que gana menos su parte de la casa" : "Su parte de la casa supera lo que gana"}</p>
         </div>
         <div className="rounded-2xl bg-relleno p-3.5">
-          <p className="text-[13px] text-tenue">Le queda hoy</p>
+          <p className="text-[13px] text-tenue">Tiene hoy</p>
           <p className={`mt-1 text-[18px] font-bold tabular-nums ${Math.round(m.leQuedaReal) < 0 ? "text-pasaste" : ""}`}>{pesos(m.leQuedaReal, { ceroComoGuion: false })}</p>
           <p className="mt-0.5 text-[12px] leading-4 text-tenue">Lo que le entró menos lo que ya puso</p>
         </div>
