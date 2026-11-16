@@ -41,6 +41,7 @@ export function Encabezado({ titulo, conMes = true, conVista = false }: { titulo
           {conVista && <SelectorVista />}
         </div>
       )}
+      {conMes && <AvisoMesFuturo />}
     </header>
   );
 }
@@ -89,6 +90,21 @@ function Saludo() {
 }
 
 /** Chip con el mes y flechas. Tocar el nombre vuelve al mes actual. */
+/**
+ * Un mes que todavía no empezó se ve igual que uno real (con los techos y los pagos fijos ya
+ * previstos), y era fácil creer que se estaba mirando el mes en curso. Se dice con palabras.
+ */
+function AvisoMesFuturo() {
+  const { mes } = useBilletera();
+  if (mes <= mesDe(hoy())) return null;
+  const nombre = nombreMes(mes).split(" ")[0];
+  return (
+    <p className="mt-2.5 rounded-2xl bg-marca-suave px-3.5 py-2 text-[13px] leading-[18px] text-texto">
+      <span className="font-semibold capitalize">{nombre}</span> todavía no empezó: lo que ves es lo previsto.
+    </p>
+  );
+}
+
 function SelectorMes() {
   const { mes, setMes } = useBilletera();
   const esMesActual = mes === mesDe(hoy());

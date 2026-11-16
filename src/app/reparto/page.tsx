@@ -4,7 +4,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Icono, IconoCategoria, ICONOS } from "@/components/Iconos";
 import { Avatar, Cifras, Encabezado, MontoGrande, MontoQueda } from "@/components/ui";
 import { estadisticasPersona, ingresosDelMes, previstoPorTipo, repartoMes, type EstadisticasPersona, type RepartoMiembro } from "@/lib/calculos";
-import { fechaCorta, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { fechaCorta, hoy, mesDe, nombreMes, pesos, sumarMeses } from "@/lib/formato";
+import { SaldoFijo } from "@/components/SaldoFijo";
 import { datoCurioso, FUENTE_URL } from "@/lib/indec";
 import { prepararFoto, useFotos } from "@/lib/fotos";
 import { useBilletera } from "@/lib/store";
@@ -17,15 +18,18 @@ export default function Reparto() {
   const { fijos, variables } = previstoPorTipo(datos, mes);
   const entra = ingresosDelMes(datos, mes);
   const [a, b] = miembros;
+  const futuro = mes > mesDe(hoy());
+  const etiqueta = futuro ? "Gastos previstos, entre los dos" : "Gastos del mes, entre los dos";
 
   return (
     <>
       <Encabezado titulo="Reparto" />
+      <SaldoFijo monto={previsto} etiqueta={etiqueta}>
       <TarjetaQueGira
         frente={
           <>
             <MontoGrande monto={previsto} className="self-center text-[40px]" />
-            <p className="mt-2 text-[14px] text-tenue">Gastos del mes, entre los dos</p>
+            <p className="mt-2 text-[14px] text-tenue">{etiqueta}</p>
             <div className="mt-5 border-t border-linea pt-4">
               {a && b && (
                 <div className="mb-5 flex items-center gap-3">
@@ -69,6 +73,7 @@ export default function Reparto() {
           ),
         }}
       />
+      </SaldoFijo>
 
       <p className="mx-5 mt-7 text-[13px] leading-5 text-tenue">Cada uno pone para la casa según lo que gana. Lo que sobra después de poner su parte es de cada uno.</p>
 
@@ -81,6 +86,8 @@ export default function Reparto() {
             variables={variables * m.proporcion}
             estadisticas={estadisticasPersona(datos, mes, m.miembroId, sumarMeses(mes, -1))}
             mesAnterior={nombreMes(sumarMeses(mes, -1)).split(" ")[0].toLowerCase()}
+            mesActual={nombreMes(mes).split(" ")[0]}
+            futuro={futuro}
           />
         ))}
       </main>
@@ -98,12 +105,16 @@ function TarjetaPersona({
   variables,
   estadisticas,
   mesAnterior,
+  mesActual,
+  futuro,
 }: {
   m: RepartoMiembro;
   fijos: number;
   variables: number;
   estadisticas: EstadisticasPersona;
   mesAnterior: string;
+  mesActual: string;
+  futuro: boolean;
 }) {
   const avance = m.leToca > 0 ? Math.min(m.puso / m.leToca, 1) : 0;
   const d = Math.round(m.diferencia);
@@ -170,7 +181,7 @@ function TarjetaPersona({
       </div>
       </>
       }
-      dorso={<EnQueGasta nombre={m.nombre} id={m.miembroId} e={estadisticas} mesAnterior={mesAnterior} />}
+      dorso={<EnQueGasta nombre={m.nombre} id={m.miembroId} e={estadisticas} mesAnterior={mesAnterior} mesActual={mesActual} futuro={futuro} />}
     />
   );
 }
@@ -181,11 +192,15 @@ function EnQueGasta({
   id,
   e,
   mesAnterior,
+  mesActual,
+  futuro,
 }: {
   nombre: string;
   id: string;
   e: EstadisticasPersona;
   mesAnterior: string;
+  mesActual: string;
+  futuro: boolean;
 }) {
   const cambio = e.totalAnterior > 0 ? Math.round(((e.total - e.totalAnterior) / e.totalAnterior) * 100) : null;
   const comparacion =
@@ -201,7 +216,7 @@ function EnQueGasta({
         <div className="min-w-0 flex-1">
           <h2 className="text-[17px] font-bold leading-tight">En qué gasta {nombre}</h2>
           <p className="mt-0.5 text-[13px] text-tenue">
-            Este mes, pagos fijos incluidos
+            <span className="capitalize">{mesActual}</span>, pagos fijos incluidos
           </p>
         </div>
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-relleno text-texto" aria-hidden>
@@ -210,7 +225,7 @@ function EnQueGasta({
       </div>
 
       {e.cantidad === 0 ? (
-        <p className="m-auto px-4 text-center text-[15px] text-tenue">Todavía no cargó gastos este mes.</p>
+        <p className="m-auto px-4 text-center text-[15px] text-tenue">{futuro ? <><span className="capitalize">{mesActual}</span> todavía no empezó.</> : <>No cargó gastos en {mesActual}.</>}</p>
       ) : (
         <>
           <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-linea pt-4">
